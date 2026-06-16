@@ -6,86 +6,129 @@ import { site } from "@/lib/site";
 export default function HomePage() {
   return (
     <>
-      <section
-        className="hero-gradient relative overflow-hidden"
-        aria-label="SETVA 2026 — Southeast Texas Visionary Awards"
-      >
-        <div className="relative mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 sm:pt-6">
-          <div className="hero-image-frame">
-            <Image
-              src="/hero-visionary-awards-2026.jpg"
-              alt="Southeast Texas Visionary Awards 2026 — Honoring Excellence, Inspiring Impact"
-              width={1024}
-              height={682}
-              priority
-              className="hero-image-blend h-auto w-full"
-              sizes="(max-width: 768px) 100vw, 768px"
-            />
-            <div
-              className="hero-banner-fade pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-              aria-hidden
-            />
+      <div aria-hidden className="page-backdrop pointer-events-none fixed inset-0 -z-10">
+        <div className="flex h-full flex-col">
+          <div className="relative flex-1">
+            <Image src="/setva-bg-1.png" alt="" fill className="object-cover object-center" sizes="100vw" />
+          </div>
+          <div className="relative flex-1">
+            <Image src="/setva-bg-2.png" alt="" fill className="object-cover object-center" sizes="100vw" />
+          </div>
+          <div className="relative flex-1">
+            <Image src="/setva-bg-3.png" alt="" fill className="object-cover object-center" sizes="100vw" />
           </div>
         </div>
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
 
-        <div className="relative z-10 -mt-8 px-4 pb-16 sm:-mt-10 sm:px-6 sm:pb-20">
-          <div className="mx-auto max-w-6xl">
-            <p className="sr-only">{site.fullName} 2026</p>
-            <p className="mb-3 text-center text-sm font-semibold uppercase tracking-[0.25em] text-gold sm:text-left">
-              ✨ Southeast Texas, it&apos;s time to shine ✨
-            </p>
-            <p className="mx-auto max-w-2xl text-center text-lg text-cream/95 sm:mx-0 sm:text-left sm:text-xl">
-              {site.tagline}
-            </p>
-            <p className="mt-3 text-center font-display text-xl italic text-gold sm:text-left">
-              {site.motto}
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:justify-start">
-              <Link
-                href="/tickets"
-                className="rounded-full bg-gold px-8 py-4 text-base font-semibold text-ink shadow-lg transition hover:bg-gold-light"
-              >
-                Buy Tickets
-              </Link>
-              <Link
-                href="/sponsors"
-                className="rounded-full border border-gold/60 bg-ink/40 px-8 py-4 text-base font-semibold text-gold backdrop-blur-sm transition hover:bg-gold/10"
-              >
-                Become a Sponsor
-              </Link>
-              <Link
-                href="/donate"
-                className="rounded-full bg-ruby px-8 py-4 text-base font-semibold text-cream shadow-lg transition hover:bg-ruby-light"
-              >
-                Donate
-              </Link>
+      <section
+        className="brand-hero relative overflow-hidden bg-white"
+        aria-label="SETVA 2026 — Southeast Texas Visionary Awards"
+      >
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          poster="/setva-awards-poster.png"
+          aria-hidden="true"
+        >
+          <source src="/setva-awards-header.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.34)_0%,rgba(191,0,0,0.08)_42%,rgba(255,255,255,0.94)_100%)]" />
+        <Image
+          src="/setva-hero-background.png"
+          alt=""
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+          aria-hidden
+        />
+
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-72px)] max-w-6xl flex-col justify-end px-4 pb-12 pt-8 sm:min-h-[calc(100svh-80px)] sm:px-6 sm:pb-16 lg:justify-center">
+          <div className="hero-copy w-full max-w-md overflow-hidden rounded-[2rem] bg-black shadow-2xl ring-1 ring-white/10 sm:max-w-lg lg:max-w-2xl">
+            <Image
+              src="/setva-hero-card.png"
+              alt="Southeast Texas Visionary Awards 2026"
+              width={819}
+              height={1024}
+              priority
+              className="h-auto w-full lg:hidden"
+              sizes="(max-width: 768px) 90vw, 512px"
+            />
+            <Image
+              src="/setva-hero-card-wide.png"
+              alt="Southeast Texas Visionary Awards 2026"
+              width={1024}
+              height={576}
+              priority
+              className="hidden h-auto w-full lg:block"
+              sizes="672px"
+            />
+            <div className="relative -mt-24 bg-gradient-to-t from-black via-black/90 to-transparent px-6 pb-8 pt-12 sm:-mt-28 sm:px-8 lg:-mt-16 lg:pt-16">
+              <p className="sr-only">{site.fullName} 2026</p>
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.3em] text-gold sm:text-sm">
+                Southeast Texas, it&apos;s time to shine
+              </p>
+              <p className="mt-3 text-center text-base text-white/90 sm:text-lg">
+                {site.tagline}
+              </p>
+              <p className="mt-2 text-center font-display text-lg italic text-gold">
+                {site.motto}
+              </p>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href="/tickets"
+                  className="rounded-full bg-ruby px-6 py-3 text-center text-sm font-semibold text-white shadow-lg transition hover:bg-white hover:text-ruby"
+                >
+                  Buy Tickets
+                </Link>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href="/sponsors"
+                    className="rounded-full border border-white/40 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Become a Sponsor
+                  </Link>
+                  <Link
+                    href="/donate"
+                    className="rounded-full bg-gold px-6 py-3 text-center text-sm font-semibold text-black shadow-lg transition hover:bg-gold-light"
+                  >
+                    Vote
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-gold/10 bg-ink-deep/50 px-4 py-16 sm:px-6">
+      <section className="relative mt-4 border-y border-ruby/10 bg-white/75 px-4 py-16 text-black backdrop-blur-[2px] sm:mt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <SectionHeading
             eyebrow="The Movement"
+            eyebrowClassName="text-ruby"
             title="Experience the vibrance of Southeast Texas"
             subtitle="A healed individual becomes a ripple of change. A recognized gift becomes a movement. SETVA exists to light that fire."
+            tone="light"
           />
-          <div className="mx-auto mt-12 max-w-3xl space-y-6 text-center text-cream/75">
+          <div className="mx-auto mt-12 max-w-3xl space-y-6 text-center text-black/75">
             <p>
               This powerful weekend honors gifted individuals using their voices,
               art, and service to make a lasting difference in Southeast Texas
               and beyond. The Southeast Texas Visionary Awards is more than a red
               carpet event — it is a movement of healing, honor, and hope.
             </p>
-            <p className="text-gold/90">
+            <p className="text-ruby">
               Presented by {site.event.presenter}
             </p>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6">
+      <section className="relative mt-4 bg-[linear-gradient(135deg,rgba(191,0,0,0.6)_0%,rgba(0,0,0,0.62)_100%)] px-4 py-16 backdrop-blur-[2px] sm:mt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <SectionHeading
             eyebrow={site.event.dateShort}
@@ -130,7 +173,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-ink-deep/80 px-4 py-16 sm:px-6">
+      <section className="relative mt-4 bg-black/45 px-4 py-16 backdrop-blur-[2px] sm:mt-6 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <blockquote className="font-display text-xl italic leading-relaxed text-cream/90 sm:text-2xl">
             &ldquo;This isn&apos;t just a show. It&apos;s a seed. And every vote,
@@ -143,21 +186,37 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-gold/20 bg-gradient-to-br from-gold/10 to-ruby/10 p-8 sm:p-12">
+      <section className="relative mt-4 bg-[linear-gradient(135deg,rgba(0,0,0,0.62)_0%,rgba(191,0,0,0.55)_100%)] px-4 py-16 backdrop-blur-[2px] sm:mt-6 sm:px-6">
+        <div className="mx-auto max-w-3xl text-center">
+          <SectionHeading
+            eyebrow="Partner with us"
+            title="Become a SETVA sponsor"
+            subtitle="Put your brand at the heart of Southeast Texas's biggest night of recognition. View every package tier and get the free Torch of Excellence sponsorship deck sent to your inbox."
+          />
+          <Link
+            href="/sponsors#get-deck"
+            className="mt-10 inline-flex rounded-full bg-gold px-8 py-4 text-base font-semibold text-black shadow-lg transition hover:bg-gold-light"
+          >
+            Get free sponsor package deck
+          </Link>
+        </div>
+      </section>
+
+      <section className="relative mt-4 bg-white/75 px-4 py-16 text-black backdrop-blur-[2px] sm:mt-6 sm:px-6">
+        <div className="mx-auto max-w-6xl rounded-2xl border border-ruby/15 bg-gradient-to-br from-gold/40 to-ruby/15 p-8 shadow-xl sm:p-12">
           <div className="flex flex-col items-center gap-6 text-center lg:flex-row lg:text-left">
             <div className="flex-1">
-              <h2 className="font-display text-2xl text-cream sm:text-3xl">
+              <h2 className="font-display text-2xl text-black sm:text-3xl">
                 Ticket Partner Program
               </h2>
-              <p className="mt-3 text-cream/75">
+              <p className="mt-3 text-black/75">
                 Earn 20% on every ticket you sell. Share your custom link, get
                 credited for sales, and receive earnings after the event.
               </p>
             </div>
             <Link
               href="/ticket-partners"
-              className="shrink-0 rounded-full bg-gold px-8 py-4 font-semibold text-ink hover:bg-gold-light"
+              className="shrink-0 rounded-full bg-ruby px-8 py-4 font-semibold text-white hover:bg-black"
             >
               Become a Ticket Partner
             </Link>
@@ -165,18 +224,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-gold/10 px-4 py-16 sm:px-6">
+      <section className="relative mt-4 border-t border-ruby/10 bg-white/75 px-4 py-16 text-black backdrop-blur-[2px] sm:mt-6 sm:px-6">
         <div className="mx-auto max-w-xl text-center">
           <SectionHeading
             title="Stay in the loop"
             subtitle="Be the first to hear about ticket sales, Early Bird offers, and our lineup."
+            tone="light"
           />
           <p className="mt-6">
             <a
               href={site.social.linktree}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gold underline-offset-4 hover:underline"
+              className="font-semibold text-black underline-offset-4 hover:underline"
             >
               Follow us on Linktree →
             </a>

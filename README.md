@@ -50,9 +50,85 @@ Register `https://your-domain.com/api/webhooks/square` in the Square dashboard a
 
 Ticket tiers, sponsor packages, and donation presets are defined in `src/lib/site.ts`.
 
-## Deploy
+## Sponsor deck email funnel
 
-Recommended: [Vercel](https://vercel.com) — connect this repo, add env vars, point `setvawards.com` DNS when ready.
+The `/sponsors` page includes a form that emails the **Torch of Excellence** sponsorship deck PDF to requesters.
+
+1. Copy the deck into `public/downloads/setva-2026-torch-of-excellence.pdf` (or set `SPONSOR_DECK_URL` to a hosted copy).
+2. Create a [Resend](https://resend.com) account and add `RESEND_API_KEY` to `.env.local`.
+3. Set `SPONSOR_DECK_FROM_EMAIL` to a verified sender (e.g. `SETVA <sponsors@setvawards.com>`).
+4. Optionally set `SPONSOR_DECK_NOTIFY_EMAIL` so the team gets a lead notification.
+
+Without Resend configured, the form runs in **demo mode** and shows a direct download link after submit.
+
+Emails include a download link to the Torch of Excellence deck PDF.
+
+## GitHub
+
+Repository: [github.com/vaughnxmedia-alt/SETVA](https://github.com/vaughnxmedia-alt/SETVA)
+
+```bash
+git push origin main
+```
+
+## Deploy on Vercel
+
+1. Import [vaughnxmedia-alt/SETVA](https://github.com/vaughnxmedia-alt/SETVA) in the [Vercel dashboard](https://vercel.com/new) (or use the linked CLI project).
+2. Add **Environment Variables** for Production (and Preview if you want):
+
+| Variable | Example |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | `https://setvawards.com` |
+| `SQUARE_ACCESS_TOKEN` | production token |
+| `SQUARE_LOCATION_ID` | location ID |
+| `SQUARE_ENVIRONMENT` | `production` |
+| `RESEND_API_KEY` | `re_...` |
+| `SPONSOR_DECK_FROM_EMAIL` | `SETVA <sponsors@setvawards.com>` |
+| `SPONSOR_DECK_NOTIFY_EMAIL` | your team inbox |
+
+3. **Custom domain** — in Vercel → Project → Settings → Domains, add `setvawards.com` and `www.setvawards.com`. Vercel shows the DNS records to add at your registrar (or in Microsoft 365 DNS if that is where the domain is managed).
+
+## Resend + Microsoft 365 email
+
+The site sends sponsor-deck emails through **Resend’s API** (not Outlook SMTP). Your Microsoft 365 mailbox is the **From address** visitors see; Resend delivers the message after your domain is verified.
+
+### 1. Create the sender mailbox (Microsoft 365)
+
+In [Microsoft 365 Admin](https://admin.microsoft.com) → **Users** → add or use a mailbox such as `sponsors@setvawards.com` (or an alias on an existing user).
+
+### 2. Add the domain in Resend
+
+1. [Resend → Domains](https://resend.com/domains) → **Add domain**.
+2. Prefer a subdomain for sending reputation, e.g. `send.setvawards.com`, **or** use the root `setvawards.com` if you want `sponsors@setvawards.com` directly.
+3. Resend shows **SPF**, **DKIM**, and optional **DMARC** DNS records.
+
+### 3. Publish DNS in Microsoft 365
+
+If your domain DNS is managed in Microsoft 365:
+
+1. [admin.microsoft.com](https://admin.microsoft.com) → **Settings** → **Domains** → select your domain → **DNS records**.
+2. Add each record Resend provides (TXT for SPF/DKIM, etc.).
+3. **Important — one SPF record only.** If you already have Microsoft 365 SPF, **merge** instead of adding a second record:
+
+```txt
+v=spf1 include:spf.protection.outlook.com include:amazonses.com ~all
+```
+
+(`include:amazonses.com` is what Resend uses; confirm the exact value shown in your Resend dashboard.)
+
+4. Enable **DKIM** for Microsoft 365 in [Defender → Email authentication → DKIM](https://security.microsoft.com/authentication) (separate from Resend’s DKIM records — both can coexist on different hostnames).
+5. Back in Resend, click **Verify DNS records**. Propagation can take up to 48 hours.
+
+### 4. Configure the app
+
+```env
+RESEND_API_KEY=re_xxxxxxxx
+SPONSOR_DECK_FROM_EMAIL=SETVA <sponsors@setvawards.com>
+SPONSOR_DECK_NOTIFY_EMAIL=sponsors@setvawards.com
+NEXT_PUBLIC_SITE_URL=https://setvawards.com
+```
+
+Set the same values in **Vercel → Environment Variables**. Replies from recipients go to `setvaawards@gmail.com` via the `replyTo` field in code unless you change it in `src/lib/email.ts`.
 
 ## Project structure
 

@@ -65,10 +65,10 @@ export function resolveCheckoutItem(
     if (!pkg) {
       return { error: "Invalid sponsor package", status: 400 };
     }
-    if (pkg.id === "custom") {
+    if (pkg.contactOnly || pkg.price <= 0) {
       return {
         error:
-          "Custom partnerships are arranged directly. Please contact us.",
+          "This package is arranged directly. Please contact us or request an invoice.",
         status: 400,
       };
     }

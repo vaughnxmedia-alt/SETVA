@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -10,15 +11,19 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gold/20 bg-ink/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="group flex flex-col">
-          <span className="font-display text-xl tracking-wide text-gold transition group-hover:text-gold-light sm:text-2xl">
-            {site.name}
-          </span>
-          <span className="hidden text-xs text-cream/60 sm:block">
-            {site.fullName}
-          </span>
+    <header className="sticky top-0 z-50 border-b border-ruby/20 bg-white/95 shadow-sm backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <Link href="/" className="group flex items-center">
+          <Image
+            src="/setva-logo-header-transparent.png"
+            alt={site.fullName}
+            width={1024}
+            height={576}
+            priority
+            className="h-auto w-[150px] min-w-[150px] object-contain transition group-hover:scale-[1.02] sm:w-[180px] sm:min-w-[180px]"
+            sizes="(max-width: 640px) 150px, 180px"
+          />
+          <span className="sr-only">{site.name}</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -30,8 +35,8 @@ export function Header() {
                 href={item.href}
                 className={`rounded-full px-3 py-2 text-sm transition ${
                   active
-                    ? "bg-gold/15 text-gold"
-                    : "text-cream/80 hover:bg-white/5 hover:text-cream"
+                    ? "bg-ruby text-white"
+                    : "text-black/80 hover:bg-ruby/10 hover:text-ruby"
                 }`}
               >
                 {item.label}
@@ -40,7 +45,7 @@ export function Header() {
           })}
           <Link
             href="/tickets"
-            className="ml-2 rounded-full bg-gold px-4 py-2 text-sm font-semibold text-ink transition hover:bg-gold-light"
+            className="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
           >
             Get Tickets
           </Link>
@@ -48,7 +53,7 @@ export function Header() {
 
         <button
           type="button"
-          className="rounded-lg p-2 text-cream md:hidden"
+          className="rounded-lg p-2 text-black md:hidden"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
@@ -63,14 +68,14 @@ export function Header() {
       </div>
 
       {open && (
-        <nav className="border-t border-gold/10 px-4 py-4 md:hidden">
+        <nav className="border-t border-ruby/10 bg-white px-4 py-4 md:hidden">
           <div className="flex flex-col gap-1">
             {mainNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 text-cream/90 hover:bg-white/5"
+                className="rounded-lg px-3 py-2 text-black/80 hover:bg-ruby/10 hover:text-ruby"
               >
                 {item.label}
               </Link>
@@ -78,7 +83,7 @@ export function Header() {
             <Link
               href="/tickets"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-full bg-gold px-4 py-3 text-center font-semibold text-ink"
+              className="mt-2 rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
             >
               Get Tickets
             </Link>
