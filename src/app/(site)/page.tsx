@@ -55,6 +55,22 @@ export default function HomePage() {
               Presented by {site.event.presenter}
             </p>
           </div>
+
+          <div className="mx-auto mt-12 max-w-4xl">
+            <p className="mb-4 text-center text-sm font-semibold uppercase tracking-[0.2em] text-ruby">
+              Relive last year&apos;s event
+            </p>
+            <div className="relative aspect-video overflow-hidden rounded-2xl border border-ruby/15 bg-black shadow-xl">
+              <iframe
+                src="https://www.youtube.com/embed/azRMNqjWrus?start=9"
+                title="SETVA — Southeast Texas Visionary Awards (previous year)"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -65,17 +81,6 @@ export default function HomePage() {
             title={site.event.title}
             subtitle={`${site.event.dateLabel} · ${site.event.time} · ${site.event.location}`}
           />
-          <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm">
-            <Link href="/events" className="text-gold hover:underline">
-              Event schedule →
-            </Link>
-            <Link href="/nominees" className="text-gold hover:underline">
-              Sample nominees →
-            </Link>
-            <Link href="/about" className="text-gold hover:underline">
-              Our story →
-            </Link>
-          </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {[
               {
@@ -105,7 +110,7 @@ export default function HomePage() {
 
       <section className="relative mt-4 bg-black/45 px-4 py-16 backdrop-blur-[2px] sm:mt-6 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <blockquote className="font-display text-xl italic leading-relaxed text-cream/90 sm:text-2xl">
+          <blockquote className="font-display text-xl italic leading-relaxed text-gold sm:text-2xl">
             &ldquo;This isn&apos;t just a show. It&apos;s a seed. And every vote,
             every dollar, every voice helps this seed grow into something our youth
             and communities can thrive in. Thank you for walking with us.&rdquo;
@@ -162,14 +167,12 @@ export default function HomePage() {
             tone="light"
           />
           <p className="mt-6">
-            <a
-              href={site.social.linktree}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href={site.social.hub}
               className="font-semibold text-black underline-offset-4 hover:underline"
             >
-              Follow us on Linktree →
-            </a>
+              Connect with us →
+            </Link>
           </p>
         </div>
       </section>

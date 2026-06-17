@@ -62,14 +62,9 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href={site.social.linktree}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-gold"
-                >
-                  Linktree
-                </a>
+                <Link href={site.social.hub} className="hover:text-gold">
+                  All links
+                </Link>
               </li>
             </ul>
           </div>

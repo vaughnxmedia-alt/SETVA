@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
 import { site } from "@/lib/site";
 
@@ -13,6 +14,9 @@ type Props = {
 
 const subjectLabels: Record<string, string> = {
   vendor: "Vendor Application",
+  "vendor-bartenders": "Vendor Application — Bartenders",
+  "vendor-food-truck": "Vendor Application — Food Truck",
+  "vendor-spinning-camera": "Vendor Application — Spinning Camera",
   sponsorship: "Sponsorship Inquiry",
   "ticket-partner": "Ticket Partner Program",
 };
@@ -77,14 +81,9 @@ export default async function ContactPage({ searchParams }: Props) {
 
         <p className="mt-8 text-center text-sm text-cream/50">
           Follow updates on{" "}
-          <a
-            href={site.social.linktree}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gold hover:underline"
-          >
-            Linktree
-          </a>
+          <Link href={site.social.hub} className="text-gold hover:underline">
+            our links page
+          </Link>
         </p>
       </div>
     </div>

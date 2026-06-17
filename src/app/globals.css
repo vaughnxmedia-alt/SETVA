@@ -138,7 +138,8 @@ body {
     0 12px 40px rgba(201, 162, 39, 0.12);
 }
 
-/* SETVA mark on dark Headquarters sidebar */
+/* SETVA mark tinted gold on dark backgrounds */
+.logo-gold,
 .hq-logo-gold {
   filter: brightness(0) saturate(100%) invert(88%) sepia(42%) saturate(520%)
     hue-rotate(358deg) brightness(104%) contrast(96%);

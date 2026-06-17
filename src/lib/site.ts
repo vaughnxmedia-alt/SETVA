@@ -40,9 +40,10 @@ export const site = {
     whatsapp: "https://wa.me/13185921768",
   },
   social: {
-    facebook: "https://www.facebook.com/557613147426788",
-    linktree: "https://linktr.ee/SETVA",
-    instagram: "https://linktr.ee/SETVA",
+    facebook: "https://www.facebook.com/share/18hKrFpeir/?mibextid=wwXIfr",
+    instagram: "https://www.instagram.com/setvaawards",
+    /** On-site link hub (replaces Linktree in SETVA navigation). */
+    hub: "/links",
   },
   founders: "Solomon and Tierrene' Ajao",
   org: "African Vue Corporation",
@@ -744,6 +745,27 @@ export type VendorPackage = {
   includes: string[];
 };
 
+export const vendorSlotOptions = [
+  {
+    id: "vendor-bartenders",
+    label: "Bartenders",
+    description: "Limited bartender slots for the awards experience.",
+    availability: "Limited availability",
+  },
+  {
+    id: "vendor-food-truck",
+    label: "Food Truck",
+    description: "One food truck slot at SETVA 2026.",
+    availability: "1 slot available",
+  },
+  {
+    id: "vendor-spinning-camera",
+    label: "Spinning Camera",
+    description: "360 photo / spinner booth placement.",
+    availability: "1 slot available",
+  },
+] as const;
+
 /** Sample vendor booth pricing. */
 export const vendorPackages: VendorPackage[] = [
   {
@@ -834,3 +856,59 @@ export const ticketPartnerInfo = {
     { tickets: 10, tier: "VIP ($50 regular)", earnings: 100 },
   ],
 };
+
+export type SocialHubLink = {
+  label: string;
+  description?: string;
+  href: string;
+  external?: boolean;
+};
+
+export const socialHub = {
+  title: "SETVA",
+  bio: "Celebrating excellence in music, film, fashion, art & culture across the 409.",
+  tagline: "Get tickets · Vote · Be there when the vision takes stage!",
+  logo: "/setva-logo-header-transparent.png",
+  primaryLink: {
+    label: "Get Tickets",
+    description: "VIP & Preferred Seating — August 8, 2026",
+    href: "/tickets",
+  },
+  links: [
+    {
+      label: "Volunteer Registration",
+      description: "Serve at SETVA 2026",
+      href: "/volunteer",
+    },
+    {
+      label: "Media Credentials",
+      description: "Red carpet press & creator access",
+      href: "/media-credentials",
+    },
+    {
+      label: "Vendor Slots",
+      description: "Bartenders, food truck, spinning camera & more",
+      href: "/vendors",
+    },
+    {
+      label: "Become a Sponsor",
+      description: "Torch of Excellence packages",
+      href: "/sponsors",
+    },
+    {
+      label: "Donate",
+      description: "Support the SETVA vision",
+      href: "/donate",
+    },
+  ] satisfies SocialHubLink[],
+  recapVideo: {
+    label: "2025 Recap — Beaumont Event Center",
+    description: "Watch last year's SETVA awards on YouTube",
+    href: "https://www.youtube.com/watch?v=azRMNqjWrus&t=9",
+    videoId: "azRMNqjWrus",
+  },
+  socials: [
+    { label: "Facebook", href: site.social.facebook },
+    { label: "Instagram", href: site.social.instagram },
+  ],
+} as const;
