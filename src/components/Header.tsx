@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { replayHomeHero } from "@/components/HomeHeroVideo";
-import { mainNav, site } from "@/lib/site";
+import { brandLogos, mainNav, site } from "@/lib/site";
 
 function handleHomeClick(
   event: React.MouseEvent<HTMLAnchorElement>,
@@ -31,7 +31,7 @@ export function Header() {
           className="group flex items-center"
         >
           <Image
-            src="/setva-logo-header-transparent.png"
+            src={brandLogos.onLight}
             alt={site.fullName}
             width={1024}
             height={576}

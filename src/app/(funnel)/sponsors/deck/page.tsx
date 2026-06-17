@@ -7,7 +7,7 @@ import {
   sponsorDeckDocumentUrl,
   siteUrl,
 } from "@/lib/sponsor-deck";
-import { site } from "@/lib/site";
+import { site, brandLogos } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: sponsorDeck.title,
@@ -28,7 +28,7 @@ export default async function SponsorDeckViewerPage({ searchParams }: PageProps)
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-ink px-4 text-center">
         <Image
-          src="/setva-logo-header-transparent.png"
+          src={brandLogos.onDark}
           alt={site.fullName}
           width={220}
           height={124}
@@ -57,7 +57,7 @@ export default async function SponsorDeckViewerPage({ searchParams }: PageProps)
         <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <Image
-              src="/setva-logo-header-transparent.png"
+              src={brandLogos.onDark}
               alt={site.fullName}
               width={180}
               height={101}

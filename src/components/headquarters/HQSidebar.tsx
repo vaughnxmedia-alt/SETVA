@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { brandLogos, site } from "@/lib/site";
 import { hqNav } from "@/lib/headquarters/nav";
 import { hqBranding } from "@/lib/headquarters/site-meta";
-import { site } from "@/lib/site";
 
 type HQSidebarProps = {
   open: boolean;
@@ -32,11 +32,11 @@ export function HQSidebar({ open, onClose }: HQSidebarProps) {
         <div className="border-b border-gold/15 px-4 py-4">
           <Link href="/headquarters" onClick={onClose} className="group block">
             <Image
-              src="/setva-logo-header-transparent.png"
+              src={brandLogos.onDark}
               alt={site.fullName}
               width={1024}
               height={576}
-              className="hq-logo-gold h-auto w-[130px] object-contain transition group-hover:scale-[1.02]"
+              className="h-auto w-[130px] object-contain transition group-hover:scale-[1.02]"
               sizes="130px"
             />
           </Link>

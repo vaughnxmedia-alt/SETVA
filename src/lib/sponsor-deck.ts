@@ -27,5 +27,5 @@ export function sponsorDeckDocumentUrl(baseUrl: string, token: string): string {
 
 export function sponsorDeckLogoUrl(baseUrl: string): string {
   const base = baseUrl.replace(/\/$/, "");
-  return `${base}/setva-logo-header-transparent.png`;
+  return `${base}/setva-logo-gold.png`;
 }

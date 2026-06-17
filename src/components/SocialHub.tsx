@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { socialHub, site } from "@/lib/site";
+import { brandLogos, socialHub, site } from "@/lib/site";
 
 function HubLink({
   link,
@@ -63,7 +63,7 @@ export function SocialHub() {
               alt={`${site.name} logo`}
               width={96}
               height={96}
-              className="logo-gold h-20 w-20 object-contain"
+              className="h-20 w-20 object-contain"
               priority
             />
           </Link>

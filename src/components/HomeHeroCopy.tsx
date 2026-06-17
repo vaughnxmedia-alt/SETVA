@@ -74,16 +74,16 @@ export function HomeHeroCopy() {
           >
             Buy Tickets
           </Link>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/sponsors"
-              className="rounded-full border border-white/40 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/40 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Become a Sponsor
             </Link>
             <Link
               href="/donate"
-              className="rounded-full bg-gold px-6 py-3 text-center text-sm font-semibold text-black shadow-lg transition hover:bg-gold-light"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-black shadow-lg transition hover:bg-gold-light"
             >
               Vote
             </Link>

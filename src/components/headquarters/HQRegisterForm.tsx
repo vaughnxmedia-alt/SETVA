@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { site } from "@/lib/site";
+import { brandLogos, site } from "@/lib/site";
 
 export function HQRegisterForm() {
   const router = useRouter();
@@ -46,11 +46,11 @@ export function HQRegisterForm() {
       <div className="card-glow w-full max-w-md rounded-2xl border border-gold/20 bg-ink-deep/80 p-8 sm:p-10">
         <Link href="/" className="group mb-8 flex justify-center">
           <Image
-            src="/setva-logo-header-transparent.png"
+            src={brandLogos.onDark}
             alt={site.fullName}
             width={1024}
             height={576}
-            className="hq-logo-gold h-auto w-[160px] object-contain transition group-hover:scale-[1.02]"
+            className="h-auto w-[160px] object-contain transition group-hover:scale-[1.02]"
             sizes="160px"
             priority
           />
