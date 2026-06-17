@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { SectionHeading } from "@/components/SectionHeading";
-import { PlaceholderNote } from "@/components/PlaceholderNote";
 import { nominees } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default function NomineesPage() {
           title="2026 Visionaries"
           subtitle="Sample nominees for preview — final honorees will be announced closer to the event."
         />
-        <PlaceholderNote className="mx-auto mt-8 max-w-xl" />
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {nominees.map((person) => (
             <article

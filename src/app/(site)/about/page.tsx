@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { SectionHeading } from "@/components/SectionHeading";
-import { PlaceholderNote } from "@/components/PlaceholderNote";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default function AboutPage() {
           title="About SETVA"
           subtitle={site.tagline}
         />
-        <PlaceholderNote className="mt-8" />
         <div className="mt-10 space-y-6 text-cream/80">
           <p>
             The Southeast Texas Visionary Awards (SETVA) honors gifted individuals

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PlaceholderNote } from "@/components/PlaceholderNote";
 import { SectionHeading } from "@/components/SectionHeading";
 import { DonateForm } from "./DonateForm";
 
@@ -17,7 +16,6 @@ export default function DonatePage() {
           title="Fuel the vision"
           subtitle="Every dollar helps honor local talent, inspire the community, and grow something our youth can thrive in."
         />
-        <PlaceholderNote className="mt-8" />
         <div className="mt-12">
           <DonateForm />
         </div>

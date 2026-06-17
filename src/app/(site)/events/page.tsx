@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
-import { PlaceholderNote } from "@/components/PlaceholderNote";
 import { eventSchedule, site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -18,7 +17,6 @@ export default function EventsPage() {
           title={site.event.title}
           subtitle={`${site.event.venue} · ${site.event.location}`}
         />
-        <PlaceholderNote className="mt-8" />
         <div className="mt-10 space-y-6">
           {eventSchedule.map((item, i) => (
             <article
