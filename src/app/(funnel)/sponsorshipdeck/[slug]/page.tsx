@@ -7,11 +7,13 @@ import {
 export const metadata: Metadata = sponsorshipDeckAccessMetadata;
 
 type PageProps = {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ access?: string }>;
 };
 
-/** Legacy deck URL — still accepts ?access= tokens from older emails. */
-export default async function SponsorDeckViewerPage({ searchParams }: PageProps) {
+export default async function SponsorshipDeckRecipientPage({
+  searchParams,
+}: PageProps) {
   const { access } = await searchParams;
   return <SponsorshipDeckAccessView access={access?.trim() ?? ""} />;
 }

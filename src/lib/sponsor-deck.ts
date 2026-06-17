@@ -2,12 +2,33 @@ import { createDeckAccessToken } from "@/lib/deck-access";
 
 export const sponsorDeck = {
   title: "SETVA 2026 Torch of Excellence",
-  /** Gated interactive viewer — not linked from main navigation */
-  viewerPath: "/sponsors/deck",
 } as const;
 
+const CANONICAL_SITE = "https://setvawards.com";
+
+/** Public site origin for sponsor-deck emails and share links. */
 export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (configured && !/vercel\.app/i.test(configured)) {
+    return configured;
+  }
+  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
+    return CANONICAL_SITE;
+  }
+  return configured || "http://localhost:3000";
+}
+
+export function slugifyDeckRecipient(name: string): string {
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "partner"
+  );
 }
 
 export function sponsorDeckViewUrl(
@@ -16,7 +37,8 @@ export function sponsorDeckViewUrl(
 ): string {
   const base = baseUrl.replace(/\/$/, "");
   const token = createDeckAccessToken(access);
-  return `${base}${sponsorDeck.viewerPath}?access=${encodeURIComponent(token)}`;
+  const slug = slugifyDeckRecipient(access.name);
+  return `${base}/sponsorshipdeck/${slug}?access=${encodeURIComponent(token)}`;
 }
 
 export function sponsorDeckLogoUrl(baseUrl: string): string {
