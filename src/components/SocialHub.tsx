@@ -55,15 +55,15 @@ export function SocialHub() {
         <header className="text-center">
           <Link
             href="/"
-            className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-gold/30 bg-black/40 shadow-lg shadow-ruby/10 transition hover:border-gold/50"
+            className="mx-auto block w-full transition hover:opacity-90"
             aria-label="Back to SETVA home"
           >
             <Image
               src={socialHub.logo}
               alt={`${site.name} logo`}
-              width={96}
-              height={96}
-              className="h-20 w-20 object-contain"
+              width={1024}
+              height={576}
+              className="h-auto w-full"
               priority
             />
           </Link>

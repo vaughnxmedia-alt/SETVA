@@ -59,10 +59,10 @@ export const site = {
   },
 } as const;
 
-/** SETVA wordmark — dark ink on light backgrounds, gold on dark backgrounds. */
+/** SETVA wordmark — dark ink on light backgrounds, white on dark backgrounds. */
 export const brandLogos = {
   onLight: "/setva-logo-header-transparent.png",
-  onDark: "/setva-logo-gold.png",
+  onDark: "/setva-logo-white-transparent.png",
 } as const;
 
 /** Mont City Network — SETVA live stream & production partner (SETX). */
@@ -874,7 +874,7 @@ export const socialHub = {
   title: "SETVA",
   bio: "Celebrating excellence in music, film, fashion, art & culture across the 409.",
   tagline: "Get tickets · Vote · Be there when the vision takes stage!",
-  logo: brandLogos.onDark,
+  logo: "/setva-logo-2026.png",
   primaryLink: {
     label: "Get Tickets",
     description: "VIP & Preferred Seating — August 8, 2026",
