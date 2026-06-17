@@ -108,46 +108,93 @@ export type TicketTier = {
   /** Sold in person only — no online checkout. */
   boxOfficeOnly?: boolean;
   highlighted?: boolean;
+  /** Regular price — shown as comparison during pre-sale. */
+  compareAtPrice?: number;
+  /** Online checkout disabled until pre-sales open. */
+  saleOpensAt?: string;
 };
 
-export const ticketTiers: TicketTier[] = [
+export const ticketPresale = {
+  startLabel: "June 18, 2026",
+  endLabel: "June 24, 2026",
+  /** 9:00 AM CDT */
+  startsAt: "2026-06-18T14:00:00.000Z",
+  /** End of June 24, 2026 Central */
+  endsAt: "2026-06-25T05:00:00.000Z",
+} as const;
+
+type TicketTierCatalogItem = {
+  id: string;
+  name: string;
+  presalePrice: number;
+  regularPrice: number;
+  description: string;
+  presaleDescription: string;
+  perks: string[];
+  highlighted?: boolean;
+};
+
+const ticketTierCatalog: TicketTierCatalogItem[] = [
   {
-    id: "early-bird",
-    name: "Early Bird",
-    price: 25,
-    description: "Limited pre-sale — save before prices go up.",
-    perks: ["Awards show admission", "General seating"],
+    id: "preferred",
+    name: "Preferred Seating",
+    presalePrice: 25,
+    regularPrice: 30,
+    description: "Reserved preferred seating for the Southeast Texas Visionary Awards.",
+    presaleDescription:
+      "Pre-sale pricing through June 24 — save before prices go up.",
+    perks: ["Awards show admission", "Preferred seating"],
+  },
+  {
+    id: "vip",
+    name: "VIP",
+    presalePrice: 40,
+    regularPrice: 50,
+    description:
+      "VIP includes red carpet access, premium seating, and lounge entry.",
+    presaleDescription:
+      "Pre-sale VIP access through June 24 — red carpet, premium seating, and lounge entry.",
+    perks: ["Red carpet access", "Premium seating", "VIP lounge entry"],
     highlighted: true,
   },
-  {
-    id: "general",
-    name: "General Admission",
-    price: 30,
-    description: "Standard admission to the Southeast Texas Visionary Awards.",
-    perks: ["Awards show admission", "General seating"],
-  },
-  {
-    id: "couples",
-    name: "Couples Discount",
-    price: 50,
-    unitLabel: "couple",
-    description: "Two admissions at a discounted rate.",
-    perks: ["2 awards show tickets", "General seating for two"],
-  },
-  {
-    id: "day-of",
-    name: "Day-of Tickets",
-    price: 40,
-    description:
-      "Available day of the Awards show, 12:00 PM – 3:00 PM at the Jefferson Theater Box Office.",
-    perks: [
-      "Awards show admission",
-      "Cash or card at the box office",
-      "While supplies last",
-    ],
-    boxOfficeOnly: true,
-  },
 ];
+
+export function isTicketPresaleActive(now = new Date()): boolean {
+  const start = new Date(ticketPresale.startsAt);
+  const end = new Date(ticketPresale.endsAt);
+  return now >= start && now < end;
+}
+
+export function isTicketSaleOpen(now = new Date()): boolean {
+  return now.getTime() >= new Date(ticketPresale.startsAt).getTime();
+}
+
+export function ticketSaleClosedMessage(): string {
+  return `Online ticket pre-sales open ${ticketPresale.startLabel}.`;
+}
+
+export function getTicketTiers(now = new Date()): TicketTier[] {
+  const presale = isTicketPresaleActive(now);
+  const saleOpen = isTicketSaleOpen(now);
+
+  return ticketTierCatalog.map((tier) => ({
+    id: tier.id,
+    name: tier.name,
+    price: presale || !saleOpen ? tier.presalePrice : tier.regularPrice,
+    compareAtPrice: presale || !saleOpen ? tier.regularPrice : undefined,
+    description: presale || !saleOpen ? tier.presaleDescription : tier.description,
+    perks: tier.perks,
+    highlighted: tier.highlighted,
+    saleOpensAt: saleOpen ? undefined : ticketPresale.startsAt,
+  }));
+}
+
+export function getTicketTierById(
+  id: string,
+  now = new Date(),
+): TicketTier | undefined {
+  return getTicketTiers(now).find((tier) => tier.id === id);
+}
 
 export type SponsorPackage = {
   id: string;
@@ -734,11 +781,11 @@ export const vendorPackages: VendorPackage[] = [
 export const faqItems = [
   {
     q: "What do tickets cost?",
-    a: "Early Bird $25, General Admission $30, Couples Discount $50, and Day-of tickets $40 (sold 12:00 PM – 3:00 PM at the Jefferson Theater Box Office on show day). The Awards show is August 8, 2026 at 5:00 PM.",
+    a: "Pre-sale (June 18–24, 2026): VIP $40 and Preferred Seating $25. After June 24: VIP $50 and Preferred Seating $30. The Awards show is August 8, 2026 at 5:00 PM at the Jefferson Theater in Beaumont.",
   },
   {
     q: "Can I buy tickets at the door?",
-    a: "Yes — day-of tickets are $40 and available from 12:00 PM to 3:00 PM at the Jefferson Theater Box Office on the day of the Awards show, while supplies last.",
+    a: "Online pre-sales run June 18–24, 2026, then continue at regular pricing. For day-of availability, contact setvaawards@gmail.com or check back closer to the event.",
   },
   {
     q: "Where is the event?",
@@ -782,8 +829,8 @@ export const ticketPartnerInfo = {
     "Receive your commission payout after the event (sample timeline: within 30 days).",
   ],
   sampleEarnings: [
-    { tickets: 20, tier: "Early Bird ($25)", earnings: 100 },
-    { tickets: 15, tier: "General ($30)", earnings: 90 },
-    { tickets: 8, tier: "Couples ($50)", earnings: 80 },
+    { tickets: 20, tier: "Preferred Seating ($25 pre-sale)", earnings: 100 },
+    { tickets: 15, tier: "VIP ($40 pre-sale)", earnings: 120 },
+    { tickets: 10, tier: "VIP ($50 regular)", earnings: 100 },
   ],
 };

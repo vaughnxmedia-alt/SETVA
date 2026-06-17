@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { SectionHeading } from "@/components/SectionHeading";
-import { site, ticketTiers } from "@/lib/site";
+import {
+  getTicketTiers,
+  isTicketPresaleActive,
+  isTicketSaleOpen,
+  site,
+  ticketPresale,
+  ticketSaleClosedMessage,
+} from "@/lib/site";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tickets",
@@ -9,6 +18,10 @@ export const metadata: Metadata = {
 };
 
 export default function TicketsPage() {
+  const tiers = getTicketTiers();
+  const saleOpen = isTicketSaleOpen();
+  const presale = isTicketPresaleActive();
+
   return (
     <div className="px-4 py-12 sm:px-6 sm:py-16">
       <div className="mx-auto max-w-6xl">
@@ -17,13 +30,22 @@ export default function TicketsPage() {
           title="Get your tickets"
           subtitle={`Join us in Beaumont, Texas — ${site.event.dateLabel}. ${site.event.time}.`}
         />
-        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-cream/70">
-          Awards show at {site.event.venue}, {site.event.time}. Day-of tickets ($40)
-          are sold {site.event.dayOfTicketWindow} at the {site.event.boxOffice}.
-        </p>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
-          {ticketTiers.map((tier) => (
+        {!saleOpen && (
+          <p className="mx-auto mt-8 max-w-2xl rounded-2xl border border-gold/25 bg-gold/10 px-5 py-4 text-center text-sm text-cream/85">
+            {ticketSaleClosedMessage()} Pre-sale runs through {ticketPresale.endLabel}.
+          </p>
+        )}
+
+        {presale && (
+          <p className="mx-auto mt-8 max-w-2xl rounded-2xl border border-ruby/25 bg-ruby/10 px-5 py-4 text-center text-sm text-cream/85">
+            Pre-sale pricing through {ticketPresale.endLabel} — VIP $40, Preferred Seating $25.
+            Prices increase to VIP $50 and Preferred Seating $30 after the pre-sale ends.
+          </p>
+        )}
+
+        <div className="mt-12 grid gap-8 sm:grid-cols-2">
+          {tiers.map((tier) => (
             <article
               key={tier.id}
               className={`card-glow flex flex-col rounded-2xl bg-ink-deep/60 p-8 ${
@@ -32,11 +54,21 @@ export default function TicketsPage() {
             >
               {tier.highlighted && (
                 <span className="mb-4 inline-block w-fit rounded-full bg-gold/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-gold">
-                  Best Value
+                  {presale ? "Pre-sale VIP" : "VIP"}
+                </span>
+              )}
+              {presale && !tier.highlighted && (
+                <span className="mb-4 inline-block w-fit rounded-full bg-ruby/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-ruby-light">
+                  Pre-sale
                 </span>
               )}
               <h3 className="font-display text-2xl text-cream">{tier.name}</h3>
               <p className="mt-2 text-3xl font-semibold text-gold">
+                {tier.compareAtPrice != null && (
+                  <span className="mr-2 text-xl font-normal text-cream/40 line-through">
+                    ${tier.compareAtPrice}
+                  </span>
+                )}
                 ${tier.price}
                 <span className="text-base font-normal text-cream/50">
                   {" "}
@@ -58,9 +90,9 @@ export default function TicketsPage() {
                 ))}
               </ul>
               <div className="mt-8">
-                {tier.boxOfficeOnly ? (
+                {!saleOpen ? (
                   <p className="rounded-full border border-gold/40 bg-gold/10 px-4 py-3 text-center text-sm font-semibold text-gold">
-                    Box office only — 12–3 PM show day
+                    Opens {ticketPresale.startLabel}
                   </p>
                 ) : (
                   <CheckoutButton

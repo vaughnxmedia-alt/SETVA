@@ -158,7 +158,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-xl text-center">
           <SectionHeading
             title="Stay in the loop"
-            subtitle="Be the first to hear about ticket sales, Early Bird offers, and our lineup."
+            subtitle="Be the first to hear about ticket pre-sales, VIP access, and our lineup."
             tone="light"
           />
           <p className="mt-6">

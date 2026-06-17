@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
 import { isAmbassadorRegistrationOpen } from "@/lib/ambassadors";
-import { site, ticketPartnerInfo } from "@/lib/site";
+import { ticketPartnerInfo } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -60,21 +60,13 @@ export default function TicketPartnersPage() {
             ))}
           </ul>
         </div>
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
+        <div className="mt-10 flex justify-center">
           <Link
             href="/ambassadors"
             className="rounded-full bg-gold px-8 py-4 text-center font-semibold text-ink hover:bg-gold-light"
           >
             {registrationOpen ? "Register as an Ambassador" : "Ambassador registration"}
           </Link>
-          <a
-            href={site.contact.whatsapp}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-gold/50 px-8 py-4 text-center font-semibold text-gold hover:bg-gold/10"
-          >
-            WhatsApp us
-          </a>
         </div>
       </div>
     </div>

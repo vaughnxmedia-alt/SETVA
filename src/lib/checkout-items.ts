@@ -1,6 +1,8 @@
 import {
+  getTicketTierById,
+  isTicketSaleOpen,
   sponsorPackages,
-  ticketTiers,
+  ticketSaleClosedMessage,
   vendorPackages,
 } from "@/lib/site";
 import { assertPackageAvailable } from "@/lib/sponsor-inventory";
@@ -23,7 +25,10 @@ export function resolveCheckoutItem(
   amount?: number,
 ): ResolvedCheckout | { error: string; status: number } {
   if (type === "ticket") {
-    const tier = ticketTiers.find((t) => t.id === itemId);
+    if (!isTicketSaleOpen()) {
+      return { error: ticketSaleClosedMessage(), status: 400 };
+    }
+    const tier = getTicketTierById(itemId);
     if (!tier) {
       return { error: "Invalid ticket tier", status: 400 };
     }
