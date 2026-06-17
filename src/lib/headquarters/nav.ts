@@ -1,0 +1,17 @@
+export const hqNav = [
+  { href: "/headquarters/sponsors", label: "Sponsors" },
+  { href: "/headquarters/media", label: "Media" },
+  { href: "/headquarters/volunteers", label: "Volunteers" },
+  { href: "/headquarters/ambassadors", label: "Ambassadors" },
+  { href: "/headquarters/nominees", label: "Nominees" },
+  { href: "/headquarters/payments", label: "Payments" },
+  { href: "/headquarters/settings", label: "Settings" },
+] as const;
+
+export const hqQuickActions = [
+  { label: "Sponsor pipeline", href: "/headquarters/sponsors" },
+  { label: "Media credentials", href: "/headquarters/media" },
+  { label: "Volunteer roster", href: "/headquarters/volunteers" },
+  { label: "Ambassador roster", href: "/headquarters/ambassadors" },
+  { label: "Analytics & activity", href: "/headquarters/analytics" },
+] as const;

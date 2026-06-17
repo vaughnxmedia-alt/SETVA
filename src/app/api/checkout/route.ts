@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCheckoutItem } from "@/lib/checkout-items";
+import {
+  handleApiFailure,
+  safeApiHandler,
+} from "@/lib/errors";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/square";
 
 type CheckoutBody = {
@@ -13,12 +17,17 @@ function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
-export async function POST(req: NextRequest) {
+export const POST = safeApiHandler(async (req: NextRequest) => {
   let body: CheckoutBody;
   try {
     body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  } catch (error) {
+    return handleApiFailure(error, {
+      workflow: "Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Checkout API",
+      metadata: { reason: "invalid_json" },
+    }, { status: 400, notifyTeam: false });
   }
 
   const { type, itemId, quantity = 1, amount } = body;
@@ -33,6 +42,7 @@ export async function POST(req: NextRequest) {
     });
     if (amount != null) params.set("amount", String(amount));
     return NextResponse.json({
+      success: true,
       url: `${base}/thank-you?${params.toString()}`,
       demo: true,
     });
@@ -40,10 +50,12 @@ export async function POST(req: NextRequest) {
 
   const resolved = resolveCheckoutItem(type, itemId, quantity, amount);
   if ("error" in resolved) {
-    return NextResponse.json(
-      { error: resolved.error },
-      { status: resolved.status },
-    );
+    return handleApiFailure(new Error(resolved.error), {
+      workflow: "Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+      metadata: { type, itemId, quantity, amount },
+    }, { status: resolved.status, notifyTeam: false });
   }
 
   try {
@@ -56,12 +68,13 @@ export async function POST(req: NextRequest) {
       redirectUrl: `${base}/thank-you?type=${type}&item=${itemId}`,
     });
 
-    return NextResponse.json({ url });
-  } catch (e) {
-    console.error("Square checkout error:", e);
-    return NextResponse.json(
-      { error: "Could not create Square checkout link" },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: true, url });
+  } catch (error) {
+    return handleApiFailure(error, {
+      workflow: "Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+      metadata: { type, itemId, quantity, amount },
+    });
   }
-}
+}, { workflow: "Checkout" });

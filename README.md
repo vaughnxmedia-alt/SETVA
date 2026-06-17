@@ -44,6 +44,17 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 4. For production, switch to production credentials and set `SQUARE_ENVIRONMENT=production` and `NEXT_PUBLIC_SITE_URL=https://setvawards.com`.
 
+**Connect your SETVA Square account for live sponsor payments:**
+
+1. Log in at [squareup.com/dashboard](https://squareup.com/dashboard) with the SETVA business account.
+2. In [Developer Dashboard](https://developer.squareup.com/apps) → your app → **Credentials** → copy the **Production** access token.
+3. Go to **Locations** in Square Dashboard → copy the **Location ID** for Jefferson Theater / SETVA events location.
+4. Add both to `.env.local` and **Vercel → Environment Variables** (Production).
+5. Set `SQUARE_ENVIRONMENT=production` on Vercel.
+6. Test a small package in sandbox first, then a real purchase in production.
+
+Every priced sponsor card on `/sponsors` has a **Buy** button that creates a Square-hosted checkout page. Funds deposit to your connected Square account.
+
 ### Webhooks (optional)
 
 Register `https://your-domain.com/api/webhooks/square` in the Square dashboard and set `SQUARE_WEBHOOK_SIGNATURE_KEY` to verify payment events server-side.
@@ -54,14 +65,12 @@ Ticket tiers, sponsor packages, and donation presets are defined in `src/lib/sit
 
 The `/sponsors` page includes a form that emails the **Torch of Excellence** sponsorship deck PDF to requesters.
 
-1. Copy the deck into `public/downloads/setva-2026-torch-of-excellence.pdf` (or set `SPONSOR_DECK_URL` to a hosted copy).
-2. Create a [Resend](https://resend.com) account and add `RESEND_API_KEY` to `.env.local`.
-3. Set `SPONSOR_DECK_FROM_EMAIL` to a verified sender (e.g. `SETVA <sponsors@setvawards.com>`).
-4. Optionally set `SPONSOR_DECK_NOTIFY_EMAIL` so the team gets a lead notification.
+1. Place the deck PDF at `private/sponsor-deck/setva-2026-torch-of-excellence.pdf`.
+2. Create a [Resend](https://resend.com) API key and add `RESEND_API_KEY` to `.env.local`.
+3. Set `SPONSOR_DECK_FROM_EMAIL` to your verified sender (e.g. `SETVA <sponsors@setvawards.com>`).
+4. Set `SPONSOR_DECK_ACCESS_SECRET` to a long random string (same value on Vercel).
 
-Without Resend configured, the form runs in **demo mode** and shows a direct download link after submit.
-
-Emails include a download link to the Torch of Excellence deck PDF.
+Requesters receive a branded email with **View Sponsorship Deck** — a private link to `/sponsors/deck` (not listed in site navigation). The PDF is served only with a valid signed access token.
 
 ## GitHub
 

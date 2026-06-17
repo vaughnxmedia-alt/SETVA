@@ -4,7 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { replayHomeHero } from "@/components/HomeHeroVideo";
 import { mainNav, site } from "@/lib/site";
+
+function handleHomeClick(
+  event: React.MouseEvent<HTMLAnchorElement>,
+  pathname: string,
+  href: string,
+) {
+  if (href !== "/" || pathname !== "/") return;
+  event.preventDefault();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  replayHomeHero();
+}
 
 export function Header() {
   const pathname = usePathname();
@@ -13,7 +25,11 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-ruby/20 bg-white/95 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="group flex items-center">
+        <Link
+          href="/"
+          onClick={(event) => handleHomeClick(event, pathname, "/")}
+          className="group flex items-center"
+        >
           <Image
             src="/setva-logo-header-transparent.png"
             alt={site.fullName}
@@ -33,6 +49,16 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={(event) => {
+                  if (item.href === "/") {
+                    handleHomeClick(event, pathname, item.href);
+                  }
+                  if (item.href !== "/") {
+                    setOpen(false);
+                  } else if (pathname !== "/") {
+                    setOpen(false);
+                  }
+                }}
                 className={`rounded-full px-3 py-2 text-sm transition ${
                   active
                     ? "bg-ruby text-white"
@@ -74,7 +100,12 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setOpen(false)}
+                onClick={(event) => {
+                  if (item.href === "/") {
+                    handleHomeClick(event, pathname, item.href);
+                  }
+                  setOpen(false);
+                }}
                 className="rounded-lg px-3 py-2 text-black/80 hover:bg-ruby/10 hover:text-ruby"
               >
                 {item.label}

@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display } from "next/font/google";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { PlaceholderBanner } from "@/components/PlaceholderBanner";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -44,12 +41,7 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${dmSans.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col antialiased">
-        <PlaceholderBanner />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-      </body>
+      <body className="min-h-full flex flex-col antialiased">{children}</body>
     </html>
   );
 }

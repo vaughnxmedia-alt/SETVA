@@ -48,8 +48,31 @@ body {
   min-height: calc(100svh - 72px);
 }
 
+.hero-video-dissolve {
+  z-index: 1;
+  opacity: 1;
+  transition-property: opacity;
+  transition-timing-function: ease-in-out;
+  pointer-events: none;
+}
+
+.hero-video-dissolve--hidden {
+  opacity: 0;
+}
+
 .hero-copy {
   animation: hero-copy-in 700ms ease-out 4.7s both;
+}
+
+.hero-copy--hidden {
+  opacity: 0 !important;
+  visibility: hidden;
+  animation: none !important;
+  pointer-events: none;
+}
+
+.hero-copy--replay:not(.hero-copy--hidden) {
+  animation: hero-copy-in 700ms ease-out both;
 }
 
 @keyframes hero-copy-in {
@@ -113,4 +136,10 @@ body {
   box-shadow:
     0 0 0 2px rgba(201, 162, 39, 0.4),
     0 12px 40px rgba(201, 162, 39, 0.12);
+}
+
+/* SETVA mark on dark Headquarters sidebar */
+.hq-logo-gold {
+  filter: brightness(0) saturate(100%) invert(88%) sepia(42%) saturate(520%)
+    hue-rotate(358deg) brightness(104%) contrast(96%);
 }

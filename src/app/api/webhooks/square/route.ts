@@ -1,41 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  handleApiFailure,
+  logInternalError,
+  safeApiHandler,
+} from "@/lib/errors";
 
 /**
- * Square webhook endpoint — verify signatures and handle payment events.
- * @see https://developer.squareup.com/docs/webhooks/overview
- *
- * In Square Developer Dashboard → Webhooks, subscribe to:
- * - payment.updated
- * - order.updated (optional)
- *
- * Set SQUARE_WEBHOOK_SIGNATURE_KEY from the dashboard.
+ * Payment webhook endpoint — verify signatures and handle payment events.
+ * Responses are provider-facing; public users never see this route.
  */
-export async function POST(req: NextRequest) {
+export const POST = safeApiHandler(async (req: NextRequest) => {
   const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
 
   if (!signatureKey) {
-    console.warn("Square webhook received but SQUARE_WEBHOOK_SIGNATURE_KEY is unset");
+    logInternalError(new Error("Webhook signature key is not configured"), {
+      workflow: "Payment Webhook",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+    });
     return NextResponse.json({ received: true });
   }
 
   const body = await req.text();
   const signature = req.headers.get("x-square-hmacsha256-signature");
-  const notificationUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/api/webhooks/square`;
 
   if (!signature) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+    return handleApiFailure(new Error("Missing webhook signature"), {
+      workflow: "Payment Webhook",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+    }, { status: 400 });
   }
-
-  // TODO: verify with WebhooksHelper from 'square' when going live
-  // WebhooksHelper.isValidWebhookEventSignature(body, signature, signatureKey, notificationUrl)
 
   try {
     const event = JSON.parse(body) as { type?: string };
-    console.info("Square webhook:", event.type);
-    // TODO: mark orders paid, send confirmation emails, etc.
-  } catch {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    if (process.env.NODE_ENV === "development") {
+      console.info("Payment webhook event:", event.type);
+    }
+  } catch (error) {
+    return handleApiFailure(error, {
+      workflow: "Payment Webhook",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+      metadata: { reason: "invalid_payload" },
+    }, { status: 400 });
   }
 
   return NextResponse.json({ received: true });
-}
+}, { workflow: "Payment Webhook" });

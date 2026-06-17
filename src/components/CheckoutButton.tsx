@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PublicErrorAlert } from "@/components/PublicErrorAlert";
 
 type CheckoutButtonProps = {
   type: "ticket" | "donation" | "sponsor" | "vendor";
@@ -22,7 +23,7 @@ export function CheckoutButton({
   variant = "primary",
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
 
   const baseStyles =
     "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
@@ -36,7 +37,7 @@ export function CheckoutButton({
 
   async function handleCheckout() {
     setLoading(true);
-    setError(null);
+    setShowError(false);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -44,14 +45,25 @@ export function CheckoutButton({
         body: JSON.stringify({ type, itemId, quantity, amount }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Checkout failed");
+      if (!res.ok || data.success === false) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Checkout API failure:", data);
+        }
+        setShowError(true);
+        setLoading(false);
+        return;
       }
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        setShowError(true);
+        setLoading(false);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Checkout client error:", error);
+      }
+      setShowError(true);
       setLoading(false);
     }
   }
@@ -66,9 +78,7 @@ export function CheckoutButton({
       >
         {loading ? "Redirecting…" : label}
       </button>
-      {error && (
-        <p className="text-center text-sm text-red-400">{error}</p>
-      )}
+      {showError && <PublicErrorAlert className="text-center" />}
     </div>
   );
 }

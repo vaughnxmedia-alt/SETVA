@@ -22,6 +22,7 @@
 
 # misc
 .DS_Store
+._*
 *.pem
 
 # debug
@@ -36,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# media credential applications (local JSON storage)
+/data/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local

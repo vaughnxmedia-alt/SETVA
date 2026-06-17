@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { PublicErrorAlert } from "@/components/PublicErrorAlert";
 import { sponsorDeck } from "@/lib/sponsor-deck";
 
 type FormState = "idle" | "loading" | "success" | "error";
 
 export function SponsorDeckForm() {
   const [state, setState] = useState<FormState>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [deckViewUrl, setDeckViewUrl] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("loading");
-    setError(null);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -31,17 +30,23 @@ export function SponsorDeckForm() {
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Request failed");
+      if (!res.ok || data.success === false) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Sponsor deck API failure:", data);
+        }
+        setState("error");
+        return;
       }
 
-      setDownloadUrl(data.downloadUrl ?? null);
+      setDeckViewUrl(data.deckViewUrl ?? null);
       setDemoMode(Boolean(data.demo));
       setState("success");
       form.reset();
-    } catch (e) {
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Sponsor deck client error:", error);
+      }
       setState("error");
-      setError(e instanceof Error ? e.message : "Something went wrong");
     }
   }
 
@@ -50,29 +55,30 @@ export function SponsorDeckForm() {
       <div className="rounded-2xl border border-gold/30 bg-gold/10 p-8 text-center">
         <p className="font-display text-2xl text-cream">Check your inbox</p>
         <p className="mt-3 text-sm text-cream/75">
-          We sent the <strong>{sponsorDeck.title}</strong> deck to your email.
-          The message includes a download link for the full PDF.
+          We sent the <strong>{sponsorDeck.title}</strong> presentation to your
+          email. Look for the message with the button{" "}
+          <strong className="text-gold">View Sponsorship Deck</strong>.
         </p>
         {demoMode && (
           <p className="mt-3 text-sm text-gold">
-            Demo mode — email delivery is not configured yet. Use the link below.
+            Your private deck link is also available below.
           </p>
         )}
-        {downloadUrl && (
+        {deckViewUrl && (
           <a
-            href={downloadUrl}
+            href={deckViewUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex items-center justify-center rounded-full bg-ruby px-8 py-3 text-sm font-semibold text-white transition hover:bg-ruby-light"
           >
-            Download deck now
+            View Sponsorship Deck
           </a>
         )}
         <button
           type="button"
           onClick={() => {
             setState("idle");
-            setDownloadUrl(null);
+            setDeckViewUrl(null);
             setDemoMode(false);
           }}
           className="mt-4 block w-full text-sm text-cream/60 underline-offset-2 hover:text-gold hover:underline"
@@ -92,8 +98,9 @@ export function SponsorDeckForm() {
         Get the free sponsor package deck
       </h3>
       <p className="mt-3 text-sm text-cream/70">
-        Enter your details and we&apos;ll email you the full Torch of Excellence
-        deck — every package tier, benefits, and partnership option for SETVA 2026.
+        Enter your details and we&apos;ll email you a private link to the full
+        Torch of Excellence presentation — every package tier, benefits, and
+        partnership option for SETVA 2026.
       </p>
 
       <div className="mt-6 space-y-4">
@@ -143,9 +150,7 @@ export function SponsorDeckForm() {
         {state === "loading" ? "Sending…" : "Get free sponsor package deck"}
       </button>
 
-      {state === "error" && error && (
-        <p className="mt-3 text-sm text-red-400">{error}</p>
-      )}
+      {state === "error" && <PublicErrorAlert className="mt-3" />}
     </form>
   );
 }

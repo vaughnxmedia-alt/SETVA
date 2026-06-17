@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 import { site } from "@/lib/site";
-import { sponsorDeck, sponsorDeckDownloadUrl, siteUrl } from "@/lib/sponsor-deck";
+import {
+  sponsorDeck,
+  sponsorDeckLogoUrl,
+  sponsorDeckViewUrl,
+  siteUrl,
+} from "@/lib/sponsor-deck";
 
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY?.trim());
@@ -25,45 +30,108 @@ type SponsorDeckLead = {
   company?: string;
 };
 
-function sponsorDeckEmailHtml(lead: SponsorDeckLead, downloadUrl: string): string {
-  const greeting = lead.name.trim();
+function sponsorDeckEmailHtml(
+  lead: SponsorDeckLead,
+  deckViewUrl: string,
+  logoUrl: string,
+): string {
+  const greeting = escapeHtml(lead.name.trim());
   const companyLine = lead.company?.trim()
-    ? `<p style="margin:0 0 16px;color:#444;">Organization: <strong>${escapeHtml(lead.company.trim())}</strong></p>`
+    ? `<p style="margin:0 0 20px;color:#555555;font-size:15px;line-height:1.6;">Prepared for <strong style="color:#000000;">${escapeHtml(lead.company.trim())}</strong></p>`
     : "";
 
   return `
-    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#111;">
-      <p style="margin:0 0 16px;">Hi ${escapeHtml(greeting)},</p>
-      <p style="margin:0 0 16px;line-height:1.6;">
-        Thank you for your interest in partnering with the
-        <strong>Southeast Texas Visionary Awards (SETVA) 2026</strong>.
-        Your sponsorship deck — <em>${escapeHtml(sponsorDeck.title)}</em> — is ready.
-      </p>
-      ${companyLine}
-      <p style="margin:0 0 24px;">
-        <a href="${downloadUrl}" style="display:inline-block;background:#bf0000;color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600;">
-          Download sponsorship deck
-        </a>
-      </p>
-      <p style="margin:0 0 16px;line-height:1.6;color:#444;font-size:14px;">
-        If the button does not work, copy and paste this link into your browser:<br />
-        <a href="${downloadUrl}" style="color:#bf0000;word-break:break-all;">${downloadUrl}</a>
-      </p>
-      <p style="margin:0 0 8px;line-height:1.6;color:#444;font-size:14px;">
-        Questions about packages or a custom partnership? Reply to this email or contact us at
-        <a href="mailto:${site.contact.email}" style="color:#bf0000;">${site.contact.email}</a>.
-      </p>
-      <p style="margin:24px 0 0;color:#666;font-size:13px;">
-        ${site.motto}<br />
-        — The ${site.name} Team
-      </p>
-    </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(sponsorDeck.title)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0b0000;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#0b0000;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.35);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#000000 0%,#bf0000 100%);padding:28px 32px;text-align:center;">
+              <img src="${logoUrl}" alt="${escapeHtml(site.fullName)}" width="220" style="display:block;margin:0 auto;max-width:220px;height:auto;" />
+              <p style="margin:18px 0 0;color:#facd68;font-size:11px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;">
+                Partnership Opportunity
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 32px 12px;">
+              <p style="margin:0 0 12px;color:#000000;font-size:24px;line-height:1.3;font-weight:700;">
+                Hi ${greeting},
+              </p>
+              <p style="margin:0 0 18px;color:#333333;font-size:16px;line-height:1.7;">
+                Thank you for your interest in partnering with the
+                <strong>Southeast Texas Visionary Awards (SETVA) 2026</strong>.
+                Your exclusive sponsorship presentation — <em>${escapeHtml(sponsorDeck.title)}</em> — is ready to view.
+              </p>
+              ${companyLine}
+              <p style="margin:0 0 28px;color:#555555;font-size:15px;line-height:1.6;">
+                ${escapeHtml(site.event.dateLabel)} · ${escapeHtml(site.event.venue)}, ${escapeHtml(site.event.location)}
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 28px;">
+                <tr>
+                  <td style="border-radius:999px;background-color:#bf0000;">
+                    <a href="${deckViewUrl}" style="display:inline-block;padding:16px 36px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.04em;">
+                      View Sponsorship Deck
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px;color:#888888;font-size:13px;line-height:1.6;">
+                This link is private and intended only for you. If the button does not work, copy and paste this URL into your browser:
+              </p>
+              <p style="margin:0 0 24px;word-break:break-all;">
+                <a href="${deckViewUrl}" style="color:#bf0000;font-size:13px;text-decoration:underline;">${deckViewUrl}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#fff8e8;border-radius:16px;border:1px solid #facd6840;">
+                <tr>
+                  <td style="padding:20px 22px;">
+                    <p style="margin:0 0 8px;color:#bf0000;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">
+                      Next step
+                    </p>
+                    <p style="margin:0;color:#333333;font-size:14px;line-height:1.6;">
+                      Review the packages, then reply to this email or contact us at
+                      <a href="mailto:${site.contact.email}" style="color:#bf0000;text-decoration:none;font-weight:600;">${site.contact.email}</a>
+                      to confirm your tier or request an invoice.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#000000;padding:24px 32px;text-align:center;">
+              <p style="margin:0 0 6px;color:#facd68;font-size:14px;font-style:italic;">
+                ${escapeHtml(site.motto)}
+              </p>
+              <p style="margin:0;color:#ffffff99;font-size:12px;">
+                — The ${escapeHtml(site.name)} Team · ${escapeHtml(site.event.presenter)}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `.trim();
 }
 
 function sponsorDeckLeadNotificationHtml(
   lead: SponsorDeckLead,
-  downloadUrl: string,
+  deckViewUrl: string,
 ): string {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111;">
@@ -76,7 +144,7 @@ function sponsorDeckLeadNotificationHtml(
           : ""
       }
       <p style="margin:16px 0 0;font-size:14px;color:#444;">
-        Deck link sent: <a href="${downloadUrl}">${downloadUrl}</a>
+        Private deck link sent: <a href="${deckViewUrl}">${deckViewUrl}</a>
       </p>
     </div>
   `.trim();
@@ -90,21 +158,23 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-export async function sendSponsorDeckEmail(lead: SponsorDeckLead): Promise<void> {
+export async function sendSponsorDeckEmail(lead: SponsorDeckLead): Promise<string> {
+  const base = siteUrl();
+  const deckViewUrl = sponsorDeckViewUrl(base, lead);
+  const logoUrl = sponsorDeckLogoUrl(base);
   const resend = resendClient();
-  const downloadUrl = sponsorDeckDownloadUrl(siteUrl());
 
   if (!resend) {
-    console.info("[demo] Sponsor deck requested:", lead, downloadUrl);
-    return;
+    console.info("[demo] Sponsor deck requested:", lead, deckViewUrl);
+    return deckViewUrl;
   }
 
   const { error } = await resend.emails.send({
     from: fromAddress(),
     to: lead.email,
     replyTo: site.contact.email,
-    subject: `Your ${sponsorDeck.title} sponsorship deck`,
-    html: sponsorDeckEmailHtml(lead, downloadUrl),
+    subject: `Your ${sponsorDeck.title} — View Sponsorship Deck`,
+    html: sponsorDeckEmailHtml(lead, deckViewUrl, logoUrl),
   });
 
   if (error) {
@@ -118,7 +188,9 @@ export async function sendSponsorDeckEmail(lead: SponsorDeckLead): Promise<void>
       to: notifyEmail,
       replyTo: lead.email,
       subject: `Sponsor deck requested — ${lead.name}`,
-      html: sponsorDeckLeadNotificationHtml(lead, downloadUrl),
+      html: sponsorDeckLeadNotificationHtml(lead, deckViewUrl),
     });
   }
+
+  return deckViewUrl;
 }

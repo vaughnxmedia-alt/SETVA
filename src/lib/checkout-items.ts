@@ -3,6 +3,7 @@ import {
   ticketTiers,
   vendorPackages,
 } from "@/lib/site";
+import { assertPackageAvailable } from "@/lib/sponsor-inventory";
 
 export type CheckoutType = "ticket" | "donation" | "sponsor" | "vendor";
 
@@ -68,9 +69,13 @@ export function resolveCheckoutItem(
     if (pkg.contactOnly || pkg.price <= 0) {
       return {
         error:
-          "This package is arranged directly. Please contact us or request an invoice.",
+          "This package is arranged directly. Please contact us to pay by check, money order, or Square.",
         status: 400,
       };
+    }
+    const availabilityError = assertPackageAvailable(pkg);
+    if (availabilityError) {
+      return { error: availabilityError, status: 400 };
     }
     return {
       name: `SETVA Sponsor — ${pkg.name}`,

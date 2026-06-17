@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { footerNav, site } from "@/lib/site";
+import { footerNav, montCityNetwork, site } from "@/lib/site";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -85,10 +85,19 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-gold/10 pt-8 text-center text-xs text-cream/50 sm:flex-row sm:text-left">
-          <p>
+          <Link
+            href="/headquarters"
+            className="text-cream/50 no-underline transition hover:text-cream/50"
+            aria-label="Team Access"
+          >
             © {year} {site.org}. All rights reserved.
-          </p>
-          <p>Presented by {site.event.presenter}</p>
+          </Link>
+          <div className="flex flex-col items-center gap-3 sm:items-end">
+            <p>Presented by {site.event.presenter}</p>
+            <p className="text-cream/40">
+              Live on {montCityNetwork.name}
+            </p>
+          </div>
         </div>
       </div>
     </footer>
