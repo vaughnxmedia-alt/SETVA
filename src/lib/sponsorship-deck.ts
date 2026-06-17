@@ -5,17 +5,12 @@ import {
   type SponsorPackage,
 } from "@/lib/site";
 
-export const sponsorshipDeckAssets = {
-  cover: "/sponsors/deck/cover.png",
-  sectionBackground: "/sponsors/deck/section-bg.png",
-} as const;
-
 export type SponsorshipDeckSlide =
   | {
       kind: "cover";
       id: string;
-      image: string;
-      alt: string;
+      title: string;
+      subtitle: string;
     }
   | {
       kind: "section";
@@ -49,25 +44,25 @@ function packageSlides(packages: SponsorPackage[]): SponsorshipDeckSlide[] {
 }
 
 export function buildSponsorshipDeckSlides(): SponsorshipDeckSlide[] {
-  const slides: SponsorshipDeckSlide[] = [
+  return [
     {
       kind: "cover",
       id: "cover",
-      image: sponsorshipDeckAssets.cover,
-      alt: "SETVA 2026 Torch of Excellence",
+      title: "Torch of Excellence",
+      subtitle: "Southeast Texas Visionary Awards 2026 sponsorship packages",
     },
     {
       kind: "section",
       id: "section-main",
       title: "Main Sponsorship Packages",
-      subtitle: "Torch of Excellence tiers — flagship brand visibility across SETVA 2026",
+      subtitle: "Flagship brand visibility across SETVA 2026",
     },
     ...packageSlides(sponsorMainPackages),
     {
       kind: "section",
       id: "section-signature",
       title: "Signature Opportunities",
-      subtitle: "Exclusive placements from red carpet to live stream and category naming",
+      subtitle: "Exclusive placements from red carpet to live stream",
     },
     ...packageSlides(sponsorSignaturePackages),
     {
@@ -81,11 +76,9 @@ export function buildSponsorshipDeckSlides(): SponsorshipDeckSlide[] {
       kind: "closing",
       id: "closing",
       title: "Partner with SETVA 2026",
-      subtitle: "Request the deck, reserve your package, or start checkout online.",
+      subtitle: "Reserve your package, start checkout online, or email our team to confirm your tier.",
     },
   ];
-
-  return slides;
 }
 
 export { formatPackagePrice };

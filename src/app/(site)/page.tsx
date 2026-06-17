@@ -3,7 +3,7 @@ import Link from "next/link";
 import { HomeHeroCopy } from "@/components/HomeHeroCopy";
 import { HomeHeroVideo } from "@/components/HomeHeroVideo";
 import { SectionHeading } from "@/components/SectionHeading";
-import { site } from "@/lib/site";
+import { site, ticketPartnerInfo } from "@/lib/site";
 
 export default function HomePage() {
   return (
@@ -50,9 +50,6 @@ export default function HomePage() {
               art, and service to make a lasting difference in Southeast Texas
               and beyond. The Southeast Texas Visionary Awards is more than a red
               carpet event — it is a movement of healing, honor, and hope.
-            </p>
-            <p className="text-ruby">
-              Presented by {site.event.presenter}
             </p>
           </div>
 
@@ -132,7 +129,7 @@ export default function HomePage() {
             href="/sponsors#get-deck"
             className="mt-10 inline-flex rounded-full bg-gold px-8 py-4 text-base font-semibold text-black shadow-lg transition hover:bg-gold-light"
           >
-            Get free sponsor package deck
+            Get Free Sponsor Package Deck
           </Link>
         </div>
       </section>
@@ -145,7 +142,7 @@ export default function HomePage() {
                 Ticket Partner Program
               </h2>
               <p className="mt-3 text-black/75">
-                Earn 20% on every ticket you sell. Share your custom link, get
+                Earn {ticketPartnerInfo.commissionPercent}% on every ticket you sell. Share your custom link, get
                 credited for sales, and receive earnings after the event.
               </p>
             </div>

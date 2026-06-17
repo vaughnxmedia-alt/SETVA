@@ -116,7 +116,7 @@ function sponsorDeckEmailHtml(
                 ${escapeHtml(site.motto)}
               </p>
               <p style="margin:0;color:#ffffff99;font-size:12px;">
-                — The ${escapeHtml(site.name)} Team · ${escapeHtml(site.event.presenter)}
+                — The ${escapeHtml(site.name)} Team
               </p>
             </td>
           </tr>

@@ -821,7 +821,7 @@ export const faqItems = [
   },
   {
     q: "How does the Ticket Partner program work?",
-    a: "Partners earn 20% commission on tickets sold through their custom link. Contact us to get your partner code (sample policy).",
+    a: "Partners earn 10% commission on tickets sold through their custom link. Contact us to get your partner code (sample policy).",
   },
   {
     q: "What sponsorship packages are available?",
@@ -846,7 +846,7 @@ export const faqItems = [
 ] as const;
 
 export const ticketPartnerInfo = {
-  commissionPercent: 20,
+  commissionPercent: 10,
   registrationOpensLabel: "June 18, 2026 at 9:00 AM Central",
   /** 9:00 AM CDT on June 18, 2026 */
   registrationOpensAt: "2026-06-18T14:00:00.000Z",
@@ -857,9 +857,9 @@ export const ticketPartnerInfo = {
     "Receive your commission payout after the event (sample timeline: within 30 days).",
   ],
   sampleEarnings: [
-    { tickets: 20, tier: "Preferred Seating ($25 pre-sale)", earnings: 100 },
-    { tickets: 15, tier: "VIP ($40 pre-sale)", earnings: 120 },
-    { tickets: 10, tier: "VIP ($50 regular)", earnings: 100 },
+    { tickets: 20, tier: "Preferred Seating ($25 pre-sale)", earnings: 50 },
+    { tickets: 15, tier: "VIP ($40 pre-sale)", earnings: 60 },
+    { tickets: 10, tier: "VIP ($50 regular)", earnings: 50 },
   ],
 };
 

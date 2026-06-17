@@ -159,7 +159,7 @@ export default function SponsorsPage() {
               href="#get-deck"
               className="inline-flex rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light"
             >
-              Get free sponsor package deck
+              Get Free Sponsor Package Deck
             </a>
             <Link
               href={`mailto:${site.contact.email}?subject=${encodeURIComponent("SETVA 2026 Sponsorship")}`}

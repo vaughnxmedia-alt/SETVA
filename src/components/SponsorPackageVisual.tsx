@@ -57,11 +57,14 @@ function packageImagePath(pkg: SponsorPackage): string {
 type SponsorPackageVisualProps = {
   pkg: SponsorPackage;
   priority?: boolean;
+  /** Deck slides: image/gradient banner only — no text overlay */
+  bannerOnly?: boolean;
 };
 
 export function SponsorPackageVisual({
   pkg,
   priority = false,
+  bannerOnly = false,
 }: SponsorPackageVisualProps) {
   const theme = pkg.visualTheme ?? "default";
   const style = themeStyles[theme];
@@ -70,7 +73,11 @@ export function SponsorPackageVisual({
 
   if (showImage) {
     return (
-      <div className="relative aspect-[37/9] w-full overflow-hidden rounded-xl border border-gold/15 bg-black">
+      <div
+        className={`relative w-full overflow-hidden bg-black ${
+          bannerOnly ? "h-full rounded-none" : "aspect-[37/9] rounded-xl border border-gold/15"
+        }`}
+      >
         <Image
           src={packageImagePath(pkg)}
           alt={pkg.visualCaption ?? `${pkg.name} sponsorship preview`}
@@ -80,7 +87,7 @@ export function SponsorPackageVisual({
           priority={priority}
           onError={() => setImageFailed(true)}
         />
-        {pkg.visualCaption && (
+        {pkg.visualCaption && !bannerOnly && (
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-gold">
               {style.accent}
@@ -94,7 +101,9 @@ export function SponsorPackageVisual({
 
   return (
     <div
-      className={`relative aspect-[37/9] w-full overflow-hidden rounded-xl border border-gold/15 bg-gradient-to-r ${style.gradient}`}
+      className={`relative w-full overflow-hidden bg-gradient-to-r ${style.gradient} ${
+        bannerOnly ? "h-full rounded-none" : "aspect-[37/9] rounded-xl border border-gold/15"
+      }`}
     >
       <div className="absolute inset-0 opacity-30">
         <div className="grid h-full grid-cols-6 gap-2 p-4">
@@ -107,16 +116,20 @@ export function SponsorPackageVisual({
         </div>
       </div>
       <div className="relative flex h-full flex-col justify-end p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-gold/90">
-          {style.accent}
-        </p>
-        <p className="mt-1 font-display text-lg text-cream sm:text-xl">
-          {pkg.name}
-        </p>
-        {pkg.visualCaption && (
-          <p className="mt-1 max-w-md text-xs text-cream/70 sm:text-sm">
-            {pkg.visualCaption}
-          </p>
+        {!bannerOnly && (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-gold/90">
+              {style.accent}
+            </p>
+            <p className="mt-1 font-display text-lg text-cream sm:text-xl">
+              {pkg.name}
+            </p>
+            {pkg.visualCaption && (
+              <p className="mt-1 max-w-md text-xs text-cream/70 sm:text-sm">
+                {pkg.visualCaption}
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -147,7 +147,7 @@ export function SponsorDeckForm() {
         disabled={state === "loading"}
         className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
-        {state === "loading" ? "Sending…" : "Get free sponsor package deck"}
+        {state === "loading" ? "Sending…" : "Get Free Sponsor Package Deck"}
       </button>
 
       {state === "error" && <PublicErrorAlert className="mt-3" />}

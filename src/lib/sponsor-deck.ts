@@ -2,8 +2,7 @@ import { createDeckAccessToken } from "@/lib/deck-access";
 
 export const sponsorDeck = {
   title: "SETVA 2026 Torch of Excellence",
-  fileName: "setva-2026-torch-of-excellence.pdf",
-  /** Gated viewer — not linked from main navigation */
+  /** Gated interactive viewer — not linked from main navigation */
   viewerPath: "/sponsors/deck",
 } as const;
 
@@ -18,11 +17,6 @@ export function sponsorDeckViewUrl(
   const base = baseUrl.replace(/\/$/, "");
   const token = createDeckAccessToken(access);
   return `${base}${sponsorDeck.viewerPath}?access=${encodeURIComponent(token)}`;
-}
-
-export function sponsorDeckDocumentUrl(baseUrl: string, token: string): string {
-  const base = baseUrl.replace(/\/$/, "");
-  return `${base}/api/sponsor-deck/document?access=${encodeURIComponent(token)}`;
 }
 
 export function sponsorDeckLogoUrl(baseUrl: string): string {

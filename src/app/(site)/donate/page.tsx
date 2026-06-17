@@ -20,8 +20,7 @@ export default function DonatePage() {
           <DonateForm />
         </div>
         <p className="mt-10 text-center text-sm text-cream/50">
-          SETVA is presented by The Healing House of Impact™. Donations are
-          processed securely through Square.
+          Donations are processed securely through Square.
         </p>
       </div>
     </div>

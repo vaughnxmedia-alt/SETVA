@@ -88,7 +88,6 @@ export function Footer() {
             © {year} {site.org}. All rights reserved.
           </Link>
           <div className="flex flex-col items-center gap-3 sm:items-end">
-            <p>Presented by {site.event.presenter}</p>
             <p className="text-cream/40">
               Live on {montCityNetwork.name}
             </p>
