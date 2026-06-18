@@ -14,7 +14,7 @@ type Props = {
 
 const subjectLabels: Record<string, string> = {
   vendor: "Vendor Application",
-  "vendor-bartenders": "Vendor Application — Bartenders",
+  "vendor-bartenders": "Vendor Application — Bartenders (non-alcoholic beverages only)",
   "vendor-food-truck": "Vendor Application — Food Truck",
   "vendor-spinning-camera": "Vendor Application — Spinning Camera",
   sponsorship: "Sponsorship Inquiry",

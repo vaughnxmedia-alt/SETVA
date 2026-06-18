@@ -6,7 +6,7 @@ import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Vendor Slots",
-  description: "Apply for vendor slots at SETVA 2026 — bartenders, food truck, spinning camera, and more.",
+  description: "Apply for vendor slots at SETVA 2026 — non-alcoholic bartenders, food truck, spinning camera, and more.",
 };
 
 export default function VendorsPage() {

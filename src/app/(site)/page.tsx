@@ -55,12 +55,12 @@ export default function HomePage() {
 
           <div className="mx-auto mt-12 max-w-4xl">
             <p className="mb-4 text-center text-sm font-semibold uppercase tracking-[0.2em] text-ruby">
-              Relive last year&apos;s event
+              Relive the SETVA awards
             </p>
             <div className="relative aspect-video overflow-hidden rounded-2xl border border-ruby/15 bg-black shadow-xl">
               <iframe
-                src="https://www.youtube.com/embed/azRMNqjWrus?start=9"
-                title="SETVA — Southeast Texas Visionary Awards (previous year)"
+                src="https://www.youtube.com/embed/KktIIA3ccUM?start=418"
+                title="SETVA — Southeast Texas Visionary Awards"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen

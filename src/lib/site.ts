@@ -34,7 +34,7 @@ export const site = {
     sponsorshipDeadline: "July 15, 2026",
   },
   contact: {
-    email: "setvaawards@gmail.com",
+    email: "contactus@setvawards.com",
     phone: "318-592-1768",
     phoneHref: "tel:+13185921768",
     whatsapp: "https://wa.me/13185921768",
@@ -755,7 +755,8 @@ export const vendorSlotOptions = [
   {
     id: "vendor-bartenders",
     label: "Bartenders",
-    description: "Limited bartender slots for the awards experience.",
+    description:
+      "Limited bartender slots — non-alcoholic beverages only (mocktails, sodas, coffee, and specialty NA drinks).",
     availability: "Limited availability",
   },
   {
@@ -813,7 +814,7 @@ export const faqItems = [
   },
   {
     q: "Can I buy tickets at the door?",
-    a: "Online pre-sales run June 18–24, 2026, then continue at regular pricing. For day-of availability, contact setvaawards@gmail.com or check back closer to the event.",
+    a: "Online pre-sales run June 18–24, 2026, then continue at regular pricing. For day-of availability, contact contactus@setvawards.com or check back closer to the event.",
   },
   {
     q: "Where is the event?",
@@ -837,7 +838,7 @@ export const faqItems = [
   },
   {
     q: "Can I sponsor without paying online?",
-    a: "Yes. Pay electronically through Square at checkout, or choose pay by check or money order to mail payment or schedule an in-person drop-off. Cash is not accepted. For Title, Legacy, or custom packages, email setvaawards@gmail.com or use the Custom Partnership option.",
+    a: "Yes. Pay electronically through Square at checkout, or choose pay by check or money order to mail payment or schedule an in-person drop-off. Cash is not accepted. For Title, Legacy, or custom packages, email contactus@setvawards.com or use the Custom Partnership option.",
   },
   {
     q: "Are donations tax-deductible?",
@@ -893,7 +894,7 @@ export const socialHub = {
     },
     {
       label: "Vendor Slots",
-      description: "Bartenders, food truck, spinning camera & more",
+      description: "NA bartenders, food truck, spinning camera & more",
       href: "/vendors",
     },
     {
@@ -908,10 +909,10 @@ export const socialHub = {
     },
   ] satisfies SocialHubLink[],
   recapVideo: {
-    label: "2025 Recap — Beaumont Event Center",
-    description: "Watch last year's SETVA awards on YouTube",
-    href: "https://www.youtube.com/watch?v=azRMNqjWrus&t=9",
-    videoId: "azRMNqjWrus",
+    label: "SETVA Awards",
+    description: "Watch the SETVA awards on YouTube",
+    href: "https://www.youtube.com/watch?v=KktIIA3ccUM&t=418",
+    videoId: "KktIIA3ccUM",
   },
   socials: [
     { label: "Facebook", href: site.social.facebook },

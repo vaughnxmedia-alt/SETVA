@@ -24,7 +24,7 @@ export default function AboutPage() {
             {site.founders} has grown into a movement of healing, honor, and hope.
           </p>
           <p>
-            SETVA is produced by {site.org}. Each year we celebrate creators, leaders, healers, and
+            Each year we celebrate creators, leaders, healers, and
             entrepreneurs who embody the spirit of Southeast Texas — resilient,
             vibrant, and visionary.
           </p>
