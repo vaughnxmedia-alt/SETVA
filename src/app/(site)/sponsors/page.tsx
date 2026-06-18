@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SponsorDeckForm } from "@/components/SponsorDeckForm";
@@ -25,8 +26,22 @@ export const metadata: Metadata = {
 
 export default function SponsorsPage() {
   return (
-    <div className="px-4 py-12 sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-6xl">
+    <div className="relative isolate min-h-full overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <Image
+          src="/setva-red-carpet-jefferson-theatre.jpg"
+          alt=""
+          fill
+          className="object-cover object-[center_28%]"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.9)_0%,rgba(11,0,0,0.84)_45%,rgba(0,0,0,0.92)_100%)]" />
+        <div className="absolute inset-0 bg-ruby/10" />
+      </div>
+
+      <div className="relative px-4 py-12 sm:px-6 sm:py-16">
+        <div className="mx-auto max-w-6xl">
         <SectionHeading
           eyebrow="Partner with us"
           title="Sponsor Packages"
@@ -46,6 +61,18 @@ export default function SponsorsPage() {
             — with {site.event.awardCategories} award categories and reach across{" "}
             {site.event.regions.join(", ")}.
           </p>
+        </div>
+
+        <div className="mx-auto mt-8 max-w-5xl overflow-hidden rounded-2xl border border-gold/25 shadow-2xl">
+          <div className="relative aspect-[3/2]">
+            <Image
+              src="/setva-red-carpet-jefferson-theatre.jpg"
+              alt="SETVA red carpet at the Jefferson Theatre in Beaumont, Texas"
+              fill
+              className="object-cover object-[center_28%]"
+              sizes="(max-width: 768px) 100vw, 1024px"
+            />
+          </div>
         </div>
 
         <div className="mx-auto mt-12 max-w-xl" id="get-deck">
@@ -172,6 +199,7 @@ export default function SponsorsPage() {
             Questions? {site.contact.email} · {site.contact.phone}
           </p>
         </section>
+        </div>
       </div>
     </div>
   );

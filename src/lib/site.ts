@@ -92,12 +92,14 @@ export const mainNav = [
   { href: "/about", label: "About" },
   { href: "/events", label: "Events" },
   { href: "/nominations", label: "Nominations" },
+  { href: "/magazine", label: "Visionary Magazine" },
   { href: "/sponsors", label: "Sponsors" },
   { href: "/contact", label: "Contact" },
 ] as const;
 
 export const footerNav = [
   { href: "/nominations", label: "Nominations" },
+  { href: "/magazine", label: "Visionary Magazine" },
   { href: "/ticket-partners", label: "Ticket Partners" },
   { href: "/media-credentials", label: "Media Credentials" },
   { href: "/volunteer", label: "Volunteer" },
