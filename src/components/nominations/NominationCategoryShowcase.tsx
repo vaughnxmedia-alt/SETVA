@@ -36,6 +36,17 @@ export function NominationCategoryShowcase({
         <h2 className="mt-1 font-display text-2xl text-white sm:text-3xl">{category.title}</h2>
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-gold/20 bg-black/70">
+          <video
+            src={category.videoSrc}
+            poster={category.imageSrcs[0]}
+            controls
+            playsInline
+            preload="metadata"
+            className="aspect-video w-full bg-black object-contain"
+          />
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-gold/20 bg-black/70">
           <div className="relative aspect-[4/5] w-full sm:aspect-[3/4]">
             <Image
               src={category.imageSrcs[slide]}
