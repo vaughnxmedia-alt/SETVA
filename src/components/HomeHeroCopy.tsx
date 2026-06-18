@@ -8,6 +8,7 @@ import {
   HERO_COPY_REVEAL_EVENT,
 } from "@/components/HomeHeroVideo";
 import { site } from "@/lib/site";
+import { TicketPurchaseLink } from "@/components/TicketPurchaseLink";
 
 export function HomeHeroCopy() {
   const [hidden, setHidden] = useState(false);
@@ -68,12 +69,12 @@ export function HomeHeroCopy() {
           {site.motto}
         </p>
         <div className="mt-6 flex flex-col gap-3">
-          <Link
-            href="/tickets"
+          <TicketPurchaseLink
+            label="Buy Tickets"
+            mode="nav"
             className="rounded-full bg-ruby px-6 py-3 text-center text-sm font-semibold text-white shadow-lg transition hover:bg-white hover:text-ruby"
-          >
-            Buy Tickets
-          </Link>
+            externalClassName="rounded-full bg-ruby px-6 py-3 text-center text-sm font-semibold text-white shadow-lg transition hover:bg-white hover:text-ruby"
+          />
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/sponsors"

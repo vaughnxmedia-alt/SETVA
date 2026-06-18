@@ -1,6 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { brandLogos, socialHub, site } from "@/lib/site";
+import {
+  isExternalTicketPurchase,
+  ticketPurchaseHref,
+} from "@/lib/ticket-sales";
 
 function HubLink({
   link,
@@ -49,6 +53,12 @@ function HubLink({
 }
 
 export function SocialHub() {
+  const ticketLink = {
+    ...socialHub.primaryLink,
+    href: ticketPurchaseHref(),
+    external: isExternalTicketPurchase(),
+  };
+
   return (
     <div className="min-h-svh bg-[linear-gradient(180deg,#1a0000_0%,#000000_45%,#0b0000_100%)]">
       <div className="mx-auto flex min-h-svh w-full max-w-md flex-col px-4 py-10 sm:px-6">
@@ -73,7 +83,7 @@ export function SocialHub() {
         </header>
 
         <div className="mt-10">
-          <HubLink link={socialHub.primaryLink} prominent />
+          <HubLink link={ticketLink} prominent />
         </div>
 
         <nav aria-label="SETVA links" className="mt-4 flex flex-col gap-3">

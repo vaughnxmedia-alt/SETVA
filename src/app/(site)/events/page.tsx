@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
+import { TicketPurchaseLink } from "@/components/TicketPurchaseLink";
 import { eventSchedule, site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -36,12 +36,12 @@ export default function EventsPage() {
           ))}
         </div>
         <div className="mt-12 text-center">
-          <Link
-            href="/tickets"
+          <TicketPurchaseLink
+            label="Get tickets"
+            mode="nav"
             className="rounded-full bg-gold px-8 py-4 font-semibold text-ink hover:bg-gold-light"
-          >
-            Get tickets
-          </Link>
+            externalClassName="inline-flex rounded-full bg-gold px-8 py-4 font-semibold text-ink hover:bg-gold-light"
+          />
         </div>
       </div>
     </div>

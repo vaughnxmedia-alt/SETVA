@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { replayHomeHero } from "@/components/HomeHeroVideo";
 import { brandLogos, mainNav, site } from "@/lib/site";
+import { TicketPurchaseLink } from "@/components/TicketPurchaseLink";
 
 function handleHomeClick(
   event: React.MouseEvent<HTMLAnchorElement>,
@@ -16,6 +17,16 @@ function handleHomeClick(
   event.preventDefault();
   window.scrollTo({ top: 0, behavior: "smooth" });
   replayHomeHero();
+}
+
+function handleNominationsClick(
+  event: React.MouseEvent<HTMLAnchorElement>,
+  pathname: string,
+  href: string,
+) {
+  if (href !== "/nominations" || pathname !== "/nominations") return;
+  event.preventDefault();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 export function Header() {
@@ -52,6 +63,8 @@ export function Header() {
                 onClick={(event) => {
                   if (item.href === "/") {
                     handleHomeClick(event, pathname, item.href);
+                  } else if (item.href === "/nominations") {
+                    handleNominationsClick(event, pathname, item.href);
                   }
                   if (item.href !== "/") {
                     setOpen(false);
@@ -69,12 +82,12 @@ export function Header() {
               </Link>
             );
           })}
-          <Link
-            href="/tickets"
+          <TicketPurchaseLink
+            label="Get Tickets"
+            mode="nav"
             className="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
-          >
-            Get Tickets
-          </Link>
+            externalClassName="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+          />
         </nav>
 
         <button
@@ -103,6 +116,8 @@ export function Header() {
                 onClick={(event) => {
                   if (item.href === "/") {
                     handleHomeClick(event, pathname, item.href);
+                  } else if (item.href === "/nominations") {
+                    handleNominationsClick(event, pathname, item.href);
                   }
                   setOpen(false);
                 }}
@@ -111,13 +126,13 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/tickets"
+            <TicketPurchaseLink
+              label="Get Tickets"
+              mode="nav"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
-            >
-              Get Tickets
-            </Link>
+              className="mt-2 w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
+              externalClassName="mt-2 block w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
+            />
           </div>
         </nav>
       )}

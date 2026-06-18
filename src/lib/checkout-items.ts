@@ -6,6 +6,7 @@ import {
   vendorPackages,
 } from "@/lib/site";
 import { assertPackageAvailable } from "@/lib/sponsor-inventory";
+import { isTicketmasterConfigured } from "@/lib/ticket-sales";
 
 export type CheckoutType = "ticket" | "donation" | "sponsor" | "vendor";
 
@@ -25,6 +26,12 @@ export function resolveCheckoutItem(
   amount?: number,
 ): ResolvedCheckout | { error: string; status: number } {
   if (type === "ticket") {
+    if (isTicketmasterConfigured()) {
+      return {
+        error: "Use Get Tickets on the site to purchase online.",
+        status: 400,
+      };
+    }
     if (!isTicketSaleOpen()) {
       return { error: ticketSaleClosedMessage(), status: 400 };
     }

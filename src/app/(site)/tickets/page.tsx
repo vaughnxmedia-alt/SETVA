@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import { CheckoutButton } from "@/components/CheckoutButton";
 import { SectionHeading } from "@/components/SectionHeading";
+import {
+  TicketPurchaseLink,
+  ticketPurchaseFootnote,
+} from "@/components/TicketPurchaseLink";
 import {
   getTicketTiers,
   isTicketPresaleActive,
@@ -9,6 +12,9 @@ import {
   ticketPresale,
   ticketSaleClosedMessage,
 } from "@/lib/site";
+import {
+  isExternalTicketPurchase,
+} from "@/lib/ticket-sales";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +27,7 @@ export default function TicketsPage() {
   const tiers = getTicketTiers();
   const saleOpen = isTicketSaleOpen();
   const presale = isTicketPresaleActive();
+  const externalPurchase = isExternalTicketPurchase();
 
   return (
     <div className="px-4 py-12 sm:px-6 sm:py-16">
@@ -31,13 +38,33 @@ export default function TicketsPage() {
           subtitle={`Join us in Beaumont, Texas — ${site.event.dateLabel}. ${site.event.time}.`}
         />
 
-        {!saleOpen && (
+        {externalPurchase && (
+          <div className="mx-auto mt-8 max-w-2xl text-center">
+            <TicketPurchaseLink
+              label="Get Tickets"
+              className="inline-flex rounded-full bg-ruby px-8 py-4 text-base font-semibold text-white shadow-lg transition hover:bg-ruby-light"
+              externalClassName="inline-flex rounded-full bg-ruby px-8 py-4 text-base font-semibold text-white shadow-lg transition hover:bg-ruby-light"
+              gated={false}
+            />
+            <p className="mt-4 text-sm text-cream/70">
+              VIP and Preferred Seating available below.
+              {presale && (
+                <>
+                  {" "}
+                  Pre-sale pricing through {ticketPresale.endLabel} — VIP $40, Preferred Seating $25.
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
+        {!saleOpen && !externalPurchase && (
           <p className="mx-auto mt-8 max-w-2xl rounded-2xl border border-gold/25 bg-gold/10 px-5 py-4 text-center text-sm text-cream/85">
             {ticketSaleClosedMessage()} Pre-sale runs through {ticketPresale.endLabel}.
           </p>
         )}
 
-        {presale && (
+        {presale && !externalPurchase && (
           <p className="mx-auto mt-8 max-w-2xl rounded-2xl border border-ruby/25 bg-ruby/10 px-5 py-4 text-center text-sm text-cream/85">
             Pre-sale pricing through {ticketPresale.endLabel} — VIP $40, Preferred Seating $25.
             Prices increase to VIP $50 and Preferred Seating $30 after the pre-sale ends.
@@ -90,25 +117,18 @@ export default function TicketsPage() {
                 ))}
               </ul>
               <div className="mt-8">
-                {!saleOpen ? (
-                  <p className="rounded-full border border-gold/40 bg-gold/10 px-4 py-3 text-center text-sm font-semibold text-gold">
-                    Opens {ticketPresale.startLabel}
-                  </p>
-                ) : (
-                  <CheckoutButton
-                    type="ticket"
-                    itemId={tier.id}
-                    label={`Buy ${tier.name}`}
-                    className="w-full"
-                  />
-                )}
+                <TicketPurchaseLink
+                  label={`Buy ${tier.name}`}
+                  className="w-full rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light"
+                  externalClassName="w-full rounded-full bg-gold px-6 py-3 text-center text-sm font-semibold text-ink transition hover:bg-gold-light"
+                />
               </div>
             </article>
           ))}
         </div>
 
         <p className="mt-10 text-center text-sm text-cream/50">
-          Secure checkout powered by Square. Questions?{" "}
+          {ticketPurchaseFootnote()} Questions?{" "}
           <a href={`mailto:${site.contact.email}`} className="text-gold hover:underline">
             {site.contact.email}
           </a>
