@@ -1,8 +1,9 @@
 import { listPublishedNomineeMagazineArticles } from "@/lib/nominee-workflows-store";
-
-export type MagazineBlock =
-  | { type: "paragraph"; text: string }
-  | { type: "heading"; text: string };
+import {
+  htmlToPlainText,
+  plainTextToMagazineHtml,
+  sanitizeMagazineHtml,
+} from "@/lib/sanitize-html";
 
 export type MagazineArticle = {
   slug: string;
@@ -10,7 +11,9 @@ export type MagazineArticle = {
   excerpt: string;
   publishedAt: string;
   publishedLabel: string;
-  blocks: MagazineBlock[];
+  nomineeBioHtml: string;
+  pullQuote: string;
+  articleBodyHtml: string;
 };
 
 export const visionaryMagazine = {
@@ -22,33 +25,35 @@ export const magazineArticles: MagazineArticle[] = [];
 
 export async function listMagazineArticles(): Promise<MagazineArticle[]> {
   const articles = await listPublishedNomineeMagazineArticles();
-  return articles.map((article) => ({
-    slug: article.slug,
-    title: article.articleTitle,
-    excerpt: article.nomineeBio || article.pullQuote || "SETVA nominee feature.",
-    publishedAt: article.publishDate || article.updatedAt,
-    publishedLabel: formatMagazineDate(article.publishDate || article.updatedAt),
-    blocks: articleToBlocks(article.nomineeBio, article.pullQuote, article.articleBody),
-  }));
+  return articles.map((article) => {
+    const nomineeBioHtml = sanitizeMagazineHtml(
+      plainTextToMagazineHtml(article.nomineeBio),
+    );
+    const articleBodyHtml = sanitizeMagazineHtml(
+      plainTextToMagazineHtml(article.articleBody),
+    );
+    const excerptSource =
+      htmlToPlainText(articleBodyHtml) ||
+      htmlToPlainText(nomineeBioHtml) ||
+      article.pullQuote ||
+      "SETVA nominee feature.";
+
+    return {
+      slug: article.slug,
+      title: article.articleTitle,
+      excerpt: excerptSource.slice(0, 220),
+      publishedAt: article.publishDate || article.updatedAt,
+      publishedLabel: formatMagazineDate(article.publishDate || article.updatedAt),
+      nomineeBioHtml,
+      pullQuote: article.pullQuote.trim(),
+      articleBodyHtml,
+    };
+  });
 }
 
 export async function getMagazineArticle(slug: string): Promise<MagazineArticle | undefined> {
   const articles = await listMagazineArticles();
   return articles.find((article) => article.slug === slug);
-}
-
-function articleToBlocks(
-  nomineeBio: string,
-  pullQuote: string,
-  articleBody: string,
-): MagazineBlock[] {
-  const blocks: MagazineBlock[] = [];
-  if (nomineeBio) blocks.push({ type: "paragraph", text: nomineeBio });
-  if (pullQuote) blocks.push({ type: "heading", text: pullQuote });
-  for (const paragraph of articleBody.split(/\n{2,}/).map((line) => line.trim()).filter(Boolean)) {
-    blocks.push({ type: "paragraph", text: paragraph });
-  }
-  return blocks;
 }
 
 function formatMagazineDate(iso: string): string {

@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
+import { RichTextEditor } from "@/components/headquarters/RichTextEditor";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
   HQBadge,
@@ -21,6 +23,7 @@ import {
   type NomineeVotingSetup,
 } from "@/lib/nominees";
 import type { PublishQueueItem } from "@/lib/nominee-workflows-store";
+import { plainTextToMagazineHtml } from "@/lib/sanitize-html";
 
 type SimpleStatus = "Missing" | "Draft" | "Ready" | "Published";
 type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | null;
@@ -76,6 +79,7 @@ export function NomineesView({
   const [publishQueue, setPublishQueue] = useState(initialPublishQueue);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [expandedNomineeIds, setExpandedNomineeIds] = useState<Set<string>>(() => new Set());
   const [activeNomineeId, setActiveNomineeId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
@@ -139,6 +143,15 @@ export function NomineesView({
 
   const activeNominee = nominees.find((nominee) => nominee.id === activeNomineeId) ?? null;
 
+  function toggleNomineeExpanded(id: string) {
+    setExpandedNomineeIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const refresh = useCallback(async () => {
     const [directoryRes, workflowsRes] = await Promise.all([
       fetch("/api/headquarters/nominees"),
@@ -193,8 +206,8 @@ export function NomineesView({
     setActiveNomineeId(nominee.id);
     setArticleForm({
       articleTitle: article?.articleTitle ?? `${nominee.name} Feature`,
-      nomineeBio: article?.nomineeBio ?? "",
-      articleBody: article?.articleBody ?? "",
+      nomineeBio: plainTextToMagazineHtml(article?.nomineeBio ?? ""),
+      articleBody: plainTextToMagazineHtml(article?.articleBody ?? ""),
       pullQuote: article?.pullQuote ?? "",
       articleImageUrl: article?.articleImageUrl ?? "",
       articleStatus: article?.articleStatus ?? "Draft",
@@ -280,7 +293,7 @@ export function NomineesView({
           slug: existing?.slug ?? slugify(`${activeNominee.name}-${articleForm.articleTitle}`),
         },
       });
-      setMessage(publish ? "Published to magazine." : "Article saved.");
+      setMessage(publish ? "Published to Visionary Magazine." : "Article saved to Supabase.");
       setModal(null);
       await refresh();
     } catch {
@@ -374,37 +387,87 @@ export function NomineesView({
               <div className="grid gap-4 xl:grid-cols-2">
                 {rows.map((nominee) => {
                   const status = hubStatus(nominee, pageEntries, articles, votingSetups);
+                  const expanded = expandedNomineeIds.has(nominee.id);
+                  const pageEntry = pageEntryFor(nominee.id, pageEntries);
+                  const graphicUrl = pageEntry?.nomineeGraphicUrl ?? "";
                   return (
                     <HQCard key={nominee.id} className="p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
+                      <button
+                        type="button"
+                        onClick={() => toggleNomineeExpanded(nominee.id)}
+                        aria-expanded={expanded}
+                        className="flex w-full items-start justify-between gap-3 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
                           <p className="font-display text-xl text-cream">{nominee.name}</p>
                           <p className="mt-1 text-sm text-cream/50">{categoryTitle(nominee.categoryId)}</p>
-                          {nominee.cityRegion ? <p className="mt-1 text-xs text-cream/40">{nominee.cityRegion}</p> : null}
+                          {nominee.cityRegion ? (
+                            <p className="mt-1 text-xs text-cream/40">{nominee.cityRegion}</p>
+                          ) : null}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                          <Status label="Graphic" value={status.graphic} />
-                          <Status label="Article" value={status.article} />
-                          <Status label="Voting" value={status.voting} />
-                          <Status label="Nominee Page" value={status.page} />
-                        </div>
+                        <span
+                          aria-hidden
+                          className={`mt-1 shrink-0 text-sm text-gold transition-transform ${
+                            expanded ? "rotate-180" : ""
+                          }`}
+                        >
+                          ▼
+                        </span>
+                      </button>
+
+                      <div className="mt-3 flex flex-col items-center">
+                        {graphicUrl ? (
+                          <div className="relative h-28 w-full max-w-[7.5rem] overflow-hidden rounded-lg border border-gold/20 bg-black/40">
+                            <Image
+                              src={graphicUrl}
+                              alt={`${nominee.name} graphic`}
+                              fill
+                              className="object-contain p-1"
+                              sizes="120px"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-28 w-full max-w-[7.5rem] items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-2 text-center text-[11px] text-cream/40">
+                            No graphic yet
+                          </div>
+                        )}
+                        <HQButton
+                          variant="outline"
+                          className="mt-2 px-2.5 py-1 text-xs"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openGraphic(nominee);
+                          }}
+                        >
+                          {graphicUrl ? "Change graphic" : "Add graphic"}
+                        </HQButton>
                       </div>
 
-                      <div className="mt-5 grid gap-2 text-sm text-cream/70 sm:grid-cols-2">
-                        <Checklist done label="Nominee Added" />
-                        <Checklist done={status.graphic !== "Missing"} label="Graphic Uploaded" />
-                        <Checklist done={status.page === "Published"} label="Published to Nominee Page" />
-                        <Checklist optional done={status.article === "Published"} label="Magazine Article" />
-                        <Checklist optional done={status.voting === "Published" || status.voting === "Ready"} label="Added to Voting" />
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        <Status label="Graphic" value={status.graphic} />
+                        <Status label="Article" value={status.article} />
+                        <Status label="Voting" value={status.voting} />
+                        <Status label="Nominee Page" value={status.page} />
                       </div>
 
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        <HQButton variant="outline" onClick={() => openNominee(nominee)}>Edit Nominee</HQButton>
-                        <HQButton variant="outline" onClick={() => openGraphic(nominee)}>Upload Graphic</HQButton>
-                        <HQButton variant="outline" onClick={() => openArticle(nominee)}>Write Article</HQButton>
-                        <HQButton variant="outline" onClick={() => openVoting(nominee)}>Add to Voting</HQButton>
-                        <HQButton onClick={() => { setActiveNomineeId(nominee.id); setModal("publish"); }}>Publish</HQButton>
-                      </div>
+                      {expanded ? (
+                        <>
+                          <div className="mt-5 grid gap-2 text-sm text-cream/70 sm:grid-cols-2">
+                            <Checklist done label="Nominee Added" />
+                            <Checklist done={status.graphic !== "Missing"} label="Graphic Uploaded" />
+                            <Checklist done={status.page === "Published"} label="Published to Nominee Page" />
+                            <Checklist optional done={status.article === "Published"} label="Magazine Article" />
+                            <Checklist optional done={status.voting === "Published" || status.voting === "Ready"} label="Added to Voting" />
+                          </div>
+
+                          <div className="mt-5 flex flex-wrap gap-2">
+                            <HQButton variant="outline" onClick={() => openNominee(nominee)}>Edit Nominee</HQButton>
+                            <HQButton variant="outline" onClick={() => openArticle(nominee)}>Write Article</HQButton>
+                            <HQButton variant="outline" onClick={() => openVoting(nominee)}>Add to Voting</HQButton>
+                            <HQButton onClick={() => { setActiveNomineeId(nominee.id); setModal("publish"); }}>Publish</HQButton>
+                          </div>
+                        </>
+                      ) : null}
                     </HQCard>
                   );
                 })}
@@ -442,7 +505,12 @@ export function NomineesView({
               ) : null}
 
               {modal === "article" ? (
-                <ArticleFields form={articleForm} setForm={setArticleForm} />
+                <>
+                  <p className="mb-4 text-sm text-cream/55">
+                    Articles are saved to Supabase. Publishing makes them live on Visionary Magazine with the same formatting shown in the editor.
+                  </p>
+                  <ArticleFields form={articleForm} setForm={setArticleForm} />
+                </>
               ) : null}
 
               {modal === "voting" ? (
@@ -461,8 +529,8 @@ export function NomineesView({
               {modal === "graphic" ? <HQButton onClick={() => saveGraphic(false)} disabled={busy}>Save Graphic</HQButton> : null}
               {modal === "article" ? (
                 <>
-                  <HQButton variant="outline" onClick={() => saveArticle(false)} disabled={busy || !articleForm.articleTitle}>Save Article</HQButton>
-                  <HQButton onClick={() => saveArticle(true)} disabled={busy || !articleForm.articleTitle}>Publish to Magazine</HQButton>
+                  <HQButton variant="outline" onClick={() => saveArticle(false)} disabled={busy || !articleForm.articleTitle}>Save Draft</HQButton>
+                  <HQButton onClick={() => saveArticle(true)} disabled={busy || !articleForm.articleTitle}>Publish to Visionary Magazine</HQButton>
                 </>
               ) : null}
               {modal === "voting" ? <HQButton onClick={saveVoting} disabled={busy}>Add to Voting</HQButton> : null}
@@ -559,10 +627,43 @@ function ArticleFields({
   return (
     <div className="space-y-4">
       <Field label="Article title" value={form.articleTitle} onChange={(value) => setForm((f) => ({ ...f, articleTitle: value }))} required />
-      <TextArea label="Nominee bio" value={form.nomineeBio} onChange={(value) => setForm((f) => ({ ...f, nomineeBio: value }))} />
-      <TextArea label="Article body" value={form.articleBody} onChange={(value) => setForm((f) => ({ ...f, articleBody: value }))} rows={6} />
+      <RichTextEditor
+        label="Nominee bio"
+        value={form.nomineeBio}
+        onChange={(value) => setForm((f) => ({ ...f, nomineeBio: value }))}
+        placeholder="Introduce the nominee…"
+        minHeight="160px"
+      />
+      <RichTextEditor
+        label="Article body"
+        value={form.articleBody}
+        onChange={(value) => setForm((f) => ({ ...f, articleBody: value }))}
+        placeholder="Write the full feature article…"
+        minHeight="280px"
+      />
       <Field label="Pull quote" value={form.pullQuote} onChange={(value) => setForm((f) => ({ ...f, pullQuote: value }))} />
-      <Field label="Featured image URL" value={form.articleImageUrl} onChange={(value) => setForm((f) => ({ ...f, articleImageUrl: value }))} />
+      <label className="block">
+        <span className="mb-1 block text-xs text-cream/50">Featured image</span>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              const articleImageUrl = await fileToDataUrl(file);
+              setForm((f) => ({ ...f, articleImageUrl }));
+            }
+          }}
+          className={`${hqInputClass} w-full`}
+        />
+      </label>
+      {form.articleImageUrl ? (
+        <img
+          src={form.articleImageUrl}
+          alt="Featured image preview"
+          className="max-h-64 rounded-xl border border-gold/20 object-contain"
+        />
+      ) : null}
       <label className="block">
         <span className="mb-1 block text-xs text-cream/50">Article status</span>
         <select value={form.articleStatus} onChange={(event) => setForm((f) => ({ ...f, articleStatus: event.target.value }))} className={`${hqInputClass} w-full`}>
@@ -678,7 +779,7 @@ function statusTone(status: SimpleStatus): "default" | "gold" | "green" | "amber
 function modalTitle(modal: Exclude<ModalMode, null>): string {
   if (modal === "nominee") return "Edit Nominee";
   if (modal === "graphic") return "Upload Graphic";
-  if (modal === "article") return "Write Article";
+  if (modal === "article") return "Visionary Magazine Article";
   if (modal === "voting") return "Add to Voting";
   return "Publish";
 }

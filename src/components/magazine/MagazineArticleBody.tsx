@@ -1,26 +1,33 @@
-import type { MagazineBlock } from "@/lib/magazine";
+type MagazineArticleBodyProps = {
+  nomineeBioHtml: string;
+  pullQuote: string;
+  articleBodyHtml: string;
+};
 
-export function MagazineArticleBody({ blocks }: { blocks: MagazineBlock[] }) {
+export function MagazineArticleBody({
+  nomineeBioHtml,
+  pullQuote,
+  articleBodyHtml,
+}: MagazineArticleBodyProps) {
   return (
-    <div className="space-y-5 text-base leading-relaxed text-white/90 sm:text-lg sm:leading-relaxed">
-      {blocks.map((block, index) => {
-        if (block.type === "heading") {
-          return (
-            <h2
-              key={`${block.text}-${index}`}
-              className="pt-4 font-display text-2xl text-white sm:text-3xl"
-            >
-              {block.text}
-            </h2>
-          );
-        }
+    <div className="space-y-6">
+      {nomineeBioHtml ? (
+        <div
+          className="magazine-rich-content"
+          dangerouslySetInnerHTML={{ __html: nomineeBioHtml }}
+        />
+      ) : null}
 
-        return (
-          <p key={`${block.text.slice(0, 24)}-${index}`} className="text-white/88">
-            {block.text}
-          </p>
-        );
-      })}
+      {pullQuote ? (
+        <h2 className="magazine-pull-quote border-t border-white/10 pt-6">{pullQuote}</h2>
+      ) : null}
+
+      {articleBodyHtml ? (
+        <div
+          className="magazine-rich-content"
+          dangerouslySetInnerHTML={{ __html: articleBodyHtml }}
+        />
+      ) : null}
     </div>
   );
 }

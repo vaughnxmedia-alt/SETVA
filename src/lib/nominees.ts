@@ -1,3 +1,5 @@
+import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
+
 export const nomineeContactStatusOptions = [
   "Not contacted",
   "Contacted",
@@ -318,8 +320,8 @@ export function parseNomineeMagazineArticleInput(
   return {
     nomineeId,
     articleTitle,
-    nomineeBio: String(body.nomineeBio ?? "").trim(),
-    articleBody: String(body.articleBody ?? "").trim(),
+    nomineeBio: sanitizeMagazineHtml(String(body.nomineeBio ?? "")),
+    articleBody: sanitizeMagazineHtml(String(body.articleBody ?? "")),
     pullQuote: String(body.pullQuote ?? "").trim(),
     articleImageMediaId: String(body.articleImageMediaId ?? "").trim(),
     articleImageUrl: String(body.articleImageUrl ?? "").trim(),

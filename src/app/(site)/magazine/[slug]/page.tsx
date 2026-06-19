@@ -57,7 +57,11 @@ export default async function MagazineArticlePage({ params }: MagazineArticlePag
             </h1>
 
             <div className="mt-8 border-t border-white/10 pt-8">
-              <MagazineArticleBody blocks={article.blocks} />
+              <MagazineArticleBody
+                nomineeBioHtml={article.nomineeBioHtml}
+                pullQuote={article.pullQuote}
+                articleBodyHtml={article.articleBodyHtml}
+              />
             </div>
           </article>
         </div>
