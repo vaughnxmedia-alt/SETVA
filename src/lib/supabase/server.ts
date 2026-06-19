@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 export function isSupabaseConfigured(): boolean {
   return Boolean(
@@ -16,6 +17,9 @@ export function supabaseAdmin(): SupabaseClient | null {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    realtime: {
+      transport: ws as unknown as typeof WebSocket,
     },
   });
 }

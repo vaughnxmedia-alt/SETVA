@@ -26,8 +26,10 @@ export function MediaView({ applications }: { applications: MediaApplication[] }
   });
 
   return (
-    <HQShell title="Media">
-      <p className="mb-6 text-sm text-cream/50">Media credential management and review.</p>
+    <HQShell title="Media Credentials">
+      <p className="mb-6 text-sm text-cream/50">
+        Review media applications. Standard credentials are Red Carpet Only.
+      </p>
       <div className="mb-6 flex flex-col gap-3 lg:flex-row">
         <div className="flex-1">
           <HQSearchInput value={search} onChange={setSearch} placeholder="Search media…" />

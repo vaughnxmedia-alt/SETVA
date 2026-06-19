@@ -181,7 +181,7 @@ export async function sendMediaCredentialApprovedEmail(
         ${approvalDetailsHtml(application)}
         <div style="margin:24px 0;padding:16px;border-radius:12px;background:#f8f8f8;">
           <p style="margin:0 0 8px;"><strong>Event day check-in</strong></p>
-          <p style="margin:0;color:#444;">Please bring a government-issued photo ID, this approval email, and only the approved number of crew members listed above. Your badge will reflect your authorized access zone (red carpet, lobby, or restricted). No personal cameras are permitted inside the house during the show except the ${escapeHtml(montCityNetwork.name)} production crew.</p>
+          <p style="margin:0;color:#444;">Please bring a government-issued photo ID, this approval email, and only the approved number of crew members listed above. Standard credentials are Red Carpet Only. If lobby access was approved separately, your email will include those details.</p>
         </div>
         <p style="margin:24px 0 0;color:#666;font-size:14px;">${escapeHtml(site.contact.email)} · ${escapeHtml(site.contact.phone)}</p>
       </div>

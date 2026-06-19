@@ -4,10 +4,10 @@ export function MediaCredentialAccessPolicy() {
   return (
     <section className="card-glow rounded-2xl border border-gold/20 bg-ink-deep/70 p-6 sm:p-8">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-gold">
-        Access zones
+        Credential access
       </p>
       <p className="mt-3 text-sm text-cream/70">
-        Please review where media are permitted at SETVA before you apply.
+        Standard credentials are Red Carpet Only. Lobby access is reviewed separately.
       </p>
       <div className="mt-6 space-y-4">
         {mediaCredentialAccessZones.map((zone) => (

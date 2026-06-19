@@ -3,6 +3,7 @@ export const hqNav = [
   { href: "/headquarters/media", label: "Media" },
   { href: "/headquarters/volunteers", label: "Volunteers" },
   { href: "/headquarters/ambassadors", label: "Ambassadors" },
+  { href: "/headquarters/categories", label: "Categories" },
   { href: "/headquarters/nominees", label: "Nominees" },
   { href: "/headquarters/payments", label: "Payments" },
   { href: "/headquarters/settings", label: "Settings" },

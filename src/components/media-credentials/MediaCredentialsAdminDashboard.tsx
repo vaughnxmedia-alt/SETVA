@@ -278,10 +278,8 @@ export function MediaCredentialsAdminDashboard() {
       <div className="rounded-2xl border border-gold/15 bg-black/20 p-4 text-sm text-cream/75">
         <p className="font-semibold text-gold">Event day check-in</p>
         <p className="mt-2">
-          Verify government-issued ID, approval confirmation email, approved crew
-          size, and assigned access zone (red carpet, lobby, or restricted). Issue
-          badge and event information sheet on site. No personal cameras inside the
-          house during the show except the {montCityNetwork.name} production crew.
+          Verify government-issued ID, approval confirmation email, and approved crew
+          size. Standard credentials are Red Carpet Only.
         </p>
       </div>
 
@@ -375,10 +373,10 @@ export function MediaCredentialsAdminDashboard() {
             <section className="rounded-2xl border border-white/10 bg-ink-deep/70 p-6">
               <h3 className="font-display text-lg text-cream">Review &amp; credential</h3>
               <p className="mt-1 text-sm text-cream/55">
-                Verify website, social channels, previous work, professionalism,
-                audience relevance, team size, equipment requests, and which access
-                zone applies: red carpet (standard), lobby (select photo/video only),
-                or house (no cameras except {montCityNetwork.name} production crew).
+                Verify website, social channels, previous work, audience relevance,
+                team size, and equipment requests. Standard credentials are Red Carpet
+                Only. Lobby access is granted separately — email the applicant if
+                approved.
               </p>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <label className="block">

@@ -3,6 +3,8 @@ import type { SponsorIntakeData } from "@/lib/sponsor-intake";
 import { listMediaCredentialApplications } from "@/lib/media-credentials-store";
 import { listVolunteerRegistrations } from "@/lib/volunteers-store";
 import { listAmbassadorRegistrations } from "@/lib/ambassadors-store";
+import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
+import { listNominees } from "@/lib/nominees-store";
 import { sponsorPackages } from "@/lib/site";
 import type {
   ActivityCategory,
@@ -156,7 +158,16 @@ export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
 }
 
 export async function getHQNominees(): Promise<NomineeRecord[]> {
-  return [];
+  const [nominees, categories] = await Promise.all([listNominees(), listNomineeCategories()]);
+  return nominees.map((nominee) => ({
+    id: nominee.id,
+    name: nominee.name,
+    category: categoryTitleById(categories, nominee.categoryId),
+    contactStatus: nominee.contactEmail ? "Contact Added" : "Missing",
+    confirmationStatus: nominee.confirmationStatus,
+    winner: false,
+    notes: nominee.internalNotes,
+  }));
 }
 
 export async function getHQPaymentsSummary(): Promise<HQPaymentsSummary> {
@@ -204,6 +215,8 @@ function activityCategoryForFormType(formType: string): ActivityCategory {
       return "Volunteers";
     case FORM_TYPES.ambassadors:
       return "Ambassadors";
+    case FORM_TYPES.nominees:
+      return "Nominees";
     case FORM_TYPES.sponsorIntake:
     case FORM_TYPES.sponsorDeck:
     case FORM_TYPES.sponsorCheckoutConfirmed:

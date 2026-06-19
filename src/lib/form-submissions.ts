@@ -4,6 +4,12 @@ export const FORM_TYPES = {
   mediaCredentials: "media_credentials",
   volunteers: "volunteers",
   ambassadors: "ambassadors",
+  nominees: "nominees",
+  nomineeCategories: "nominee_categories",
+  nomineePageEntries: "nominee_page_entries",
+  nomineeMagazineArticles: "nominee_magazine_articles",
+  nomineeVotingSetups: "nominee_voting_setups",
+  nomineeMediaAssets: "nominee_media_assets",
   sponsorDeck: "sponsor_deck",
   sponsorIntake: "sponsor_intake",
   sponsorCheckoutConfirmed: "sponsor_checkout_confirmed",
@@ -42,6 +48,9 @@ export type CreateFormSubmissionInput = {
 
 export type UpdateFormSubmissionInput = {
   status?: string;
+  contactEmail?: string | null;
+  contactName?: string | null;
+  payload?: Record<string, unknown>;
   adminData?: Record<string, unknown>;
   postEventData?: Record<string, unknown>;
   lastStatusEmailAt?: string | null;
@@ -124,6 +133,9 @@ export async function updateFormSubmission(
 
   const patch: Record<string, unknown> = {};
   if (input.status !== undefined) patch.status = input.status;
+  if (input.contactEmail !== undefined) patch.contact_email = input.contactEmail;
+  if (input.contactName !== undefined) patch.contact_name = input.contactName;
+  if (input.payload !== undefined) patch.payload = input.payload;
   if (input.lastStatusEmailAt !== undefined) {
     patch.last_status_email_at = input.lastStatusEmailAt;
   }
@@ -144,4 +156,52 @@ export async function updateFormSubmission(
 
   if (error) throw error;
   return data as FormSubmissionRecord;
+}
+
+export async function deleteFormSubmission(
+  externalId: string,
+  formType: FormType,
+): Promise<boolean> {
+  const client = supabaseAdmin();
+  if (!client) return false;
+
+  const { error } = await client
+    .from("form_submissions")
+    .delete()
+    .eq("external_id", externalId)
+    .eq("form_type", formType);
+
+  if (error) throw error;
+  return true;
+}
+
+export async function upsertFormSubmissionByExternalId(
+  input: CreateFormSubmissionInput & { externalId: string },
+): Promise<FormSubmissionRecord | null> {
+  const existing = await getFormSubmissionByExternalId(input.externalId, input.formType);
+  if (existing) {
+    const nextPayload = input.payload;
+    const client = supabaseAdmin();
+    if (!client) return null;
+
+    const { data, error } = await client
+      .from("form_submissions")
+      .update({
+        status: input.status ?? existing.status,
+        contact_email: input.contactEmail ?? existing.contact_email,
+        contact_name: input.contactName ?? existing.contact_name,
+        payload: nextPayload,
+        admin_data: input.adminData ?? existing.admin_data,
+        post_event_data: input.postEventData ?? existing.post_event_data,
+      })
+      .eq("external_id", input.externalId)
+      .eq("form_type", input.formType)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data as FormSubmissionRecord;
+  }
+
+  return createFormSubmission(input);
 }

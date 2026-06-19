@@ -345,6 +345,70 @@ export function parseVolunteerAdminUpdate(body: Record<string, unknown>): {
   return { admin, postEvent };
 }
 
+const assignedCategoryToVolunteerCategory: Record<AssignedCategory, VolunteerCategory> = {
+  "Pre-Event": "Pre-Event Volunteer",
+  "Event Day": "Event Day Volunteer",
+  "Post-Event": "Post-Event Volunteer",
+};
+
+export function parseVolunteerHQInput(
+  body: Record<string, unknown>,
+): { data: VolunteerRegistrationData; admin: Partial<VolunteerAdminFields> } | { error: string } {
+  const fullName = normalizeText(body.fullName ?? body.name, 120);
+  const phone = normalizeText(body.phone, 40);
+  const email = normalizeText(body.email, 254).toLowerCase();
+  const assignedCategory = normalizeText(body.assignedCategory ?? body.category, 80);
+  const assignedRole = normalizeText(body.assignedRole ?? body.role, 120);
+  const internalNotes = normalizeText(body.internalNotes ?? body.notes, 5000);
+
+  if (!fullName) return { error: "Name is required." };
+  if (!phone) return { error: "Phone is required." };
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    return { error: "A valid email is required." };
+  }
+
+  const status =
+    typeof body.status === "string" &&
+    volunteerStatusOptions.includes(body.status as VolunteerStatus)
+      ? (body.status as VolunteerStatus)
+      : "Pending Review";
+
+  const categoryKey = assignedCategoryOptions.find(
+    (option) => option.toLowerCase() === assignedCategory.toLowerCase(),
+  );
+  const volunteerCategories: VolunteerCategory[] = categoryKey
+    ? [assignedCategoryToVolunteerCategory[categoryKey]]
+    : ["Event Day Volunteer"];
+
+  return {
+    data: {
+      fullName,
+      phone,
+      email,
+      emergencyContactName:
+        normalizeText(body.emergencyContactName, 120) || "Not provided",
+      emergencyContactPhone:
+        normalizeText(body.emergencyContactPhone, 40) || phone,
+      previousExperience: normalizeText(body.previousExperience, 2000),
+      relevantSkills: normalizeText(body.relevantSkills, 1000),
+      notes: internalNotes,
+      birthday: normalizeBirthday(body.birthday) || "1990-01-01",
+      volunteerCategories,
+      preEventInterests: [],
+      eventDayInterests: assignedRole ? [assignedRole] : [],
+      postEventInterests: [],
+      availabilityWindows: ["August 8, 2026 event day"],
+      agreementAccepted: true,
+    },
+    admin: {
+      status,
+      assignedCategory: categoryKey ?? assignedCategory,
+      assignedRole,
+      internalNotes,
+    },
+  };
+}
+
 export const volunteerAgreementText =
   "I understand that submitting this form does not guarantee volunteer placement and that all volunteers must follow SETVA staff instructions, event policies, and professional conduct expectations.";
 

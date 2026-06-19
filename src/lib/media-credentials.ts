@@ -278,37 +278,26 @@ export function parseMediaCredentialAdminUpdate(
 
 export const mediaCredentialAccessZones = [
   {
-    title: "Red Carpet",
-    policy:
-      "Media credentials and approved media outlets are for red carpet coverage only, unless your approval email states otherwise.",
-  },
-  {
-    title: "Lobby",
-    policy:
-      "Select photographers and select videographers may be approved for lobby access. Lobby placement is by invitation only and is not included with a standard media credential.",
-  },
-  {
-    title: "House (Show)",
-    policy: `No cameras are permitted inside the house during the show except the ${montCityNetwork.name} production crew.`,
+    title: "Red Carpet Only",
+    policy: "Standard media credentials cover the red carpet only.",
   },
 ] as const;
 
 export const mediaCredentialAccessPolicySummary =
-  `Standard media credentials cover the red carpet. Select photographers and videographers may be approved for the lobby. No personal or outlet cameras are allowed inside the house during the show—only the ${montCityNetwork.name} production crew.`;
+  "Media credentials are Red Carpet Only. Lobby access is not included with a standard credential.";
 
 export const defaultMediaCredentialCoverageGuidelines = [
-  "Red Carpet: Media credentials and approved media outlets are limited to red carpet coverage unless your approval specifies additional access.",
-  "Lobby: Only select photographers and select videographers approved by SETVA production may work in the lobby.",
-  `House / Show: No cameras may operate inside the house during the show except the ${montCityNetwork.name} production crew.`,
-  "Do not enter the auditorium or seating area with personal cameras, phones used as cameras, or other recording devices unless explicitly authorized in writing.",
+  "Red Carpet Only: Standard media credentials cover red carpet coverage.",
+  "Lobby access is not included with a standard credential.",
+  "If additional access is approved, SETVA will email you with your updated credential details.",
   "Follow all instructions from SETVA production staff and security at all times.",
 ].join("\n");
 
 export const mediaCredentialRules = [
   mediaCredentialAccessPolicySummary,
-  "Red carpet media credentials do not grant lobby or house access unless your approval email explicitly includes those zones.",
-  "Lobby access is limited to select photographers and select videographers invited and approved by the SETVA production team.",
-  `Inside the house during the show, only the ${montCityNetwork.name} production crew may record. All other cameras must remain outside the auditorium.`,
+  "Applying grants red carpet access only if approved. Lobby access is never automatic.",
+  "SETVA reviews every application.",
+  "If approved, SETVA will email you with your credential details.",
   "Media credentials are issued at the sole discretion of the SETVA production team.",
   "Approved media must present a government-issued photo ID and approval confirmation at check-in.",
   "Crew size on site may not exceed the approved number listed in your credential email.",

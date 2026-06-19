@@ -18,7 +18,7 @@ export function NominationsHeroIntro() {
         Nominations
       </h1>
       <p className="mt-4 font-display text-lg italic leading-relaxed text-white/90 sm:text-xl">
-        Celebrating visionary talent across the 409 — browse each category below.
+        Celebrating visionary talent across the 409 — choose a category to browse nominees.
       </p>
     </header>
   );

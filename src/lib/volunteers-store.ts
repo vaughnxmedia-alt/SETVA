@@ -73,6 +73,7 @@ function registrationToPayload(registration: VolunteerRegistration): {
 
 export async function saveVolunteerRegistration(
   data: VolunteerRegistrationData,
+  options?: { admin?: Partial<VolunteerAdminFields> },
 ): Promise<VolunteerRegistration> {
   if (formStorageMode() !== "supabase") {
     throw new Error("Volunteer registration storage is not configured");
@@ -85,6 +86,7 @@ export async function saveVolunteerRegistration(
   const registration: VolunteerRegistration = {
     ...data,
     ...adminDefaults,
+    ...options?.admin,
     ...defaultVolunteerPostEventFields(),
     id,
     submittedAt: now,

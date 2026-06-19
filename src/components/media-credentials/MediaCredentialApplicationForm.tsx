@@ -11,7 +11,6 @@ import {
   type CoverageType,
   type MediaCredentialApplicationData,
 } from "@/lib/media-credentials";
-import { montCityNetwork, site } from "@/lib/site";
 
 const fieldClass =
   "mt-1 w-full rounded-xl border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none transition focus:border-gold/50";
@@ -152,9 +151,8 @@ export function MediaCredentialApplicationForm() {
           Media credential application
         </h3>
         <p className="mt-2 text-sm text-cream/65">
-          Standard media credentials are for red carpet coverage. Tell us about your
-          outlet, audience, and coverage plan — our team reviews every request and
-          will specify if lobby or other access is approved.
+          Standard media credentials are Red Carpet Only. Tell us about your outlet,
+          audience, and coverage plan — our team reviews every request.
         </p>
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2">
@@ -261,7 +259,7 @@ export function MediaCredentialApplicationForm() {
       <section className="card-glow rounded-2xl bg-ink-deep/70 p-6 sm:p-8">
         <PillMultiSelect
           label="Coverage type"
-          description="Select every format you plan to produce. Red carpet is standard for media outlets; lobby photography and video are by select approval only."
+          description="Select every format you plan to produce on the red carpet. Lobby access is not included with a standard credential."
           options={coverageTypeOptions}
           value={form.coverageTypes}
           onChange={(value) => update("coverageTypes", value as CoverageType[])}
@@ -290,7 +288,7 @@ export function MediaCredentialApplicationForm() {
         <div className="mt-5">
           <Field
             label="Equipment being brought"
-            hint={`List all cameras and gear. Personal cameras are not permitted inside the house during the show—only the ${montCityNetwork.name} production crew may operate in the auditorium.`}
+            hint="List all cameras and gear you plan to use on the red carpet."
           >
             <textarea
               className={`${fieldClass} min-h-[120px] resize-y`}
