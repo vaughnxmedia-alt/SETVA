@@ -22,6 +22,7 @@ import {
   saveNomineePageEntry,
   saveNomineeVotingSetup,
 } from "@/lib/nominee-workflows-store";
+import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
 
 type WorkflowKind = "nomineePage" | "magazineArticle" | "votingSetup" | "mediaAsset";
 
@@ -82,7 +83,14 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       if (!input) return invalidWorkflowResponse("Select nominee and add an article title.");
       return NextResponse.json({
         success: true,
-        record: await saveNomineeMagazineArticle(input, id),
+        record: await saveNomineeMagazineArticle(
+          {
+            ...input,
+            nomineeBio: sanitizeMagazineHtml(input.nomineeBio),
+            articleBody: sanitizeMagazineHtml(input.articleBody),
+          },
+          id,
+        ),
       });
     }
 

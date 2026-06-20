@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useMemo, useState } from "react";
-import { RichTextEditor } from "@/components/headquarters/RichTextEditor";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
   HQBadge,
@@ -23,7 +23,19 @@ import {
   type NomineeVotingSetup,
 } from "@/lib/nominees";
 import type { PublishQueueItem } from "@/lib/nominee-workflows-store";
-import { plainTextToMagazineHtml } from "@/lib/sanitize-html";
+import { plainTextToMagazineHtml } from "@/lib/magazine-html";
+
+const RichTextEditor = dynamic(
+  () => import("@/components/headquarters/RichTextEditor").then((mod) => mod.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-lg border border-gold/20 bg-black/40 px-3 py-8 text-sm text-cream/40">
+        Loading editor…
+      </div>
+    ),
+  },
+);
 
 type SimpleStatus = "Missing" | "Draft" | "Ready" | "Published";
 type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | null;
@@ -44,12 +56,12 @@ type VotingFormState = {
 };
 
 type NomineesViewProps = {
-  initialNominees: NomineeRow[];
-  initialCategories: NomineeCategory[];
-  initialNomineePageEntries: NomineePageEntry[];
-  initialMagazineArticles: NomineeMagazineArticle[];
-  initialVotingSetups: NomineeVotingSetup[];
-  initialPublishQueue: PublishQueueItem[];
+  initialNominees?: NomineeRow[];
+  initialCategories?: NomineeCategory[];
+  initialNomineePageEntries?: NomineePageEntry[];
+  initialMagazineArticles?: NomineeMagazineArticle[];
+  initialVotingSetups?: NomineeVotingSetup[];
+  initialPublishQueue?: PublishQueueItem[];
 };
 
 const blankNominee = (categoryId = "") => ({
@@ -64,19 +76,20 @@ const blankNominee = (categoryId = "") => ({
 });
 
 export function NomineesView({
-  initialNominees,
-  initialCategories,
-  initialNomineePageEntries,
-  initialMagazineArticles,
-  initialVotingSetups,
-  initialPublishQueue,
-}: NomineesViewProps) {
+  initialNominees = [],
+  initialCategories = [],
+  initialNomineePageEntries = [],
+  initialMagazineArticles = [],
+  initialVotingSetups = [],
+  initialPublishQueue = [],
+}: NomineesViewProps = {}) {
   const [nominees, setNominees] = useState(initialNominees);
   const [categories, setCategories] = useState(initialCategories);
   const [pageEntries, setPageEntries] = useState(initialNomineePageEntries);
   const [articles, setArticles] = useState(initialMagazineArticles);
   const [votingSetups, setVotingSetups] = useState(initialVotingSetups);
   const [publishQueue, setPublishQueue] = useState(initialPublishQueue);
+  const [loading, setLoading] = useState(initialNominees.length === 0);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [expandedNomineeIds, setExpandedNomineeIds] = useState<Set<string>>(() => new Set());
@@ -157,7 +170,9 @@ export function NomineesView({
       fetch("/api/headquarters/nominees"),
       fetch("/api/headquarters/nominees/workflows"),
     ]);
-    if (!directoryRes.ok || !workflowsRes.ok) return;
+    if (!directoryRes.ok || !workflowsRes.ok) {
+      throw new Error("Could not load nominees.");
+    }
     const directory = (await directoryRes.json()) as { nominees: NomineeRow[]; categories: NomineeCategory[] };
     const workflows = (await workflowsRes.json()) as {
       nomineePageEntries: NomineePageEntry[];
@@ -172,6 +187,21 @@ export function NomineesView({
     setVotingSetups(workflows.votingSetups);
     setPublishQueue(workflows.publishQueue);
   }, []);
+
+  useEffect(() => {
+    if (initialNominees.length > 0) return;
+    let active = true;
+    refresh()
+      .catch(() => {
+        if (active) setError("Could not load nominees.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialNominees.length, refresh]);
 
   function openNominee(nominee?: NomineeRow) {
     setActiveNomineeId(nominee?.id ?? null);
@@ -341,6 +371,12 @@ export function NomineesView({
       {message ? <Notice tone="success">{message}</Notice> : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
 
+      {loading ? (
+        <p className="text-sm text-cream/50">Loading nominees…</p>
+      ) : null}
+
+      {!loading ? (
+      <>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row">
         <div className="flex-1">
           <HQSearchInput value={search} onChange={setSearch} placeholder="Search nominees..." />
@@ -481,6 +517,8 @@ export function NomineesView({
         <div className="mt-6 text-xs text-cream/35">
           {publishQueue.length} checklist item{publishQueue.length === 1 ? "" : "s"} need attention.
         </div>
+      ) : null}
+      </>
       ) : null}
 
       {modal ? (

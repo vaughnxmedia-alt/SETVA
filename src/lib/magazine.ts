@@ -1,9 +1,6 @@
 import { listPublishedNomineeMagazineArticles } from "@/lib/nominee-workflows-store";
-import {
-  htmlToPlainText,
-  plainTextToMagazineHtml,
-  sanitizeMagazineHtml,
-} from "@/lib/sanitize-html";
+import { htmlToPlainText, plainTextToMagazineHtml } from "@/lib/magazine-html";
+import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
 
 export type MagazineArticle = {
   slug: string;
