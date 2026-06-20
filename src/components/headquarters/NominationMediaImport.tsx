@@ -148,9 +148,7 @@ export function NominationMediaImport({ onComplete }: NominationMediaImportProps
       />
       <div className="space-y-4 p-5">
         <p className="text-sm text-cream/55">
-          Upload `.mp4` category videos and nominee `.png` graphics together. We auto-match videos to
-          graphics when filenames are close, like `VISIONARY OF THE YEAR.mp4` with `VISIONARY.png`.
-          You can also include a CSV manifest in the same upload for exact nominee mapping.
+        Upload `.mp4` category videos and nominee `.png` graphics together. Imports save internally as drafts until you publish nominees and categories manually.
         </p>
 
         <label className="block">

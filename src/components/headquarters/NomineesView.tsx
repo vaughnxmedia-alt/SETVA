@@ -83,6 +83,7 @@ export function NomineesView({
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
   const [graphicUrl, setGraphicUrl] = useState("");
+  const [graphicFile, setGraphicFile] = useState<File | null>(null);
   const [articleForm, setArticleForm] = useState<Omit<MagazineArticleFormState, "nomineeId">>(() => {
     const { nomineeId: _, ...rest } = blankMagazineArticleForm();
     return rest;
@@ -214,6 +215,7 @@ export function NomineesView({
     const entry = pageEntryFor(nominee.id, pageEntries);
     setActiveNomineeId(nominee.id);
     setGraphicUrl(entry?.nomineeGraphicUrl ?? "");
+    setGraphicFile(null);
     setModal("graphic");
     setError(null);
   }
@@ -265,25 +267,67 @@ export function NomineesView({
     }
   }
 
+  async function persistGraphicUrl(): Promise<string> {
+    if (!activeNominee) return graphicUrl;
+
+    if (!graphicFile) {
+      return graphicUrl;
+    }
+
+    const formData = new FormData();
+    formData.append("file", graphicFile);
+    formData.append("nomineeId", activeNominee.id);
+    formData.append("categoryId", activeNominee.categoryId);
+    if (graphicUrl) formData.append("existingUrl", graphicUrl);
+
+    const res = await fetch("/api/headquarters/nominees/graphics", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Could not save graphic file.");
+    const data = (await res.json()) as { url?: string };
+    if (!data.url) throw new Error("Could not save graphic file.");
+    return data.url;
+  }
+
   async function saveGraphic(publish = false) {
     if (!activeNominee) return;
     setBusy(true);
     setError(null);
     try {
       const existing = pageEntryFor(activeNominee.id, pageEntries);
+      const savedGraphicUrl = await persistGraphicUrl();
+      const wasPublished = Boolean(
+        existing?.publishToNomineePage && existing.status === "Published",
+      );
+
       await saveWorkflow("nomineePage", {
         id: existing?.id,
         payload: {
           nomineeId: activeNominee.id,
           categoryId: activeNominee.categoryId,
           nomineeGraphicMediaId: "",
-          nomineeGraphicUrl: graphicUrl,
+          nomineeGraphicUrl: savedGraphicUrl,
           displayOrder: existing?.displayOrder ?? pageEntries.length,
-          publishToNomineePage: publish,
-          status: publish ? "Published" : graphicUrl ? "Ready" : "Draft",
+          publishToNomineePage: publish ? true : wasPublished,
+          status: publish
+            ? "Published"
+            : wasPublished
+              ? "Published"
+              : savedGraphicUrl
+                ? "Ready"
+                : "Draft",
         },
       });
-      setMessage(publish ? "Published to nominee page." : "Graphic saved.");
+      setGraphicUrl(savedGraphicUrl);
+      setGraphicFile(null);
+      setMessage(
+        publish
+          ? "Published to nominee page."
+          : wasPublished
+            ? "Graphic updated on the live nominee page."
+            : "Graphic saved internally.",
+      );
       setModal(null);
       await refresh();
     } catch {
@@ -352,7 +396,7 @@ export function NomineesView({
   return (
     <HQShell title="Nominees">
       <p className="mb-5 text-sm text-cream/50">
-        Add nominees, upload graphics, write articles, manage voting, and publish.
+        Add nominees, upload graphics, write articles, and publish to the live site when you are ready.
       </p>
 
       {message ? <Notice tone="success">{message}</Notice> : null}
@@ -528,7 +572,11 @@ export function NomineesView({
               ) : null}
 
               {modal === "graphic" ? (
-                <GraphicFields graphicUrl={graphicUrl} setGraphicUrl={setGraphicUrl} />
+                <GraphicFields
+                  graphicUrl={graphicUrl}
+                  setGraphicUrl={setGraphicUrl}
+                  onFileSelected={setGraphicFile}
+                />
               ) : null}
 
               {modal === "article" ? (
@@ -556,7 +604,7 @@ export function NomineesView({
 
               {modal === "publish" ? (
                 <p className="text-sm text-cream/70">
-                  This only publishes the nominee graphic to the public nominee page. It does not publish a magazine article or add the nominee to voting.
+                  This publishes the nominee graphic to the public nominations page. Saving a graphic alone does not publish it.
                 </p>
               ) : null}
             </div>
@@ -638,18 +686,40 @@ function NomineeFields({
   );
 }
 
-function GraphicFields({ graphicUrl, setGraphicUrl }: { graphicUrl: string; setGraphicUrl: (value: string) => void }) {
+function GraphicFields({
+  graphicUrl,
+  setGraphicUrl,
+  onFileSelected,
+}: {
+  graphicUrl: string;
+  setGraphicUrl: (value: string) => void;
+  onFileSelected: (file: File | null) => void;
+}) {
   return (
     <>
+      <p className="text-sm text-cream/55">
+        Save stores the graphic internally and replaces the previous file. Use Publish on the nominee card to make it live.
+      </p>
       <Field label="Graphic URL" value={graphicUrl} onChange={setGraphicUrl} />
       <label className="block">
         <span className="mb-1 block text-xs text-cream/50">Upload graphic</span>
-        <input type="file" accept="image/*" onChange={async (event) => {
-          const file = event.target.files?.[0];
-          if (file) setGraphicUrl(await fileToDataUrl(file));
-        }} className={`${hqInputClass} w-full`} />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+            event.currentTarget.value = "";
+            onFileSelected(file);
+            if (file) {
+              setGraphicUrl(URL.createObjectURL(file));
+            }
+          }}
+          className={`${hqInputClass} w-full`}
+        />
       </label>
-      {graphicUrl ? <img src={graphicUrl} alt="Nominee graphic preview" className="max-h-64 rounded-xl border border-gold/20 object-contain" /> : null}
+      {graphicUrl ? (
+        <img src={graphicUrl} alt="Nominee graphic preview" className="max-h-64 rounded-xl border border-gold/20 object-contain" />
+      ) : null}
     </>
   );
 }
@@ -777,13 +847,4 @@ async function saveWorkflow(
 
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }

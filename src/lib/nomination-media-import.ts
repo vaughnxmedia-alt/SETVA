@@ -183,8 +183,8 @@ export function parseNominationMediaManifest(
       videoFileName,
       graphicFileName,
       nomineeName,
-      publishCategoryVideo: shouldPublish(valueAt(cells, publishVideoIndex), true),
-      publishNominee: shouldPublish(valueAt(cells, publishNomineeIndex), true),
+      publishCategoryVideo: shouldPublish(valueAt(cells, publishVideoIndex), false),
+      publishNominee: shouldPublish(valueAt(cells, publishNomineeIndex), false),
     });
   }
 
@@ -229,8 +229,8 @@ export function parseNominationMediaFiles(
       videoFileName,
       graphicFileName,
       nomineeName: "",
-      publishCategoryVideo: true,
-      publishNominee: true,
+      publishCategoryVideo: false,
+      publishNominee: false,
     });
   }
 
@@ -245,7 +245,7 @@ export function parseNominationMediaFiles(
       graphicFileName: imageFileName,
       nomineeName: "",
       publishCategoryVideo: false,
-      publishNominee: true,
+      publishNominee: false,
     });
     usedImages.add(imageFileName);
   }
@@ -274,12 +274,12 @@ export function resolveCategoryIdForImport(
 
 export const nominationMediaManifestTemplate = [
   "Category,Category Video,Nominee Graphic,Nominee,Publish Category Video,Publish Nominee",
-  'Community Leader of the Year,COMMUNITY LEADER OF THE YEAR.mp4,COMUNITY LEADER.png,"Raymond Louis and Stacy Wagner Louis",Yes,Yes',
-  "Legacy Award,LEGACY AWARD.mp4,LEGACY AWARD.png,Barbara Lynn,Yes,Yes",
-  "Life Time Achievement Award,LIFE TIME ACHIEVEMENT AWARD.mp4,LIFE TIME PICS.png,Benjamin Ben Collins Sr,Yes,Yes",
-  "Visionary of the Year,VISIONARY OF THE YEAR.mp4,VISIONARY.png,Quin Gregory,Yes,Yes",
-  "Youth Impact of the Year,YOUTH IMPACT AWARD.mp4,YOUTH IMPACT OF THE YEAR .png,One Nation of Southeast Texas,Yes,Yes",
-  "Flava Band of the Year,,FLAVA BAND OF THE YEAR.png,The Flava Band,No,Yes",
+  'Community Leader of the Year,COMMUNITY LEADER OF THE YEAR.mp4,COMUNITY LEADER.png,"Raymond Louis and Stacy Wagner Louis",No,No',
+  "Legacy Award,LEGACY AWARD.mp4,LEGACY AWARD.png,Barbara Lynn,No,No",
+  "Life Time Achievement Award,LIFE TIME ACHIEVEMENT AWARD.mp4,LIFE TIME PICS.png,Benjamin Ben Collins Sr,No,No",
+  "Visionary of the Year,VISIONARY OF THE YEAR.mp4,VISIONARY.png,Quin Gregory,No,No",
+  "Youth Impact of the Year,YOUTH IMPACT AWARD.mp4,YOUTH IMPACT OF THE YEAR .png,One Nation of Southeast Texas,No,No",
+  "Flava Band of the Year,,FLAVA BAND OF THE YEAR.png,The Flava Band,No,No",
 ].join("\n");
 
 function parseCsvLine(line: string): string[] {

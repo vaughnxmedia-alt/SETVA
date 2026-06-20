@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { site } from "@/lib/site";
+import { teamNotifyEmails } from "@/lib/team-notify";
 import {
   sponsorDeck,
   sponsorDeckLogoUrl,
@@ -181,11 +182,11 @@ export async function sendSponsorDeckEmail(lead: SponsorDeckLead): Promise<strin
     throw new Error(error.message);
   }
 
-  const notifyEmail = process.env.SPONSOR_DECK_NOTIFY_EMAIL?.trim();
-  if (notifyEmail) {
+  const notifyEmails = teamNotifyEmails();
+  if (notifyEmails.length > 0) {
     await resend.emails.send({
       from: fromAddress(),
-      to: notifyEmail,
+      to: notifyEmails,
       replyTo: lead.email,
       subject: `Sponsor deck requested — ${lead.name}`,
       html: sponsorDeckLeadNotificationHtml(lead, deckViewUrl),

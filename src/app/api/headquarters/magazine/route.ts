@@ -10,7 +10,7 @@ import {
 } from "@/lib/nominee-workflows-store";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {
@@ -40,7 +40,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Visionary Magazine" });
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {
@@ -75,7 +75,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Visionary Magazine" });
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {

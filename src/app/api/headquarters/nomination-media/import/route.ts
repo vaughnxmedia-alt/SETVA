@@ -11,7 +11,7 @@ import {
 import { importNominationMediaPackage } from "@/lib/nomination-media-import-store";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {

@@ -6,6 +6,7 @@ import {
   HQButton,
   HQCard,
   HQCardHeader,
+  HQBadge,
   hqInputClass,
 } from "@/components/headquarters/ui";
 import type { NomineeCategory } from "@/lib/nominees";
@@ -17,22 +18,51 @@ export function NomineeCategoriesView({
   initialCategories: NomineeCategory[];
 }) {
   const [categories, setCategories] = useState(initialCategories);
+  const [pendingVideoFiles, setPendingVideoFiles] = useState<Record<string, File>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function uploadCategoryVideo(category: NomineeCategory, file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("categoryId", category.id);
+    if (category.videoUrl) formData.append("existingUrl", category.videoUrl);
+
+    const res = await fetch("/api/headquarters/nominee-categories/media", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Video upload failed");
+    const data = (await res.json()) as { url?: string };
+    if (!data.url) throw new Error("Video upload failed");
+    return data.url;
+  }
 
   async function saveCategories() {
     setBusy(true);
     setError(null);
     try {
-      const normalized: NomineeCategory[] = categories
-        .filter((category) => category.title.trim())
-        .map((category, index) => ({
+      const normalized: NomineeCategory[] = [];
+      for (const [index, category] of categories
+        .filter((item) => item.title.trim())
+        .entries()) {
+        let videoUrl = category.videoUrl;
+        const pendingFile = pendingVideoFiles[category.id];
+        if (pendingFile) {
+          videoUrl = await uploadCategoryVideo(category, pendingFile);
+        }
+
+        const isLive = category.status === "Published";
+        normalized.push({
           ...category,
           sortOrder: index,
-          status: category.publishVideo ? "Published" : "Draft",
+          videoUrl,
+          status: isLive ? "Published" : "Draft",
+          publishVideo: isLive && Boolean(videoUrl),
           active: true,
-        }));
+        });
+      }
 
       const res = await fetch("/api/headquarters/nominee-categories", {
         method: "PUT",
@@ -45,9 +75,61 @@ export function NomineeCategoriesView({
         categories?: NomineeCategory[];
       };
       setCategories(data.categories ?? normalized);
-      setMessage("Categories saved.");
+      setPendingVideoFiles({});
+      setMessage("Categories saved internally.");
     } catch {
       setError("Could not save categories.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publishCategory(index: number) {
+    const category = categories[index];
+    if (!category?.title.trim()) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      let videoUrl = category.videoUrl;
+      const pendingFile = pendingVideoFiles[category.id];
+      if (pendingFile) {
+        videoUrl = await uploadCategoryVideo(category, pendingFile);
+      }
+
+      const normalized = categories
+        .filter((item) => item.title.trim())
+        .map((item, itemIndex) => {
+          const isTarget = item.id === category.id;
+          const nextVideoUrl = isTarget ? videoUrl : item.videoUrl;
+          const isLive = isTarget ? true : item.status === "Published";
+          return {
+            ...item,
+            sortOrder: itemIndex,
+            videoUrl: isTarget ? nextVideoUrl : item.videoUrl,
+            status: isLive ? "Published" : "Draft",
+            publishVideo: isLive && Boolean(isTarget ? nextVideoUrl : item.videoUrl),
+            active: true,
+          } as NomineeCategory;
+        });
+
+      const res = await fetch("/api/headquarters/nominee-categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: normalized }),
+      });
+      if (!res.ok) throw new Error("Publish failed");
+
+      const data = (await res.json()) as { categories?: NomineeCategory[] };
+      setCategories(data.categories ?? normalized);
+      setPendingVideoFiles((current) => {
+        const next = { ...current };
+        delete next[category.id];
+        return next;
+      });
+      setMessage(`Published ${category.title} to the nominations page.`);
+    } catch {
+      setError("Could not publish category.");
     } finally {
       setBusy(false);
     }
@@ -144,7 +226,7 @@ export function NomineeCategoriesView({
   return (
     <HQShell title="Categories">
       <p className="mb-5 text-sm text-cream/50">
-        Manage award categories and the category videos shown above nominee graphics.
+        Save categories and videos internally. Publishing to the live nominations page is manual.
       </p>
 
       {message ? (
@@ -190,7 +272,7 @@ export function NomineeCategoriesView({
           {categories.map((category, index) => (
             <div
               key={category.id}
-              className="grid gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 lg:grid-cols-[1fr_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
             >
               <input
                 value={category.title}
@@ -217,22 +299,31 @@ export function NomineeCategoriesView({
                     type="file"
                     accept="video/*"
                     className="hidden"
-                    onChange={async (event) => {
+                    onChange={(event) => {
                       const file = event.target.files?.[0];
+                      event.currentTarget.value = "";
                       if (!file) return;
-                      updateCategory(index, { videoUrl: await fileToDataUrl(file) });
+                      setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
+                      updateCategory(index, { videoUrl: URL.createObjectURL(file) });
                     }}
                   />
                 </label>
               </div>
-              <label className="flex items-center gap-2 text-sm text-cream/70">
-                <input
-                  type="checkbox"
-                  checked={category.publishVideo}
-                  onChange={(event) => updateCategory(index, { publishVideo: event.target.checked })}
-                />
-                Publish category video
-              </label>
+              <div className="flex flex-col items-start gap-2">
+                <HQBadge tone={category.status === "Published" ? "green" : "amber"}>
+                  {category.status === "Published" ? "Live" : "Draft"}
+                </HQBadge>
+                {category.status !== "Published" ? (
+                  <HQButton
+                    variant="outline"
+                    className="px-2.5 py-1 text-xs"
+                    disabled={busy || !category.videoUrl}
+                    onClick={() => publishCategory(index)}
+                  >
+                    Publish to site
+                  </HQButton>
+                ) : null}
+              </div>
             </div>
           ))}
           <HQButton variant="outline" onClick={addCategory} disabled={busy}>
@@ -242,15 +333,6 @@ export function NomineeCategoriesView({
       </HQCard>
     </HQShell>
   );
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }
 
 function parseCategorySpreadsheet(
@@ -302,7 +384,9 @@ function parseCategorySpreadsheet(
         : existing?.status ?? "Draft",
       videoMediaId: existing?.videoMediaId ?? "",
       videoUrl: valueAt(cells, videoIndex) || existing?.videoUrl || "",
-      publishVideo: shouldPublishVideo(valueAt(cells, publishIndex), existing),
+      publishVideo: shouldPublishVideo(valueAt(cells, publishIndex), existing) && Boolean(
+        valueAt(cells, videoIndex) || existing?.videoUrl,
+      ),
       active: true,
     });
   }
@@ -357,7 +441,7 @@ function valueAt(cells: string[], index: number): string {
 }
 
 function shouldPublishVideo(value: string, existing?: NomineeCategory): boolean {
-  if (!value) return existing?.publishVideo ?? false;
+  if (!value) return existing?.status === "Published" && existing.publishVideo;
   return ["yes", "true", "published", "publish", "1"].includes(value.trim().toLowerCase());
 }
 

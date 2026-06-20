@@ -4,7 +4,7 @@ import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/err
 import { seedPublicPageNominees } from "@/lib/nominee-page-seed-store";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {

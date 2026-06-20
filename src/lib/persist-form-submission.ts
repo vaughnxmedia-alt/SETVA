@@ -7,6 +7,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/server";
 export async function persistFormSubmission(
   input: CreateFormSubmissionInput,
 ): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  await createFormSubmission(input);
+  if (!isSupabaseConfigured()) {
+    throw new Error("Form storage is not configured");
+  }
+  const record = await createFormSubmission(input);
+  if (!record) {
+    throw new Error("Failed to save form submission");
+  }
 }

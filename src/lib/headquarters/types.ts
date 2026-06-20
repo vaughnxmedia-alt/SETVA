@@ -4,6 +4,7 @@ export type ActivityCategory =
   | "Volunteers"
   | "Ambassadors"
   | "Nominees"
+  | "Headquarters"
   | "Payments"
   | "Broadcast"
   | "Website"

@@ -2,6 +2,7 @@ export type HQUser = {
   email: string;
   name: string;
   phone: string;
+  setvaId?: string;
 };
 
 export function formatHQPhone(phone: string): string {

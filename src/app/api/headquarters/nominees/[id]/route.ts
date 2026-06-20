@@ -10,7 +10,7 @@ function nomineeIdFromPath(pathname: string): string {
 }
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);
@@ -37,7 +37,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Nominees" });
 
 export const PATCH = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);
@@ -74,7 +74,7 @@ export const PATCH = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Nominees" });
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);

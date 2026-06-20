@@ -6,36 +6,43 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { brandLogos, site } from "@/lib/site";
 
-export function HQLoginForm() {
+export function HQActivateForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/headquarters";
+  const presetEmail = searchParams.get("email") ?? "";
 
   const [setvaId, setSetvaId] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(presetEmail);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch("/api/headquarters/session", {
+      const res = await fetch("/api/headquarters/activate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ setvaId, email, password }),
       });
 
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        setError(data.error ?? "Invalid SETVA ID, email, or password.");
+        setError(data.error ?? "Unable to activate account.");
         return;
       }
 
-      router.push(next);
+      router.push("/headquarters");
       router.refresh();
     } catch {
       setError("Error. Please contact support.");
@@ -61,52 +68,45 @@ export function HQLoginForm() {
         <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-gold/70">
           Headquarters
         </p>
-        <h1 className="mt-3 text-center font-display text-2xl text-cream">Team Access</h1>
-        <p className="mt-2 text-center text-sm text-cream/50">Sign in to SETVA Headquarters.</p>
+        <h1 className="mt-3 text-center font-display text-2xl text-cream">Create Account</h1>
+        <p className="mt-2 text-center text-sm text-cream/50">
+          Enter the SETVA ID from your approval email to finish setup.
+        </p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-4">
-          <div>
-            <label htmlFor="hq-setva-id" className="mb-1 block text-xs uppercase tracking-wider text-cream/40">
-              SETVA ID
-            </label>
-            <input
-              id="hq-setva-id"
-              placeholder="SETVA-0001"
-              autoComplete="off"
-              value={setvaId}
-              onChange={(e) => setSetvaId(e.target.value.toUpperCase())}
-              className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 font-mono text-cream outline-none focus:border-gold/50"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="hq-email" className="mb-1 block text-xs uppercase tracking-wider text-cream/40">
-              Email
-            </label>
-            <input
-              id="hq-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="hq-password" className="mb-1 block text-xs uppercase tracking-wider text-cream/40">
-              Password
-            </label>
-            <input
-              id="hq-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-              required
-            />
-          </div>
+          <input
+            placeholder="SETVA ID (e.g. SETVA-0001)"
+            value={setvaId}
+            onChange={(e) => setSetvaId(e.target.value.toUpperCase())}
+            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 font-mono text-cream outline-none focus:border-gold/50"
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
+            minLength={8}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
+            minLength={8}
+            required
+          />
 
           {error ? (
             <p className="rounded-lg border border-ruby/30 bg-ruby/10 px-4 py-3 text-sm text-cream/80">
@@ -119,13 +119,18 @@ export function HQLoginForm() {
             disabled={loading}
             className="w-full rounded-full border border-gold/40 bg-gold/15 py-3 text-sm font-semibold text-gold transition hover:bg-gold/25 disabled:opacity-60"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Creating…" : "Create account"}
           </button>
         </form>
+
         <p className="mt-4 text-center text-xs text-cream/45">
           Need access?{" "}
           <Link href="/headquarters/request-access" className="text-gold hover:text-gold/80">
             Request access
+          </Link>
+          {" · "}
+          <Link href="/headquarters/login" className="text-gold hover:text-gold/80">
+            Sign in
           </Link>
         </p>
       </div>

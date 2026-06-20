@@ -26,7 +26,7 @@ import {
 type WorkflowKind = "nomineePage" | "magazineArticle" | "votingSetup" | "mediaAsset";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {
@@ -57,7 +57,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Nominee Workflows" });
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {
@@ -123,7 +123,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Nominee Workflows" });
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {

@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { site } from "@/lib/site";
+import { teamNotifyEmails } from "@/lib/team-notify";
 import {
   getOfflinePaymentMethod,
   getSponsorPackage,
@@ -20,10 +21,8 @@ function fromAddress(): string {
   );
 }
 
-function notifyAddress(): string {
-  return (
-    process.env.SPONSOR_DECK_NOTIFY_EMAIL?.trim() ?? site.contact.email
-  );
+function notifyAddress(): string[] {
+  return teamNotifyEmails();
 }
 
 function escapeHtml(value: string): string {

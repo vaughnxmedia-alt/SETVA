@@ -6,7 +6,7 @@ import { saveNomineesBulk } from "@/lib/nominees-store";
 import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  const user = getHQSessionUserFromRequest(req);
+  const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
   try {

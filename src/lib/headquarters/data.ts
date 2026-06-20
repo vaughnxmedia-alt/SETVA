@@ -221,6 +221,8 @@ function activityCategoryForFormType(formType: string): ActivityCategory {
     case FORM_TYPES.sponsorDeck:
     case FORM_TYPES.sponsorCheckoutConfirmed:
       return "Sponsors";
+    case FORM_TYPES.hqTeamMembers:
+      return "Headquarters";
     case FORM_TYPES.checkout:
       return "Payments";
     default:
@@ -248,16 +250,17 @@ function activityFromSubmission(record: FormSubmissionRecord): ActivityItem {
 }
 
 export async function getHQActivityFeed(): Promise<ActivityItem[]> {
-  const [media, volunteers, ambassadors, sponsors, confirmed, decks] = await Promise.all([
+  const [media, volunteers, ambassadors, sponsors, confirmed, decks, hqTeam] = await Promise.all([
     listFormSubmissions(FORM_TYPES.mediaCredentials),
     listFormSubmissions(FORM_TYPES.volunteers),
     listFormSubmissions(FORM_TYPES.ambassadors),
     listFormSubmissions(FORM_TYPES.sponsorIntake),
     listFormSubmissions(FORM_TYPES.sponsorCheckoutConfirmed),
     listFormSubmissions(FORM_TYPES.sponsorDeck),
+    listFormSubmissions(FORM_TYPES.hqTeamMembers),
   ]);
 
-  return [...media, ...volunteers, ...ambassadors, ...sponsors, ...confirmed, ...decks]
+  return [...media, ...volunteers, ...ambassadors, ...sponsors, ...confirmed, ...decks, ...hqTeam]
     .map(activityFromSubmission)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
