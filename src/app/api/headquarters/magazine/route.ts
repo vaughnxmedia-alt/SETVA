@@ -8,7 +8,6 @@ import {
   listNomineeMagazineArticles,
   saveNomineeMagazineArticle,
 } from "@/lib/nominee-workflows-store";
-import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = getHQSessionUserFromRequest(req);
@@ -55,6 +54,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       );
     }
 
+    const { sanitizeMagazineHtml } = await import("@/lib/sanitize-html");
     const record = await saveNomineeMagazineArticle(
       {
         ...input,

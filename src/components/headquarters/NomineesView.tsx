@@ -152,6 +152,9 @@ export function NomineesView({
       fetch("/api/headquarters/nominees"),
       fetch("/api/headquarters/nominees/workflows"),
     ]);
+    if (directoryRes.status === 401 || workflowsRes.status === 401) {
+      throw new Error("Session expired. Log in again.");
+    }
     if (!directoryRes.ok || !workflowsRes.ok) {
       throw new Error("Could not load nominees.");
     }
@@ -174,8 +177,10 @@ export function NomineesView({
     if (initialNominees.length > 0) return;
     let active = true;
     refresh()
-      .catch(() => {
-        if (active) setError("Could not load nominees.");
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Could not load nominees.");
+        }
       })
       .finally(() => {
         if (active) setLoading(false);

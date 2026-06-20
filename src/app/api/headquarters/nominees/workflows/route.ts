@@ -22,7 +22,6 @@ import {
   saveNomineePageEntry,
   saveNomineeVotingSetup,
 } from "@/lib/nominee-workflows-store";
-import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
 
 type WorkflowKind = "nomineePage" | "magazineArticle" | "votingSetup" | "mediaAsset";
 
@@ -81,6 +80,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
     if (kind === "magazineArticle") {
       const input = parseNomineeMagazineArticleInput(payload, user);
       if (!input) return invalidWorkflowResponse("Article title is required.");
+      const { sanitizeMagazineHtml } = await import("@/lib/sanitize-html");
       return NextResponse.json({
         success: true,
         record: await saveNomineeMagazineArticle(
