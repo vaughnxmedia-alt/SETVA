@@ -72,9 +72,10 @@ export function RichTextEditor({
 
   return (
     <label className="block sm:col-span-2">
-      <span className="mb-1 block text-xs text-cream/50">{label}</span>
       <div className={`${hqInputClass} overflow-hidden p-0`}>
-        <div className="flex flex-wrap gap-1 border-b border-gold/15 bg-black/30 p-2">
+        <div className="flex items-center gap-2 border-b border-gold/15 bg-black/30 px-2 py-1.5">
+          <span className="shrink-0 text-xs font-medium text-cream/50">{label}</span>
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto">
           <ToolbarButton
             label="Bold"
             active={editor?.isActive("bold")}
@@ -133,6 +134,7 @@ export function RichTextEditor({
           <ToolbarButton label="Redo" onClick={() => editor?.chain().focus().redo().run()}>
             Redo
           </ToolbarButton>
+          </div>
         </div>
         <EditorContent editor={editor} />
       </div>

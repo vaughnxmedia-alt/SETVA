@@ -9,6 +9,7 @@ import {
   hqInputClass,
 } from "@/components/headquarters/ui";
 import type { NomineeCategory } from "@/lib/nominees";
+import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
 
 export function NomineeCategoriesView({
   initialCategories,
@@ -73,6 +74,13 @@ export function NomineeCategoriesView({
         active: true,
       },
     ]);
+  }
+
+  async function refreshCategories() {
+    const res = await fetch("/api/headquarters/nominee-categories");
+    if (!res.ok) return;
+    const data = (await res.json()) as { categories?: NomineeCategory[] };
+    setCategories(data.categories ?? []);
   }
 
   async function importSpreadsheet(csv: string) {
@@ -149,6 +157,8 @@ export function NomineeCategoriesView({
           {error}
         </p>
       ) : null}
+
+      <NominationMediaImport onComplete={refreshCategories} />
 
       <HQCard>
         <HQCardHeader

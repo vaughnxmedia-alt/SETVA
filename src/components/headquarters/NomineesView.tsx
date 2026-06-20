@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -24,31 +23,18 @@ import {
 } from "@/lib/nominees";
 import type { PublishQueueItem } from "@/lib/nominee-workflows-store";
 import { plainTextToMagazineHtml } from "@/lib/magazine-html";
-
-const RichTextEditor = dynamic(
-  () => import("@/components/headquarters/RichTextEditor").then((mod) => mod.RichTextEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="rounded-lg border border-gold/20 bg-black/40 px-3 py-8 text-sm text-cream/40">
-        Loading editor…
-      </div>
-    ),
-  },
-);
+import {
+  blankMagazineArticleForm,
+  MagazineArticleFields,
+  type MagazineArticleFormState,
+} from "@/components/headquarters/MagazineArticleFields";
+import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
 
 type SimpleStatus = "Missing" | "Draft" | "Ready" | "Published";
 type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | null;
 type NomineeRow = NomineeRecordFull & { categoryTitle: string };
 type NomineeFormState = ReturnType<typeof blankNominee>;
-type ArticleFormState = {
-  articleTitle: string;
-  nomineeBio: string;
-  articleBody: string;
-  pullQuote: string;
-  articleImageUrl: string;
-  articleStatus: string;
-};
+type ArticleFormState = Omit<MagazineArticleFormState, "nomineeId">;
 type VotingFormState = {
   votingOpenDate: string;
   votingCloseDate: string;
@@ -97,13 +83,9 @@ export function NomineesView({
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
   const [graphicUrl, setGraphicUrl] = useState("");
-  const [articleForm, setArticleForm] = useState({
-    articleTitle: "",
-    nomineeBio: "",
-    articleBody: "",
-    pullQuote: "",
-    articleImageUrl: "",
-    articleStatus: "Draft",
+  const [articleForm, setArticleForm] = useState<Omit<MagazineArticleFormState, "nomineeId">>(() => {
+    const { nomineeId: _, ...rest } = blankMagazineArticleForm();
+    return rest;
   });
   const [votingForm, setVotingForm] = useState({
     votingOpenDate: "",
@@ -371,6 +353,8 @@ export function NomineesView({
       {message ? <Notice tone="success">{message}</Notice> : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
 
+      <NominationMediaImport onComplete={refresh} />
+
       {loading ? (
         <p className="text-sm text-cream/50">Loading nominees…</p>
       ) : null}
@@ -547,7 +531,17 @@ export function NomineesView({
                   <p className="mb-4 text-sm text-cream/55">
                     Articles are saved to Supabase. Publishing makes them live on Visionary Magazine with the same formatting shown in the editor.
                   </p>
-                  <ArticleFields form={articleForm} setForm={setArticleForm} />
+                  <MagazineArticleFields
+                    form={{ ...articleForm, nomineeId: activeNominee?.id ?? "" }}
+                    setForm={(fn) => {
+                      setArticleForm((current) => {
+                        const merged = { ...current, nomineeId: activeNominee?.id ?? "" };
+                        const next = typeof fn === "function" ? fn(merged) : fn;
+                        const { nomineeId: _, ...rest } = next;
+                        return rest;
+                      });
+                    }}
+                  />
                 </>
               ) : null}
 
@@ -652,64 +646,6 @@ function GraphicFields({ graphicUrl, setGraphicUrl }: { graphicUrl: string; setG
       </label>
       {graphicUrl ? <img src={graphicUrl} alt="Nominee graphic preview" className="max-h-64 rounded-xl border border-gold/20 object-contain" /> : null}
     </>
-  );
-}
-
-function ArticleFields({
-  form,
-  setForm,
-}: {
-  form: ArticleFormState;
-  setForm: (fn: ArticleFormState | ((form: ArticleFormState) => ArticleFormState)) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <Field label="Article title" value={form.articleTitle} onChange={(value) => setForm((f) => ({ ...f, articleTitle: value }))} required />
-      <RichTextEditor
-        label="Nominee bio"
-        value={form.nomineeBio}
-        onChange={(value) => setForm((f) => ({ ...f, nomineeBio: value }))}
-        placeholder="Introduce the nominee…"
-        minHeight="160px"
-      />
-      <RichTextEditor
-        label="Article body"
-        value={form.articleBody}
-        onChange={(value) => setForm((f) => ({ ...f, articleBody: value }))}
-        placeholder="Write the full feature article…"
-        minHeight="280px"
-      />
-      <Field label="Pull quote" value={form.pullQuote} onChange={(value) => setForm((f) => ({ ...f, pullQuote: value }))} />
-      <label className="block">
-        <span className="mb-1 block text-xs text-cream/50">Featured image</span>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (file) {
-              const articleImageUrl = await fileToDataUrl(file);
-              setForm((f) => ({ ...f, articleImageUrl }));
-            }
-          }}
-          className={`${hqInputClass} w-full`}
-        />
-      </label>
-      {form.articleImageUrl ? (
-        <img
-          src={form.articleImageUrl}
-          alt="Featured image preview"
-          className="max-h-64 rounded-xl border border-gold/20 object-contain"
-        />
-      ) : null}
-      <label className="block">
-        <span className="mb-1 block text-xs text-cream/50">Article status</span>
-        <select value={form.articleStatus} onChange={(event) => setForm((f) => ({ ...f, articleStatus: event.target.value }))} className={`${hqInputClass} w-full`}>
-          <option value="Draft">Draft</option>
-          <option value="Ready">Ready</option>
-        </select>
-      </label>
-    </div>
   );
 }
 

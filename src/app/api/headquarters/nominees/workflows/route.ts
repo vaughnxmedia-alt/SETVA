@@ -80,7 +80,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 
     if (kind === "magazineArticle") {
       const input = parseNomineeMagazineArticleInput(payload, user);
-      if (!input) return invalidWorkflowResponse("Select nominee and add an article title.");
+      if (!input) return invalidWorkflowResponse("Article title is required.");
       return NextResponse.json({
         success: true,
         record: await saveNomineeMagazineArticle(

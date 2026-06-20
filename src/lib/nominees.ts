@@ -311,9 +311,10 @@ export function parseNomineeMagazineArticleInput(
   body: Record<string, unknown>,
   addedBy?: { name: string; email: string },
 ): Omit<NomineeMagazineArticle, "id" | "submittedAt" | "updatedAt"> | null {
-  const nomineeId = String(body.nomineeId ?? "").trim();
   const articleTitle = String(body.articleTitle ?? body.title ?? "").trim();
-  if (!nomineeId || !articleTitle) return null;
+  if (!articleTitle) return null;
+
+  const nomineeId = String(body.nomineeId ?? "").trim();
 
   return {
     nomineeId,

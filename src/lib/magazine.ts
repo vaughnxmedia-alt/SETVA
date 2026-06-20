@@ -1,4 +1,5 @@
 import { listPublishedNomineeMagazineArticles } from "@/lib/nominee-workflows-store";
+import { featuredMagazineArticles } from "@/lib/magazine-featured";
 import { htmlToPlainText, plainTextToMagazineHtml } from "@/lib/magazine-html";
 import { sanitizeMagazineHtml } from "@/lib/sanitize-html";
 
@@ -18,39 +19,53 @@ export const visionaryMagazine = {
   tagline: "Stories, announcements, and vision from across the 409.",
 } as const;
 
-export const magazineArticles: MagazineArticle[] = [];
+export const magazineArticles: MagazineArticle[] = featuredMagazineArticles;
+
+function mapStoredArticle(article: Awaited<ReturnType<typeof listPublishedNomineeMagazineArticles>>[number]): MagazineArticle {
+  const nomineeBioHtml = sanitizeMagazineHtml(
+    plainTextToMagazineHtml(article.nomineeBio),
+  );
+  const articleBodyHtml = sanitizeMagazineHtml(
+    plainTextToMagazineHtml(article.articleBody),
+  );
+  const excerptSource =
+    htmlToPlainText(articleBodyHtml) ||
+    htmlToPlainText(nomineeBioHtml) ||
+    article.pullQuote ||
+    "SETVA nominee feature.";
+
+  return {
+    slug: article.slug,
+    title: article.articleTitle,
+    excerpt: excerptSource.slice(0, 220),
+    publishedAt: article.publishDate || article.updatedAt,
+    publishedLabel: formatMagazineDate(article.publishDate || article.updatedAt),
+    nomineeBioHtml,
+    pullQuote: article.pullQuote.trim(),
+    articleBodyHtml,
+  };
+}
 
 export async function listMagazineArticles(): Promise<MagazineArticle[]> {
-  const articles = await listPublishedNomineeMagazineArticles();
-  return articles.map((article) => {
-    const nomineeBioHtml = sanitizeMagazineHtml(
-      plainTextToMagazineHtml(article.nomineeBio),
-    );
-    const articleBodyHtml = sanitizeMagazineHtml(
-      plainTextToMagazineHtml(article.articleBody),
-    );
-    const excerptSource =
-      htmlToPlainText(articleBodyHtml) ||
-      htmlToPlainText(nomineeBioHtml) ||
-      article.pullQuote ||
-      "SETVA nominee feature.";
+  const stored = await listPublishedNomineeMagazineArticles();
+  const storedArticles = stored.map(mapStoredArticle);
+  const storedSlugs = new Set(storedArticles.map((article) => article.slug));
 
-    return {
-      slug: article.slug,
-      title: article.articleTitle,
-      excerpt: excerptSource.slice(0, 220),
-      publishedAt: article.publishDate || article.updatedAt,
-      publishedLabel: formatMagazineDate(article.publishDate || article.updatedAt),
-      nomineeBioHtml,
-      pullQuote: article.pullQuote.trim(),
-      articleBodyHtml,
-    };
-  });
+  const merged = [
+    ...storedArticles,
+    ...featuredMagazineArticles.filter((article) => !storedSlugs.has(article.slug)),
+  ];
+
+  return merged.sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+  );
 }
 
 export async function getMagazineArticle(slug: string): Promise<MagazineArticle | undefined> {
-  const articles = await listMagazineArticles();
-  return articles.find((article) => article.slug === slug);
+  const stored = await listPublishedNomineeMagazineArticles();
+  const match = stored.find((article) => article.slug === slug);
+  if (match) return mapStoredArticle(match);
+  return featuredMagazineArticles.find((article) => article.slug === slug);
 }
 
 function formatMagazineDate(iso: string): string {
