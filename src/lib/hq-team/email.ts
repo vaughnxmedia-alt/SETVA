@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 import { site } from "@/lib/site";
-import { teamNotifyEmails } from "@/lib/team-notify";
 import { siteUrl, sponsorDeckLogoUrl } from "@/lib/sponsor-deck";
 
 function escapeHtml(value: string): string {
@@ -17,34 +16,12 @@ function resendClient(): Resend | null {
   return new Resend(key);
 }
 
-function requireResendClient(): Resend {
-  const client = resendClient();
-  if (!client) {
-    throw new Error("Email is not configured.");
-  }
-  return client;
-}
-
-async function sendEmail(input: Parameters<Resend["emails"]["send"]>[0]): Promise<void> {
-  const client = requireResendClient();
-  const { error } = await client.emails.send(input);
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-export function hqTeamFromAddress(): string {
+function hqFromAddress(): string {
   return (
     process.env.HEADQUARTERS_TEAM_FROM_EMAIL?.trim() ||
     process.env.SPONSOR_DECK_FROM_EMAIL?.trim() ||
     "SETVA <onboarding@resend.dev>"
   );
-}
-
-export function hqTeamNotifyEmails(): string[] {
-  const configured = teamNotifyEmails();
-  const required = [site.contact.email, "setvaawards@gmail.com"];
-  return [...new Set([...configured, ...required.map((email) => email.trim()).filter(Boolean)])];
 }
 
 function emailShell(title: string, body: string): string {
@@ -83,106 +60,49 @@ function emailShell(title: string, body: string): string {
 </html>`;
 }
 
-function button(href: string, label: string): string {
-  return `
-<table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px auto 0;">
-  <tr>
-    <td style="border-radius:999px;background-color:#bf0000;">
-      <a href="${href}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.04em;">
-        ${escapeHtml(label)}
-      </a>
-    </td>
-  </tr>
-</table>`;
-}
-
-export async function sendHQAccessRequestEmail(input: {
-  name: string;
-  email: string;
-  confirmUrl: string;
-}): Promise<void> {
-  const body = `
-    <p style="margin:0 0 16px;color:#111111;font-size:24px;line-height:1.3;font-weight:700;">
-      New Headquarters access request
-    </p>
-    <p style="margin:0 0 18px;color:#444444;font-size:15px;line-height:1.7;">
-      <strong>${escapeHtml(input.name)}</strong> requested SETVA Headquarters access.
-    </p>
-    <p style="margin:0 0 8px;color:#444444;font-size:15px;line-height:1.7;">
-      Email: ${escapeHtml(input.email)}
-    </p>
-    <p style="margin:18px 0 0;color:#666666;font-size:14px;line-height:1.6;">
-      Confirm this team member to issue a SETVA ID and invite them to create their account.
-    </p>
-    ${button(input.confirmUrl, "Confirm team member")}
-  `;
-
-  await sendEmail({
-    from: hqTeamFromAddress(),
-    to: hqTeamNotifyEmails(),
-    replyTo: input.email,
-    subject: `HQ access request — ${input.name}`,
-    html: emailShell("HQ access request", body),
-  });
-}
-
-export async function sendHQApprovalEmail(input: {
+export async function sendHQWelcomeEmail(input: {
   name: string;
   email: string;
   setvaId: string;
-  activateUrl: string;
-  forceRelogin?: boolean;
 }): Promise<void> {
-  const intro = input.forceRelogin
-    ? "Your SETVA Headquarters access has been updated. Use your SETVA ID below to sign in again immediately."
-    : "Your SETVA Headquarters access request was approved. Use your SETVA ID below to create your account.";
+  const client = resendClient();
+  if (!client) {
+    console.info("[demo] HQ welcome email:", input);
+    return;
+  }
 
+  const loginUrl = `${siteUrl()}/headquarters/login`;
   const body = `
     <p style="margin:0 0 16px;color:#111111;font-size:24px;line-height:1.3;font-weight:700;">
-      Hi ${escapeHtml(input.name)},
+      Welcome, ${escapeHtml(input.name)}
     </p>
     <p style="margin:0 0 18px;color:#444444;font-size:15px;line-height:1.7;">
-      ${escapeHtml(intro)}
+      Your SETVA Headquarters account is active. Use your email and the password you chose to sign in.
     </p>
-    <p style="margin:0 0 8px;color:#111111;font-size:18px;font-weight:700;letter-spacing:0.08em;">
+    <p style="margin:0 0 8px;color:#111111;font-size:16px;font-weight:700;letter-spacing:0.06em;">
       ${escapeHtml(input.setvaId)}
     </p>
     <p style="margin:0 0 18px;color:#666666;font-size:14px;line-height:1.6;">
-      Keep this SETVA ID secure. You will need it to finish account setup and sign in to Headquarters.
+      Your SETVA team ID for reference.
     </p>
-    ${button(input.activateUrl, input.forceRelogin ? "Sign in to Headquarters" : "Create your account")}
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px auto 0;">
+      <tr>
+        <td style="border-radius:999px;background-color:#bf0000;">
+          <a href="${loginUrl}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.04em;">
+            Sign in to Headquarters
+          </a>
+        </td>
+      </tr>
+    </table>
   `;
 
-  await sendEmail({
-    from: hqTeamFromAddress(),
+  const { error } = await client.emails.send({
+    from: hqFromAddress(),
     to: input.email,
     replyTo: site.contact.email,
-    subject: input.forceRelogin
-      ? `Your SETVA ID — please sign in again`
-      : `Your SETVA ID — create your Headquarters account`,
-    html: emailShell("SETVA Headquarters access", body),
+    subject: "Your SETVA Headquarters account is ready",
+    html: emailShell("Welcome to Headquarters", body),
   });
-}
 
-export async function sendHQRequestReceivedEmail(input: {
-  name: string;
-  email: string;
-}): Promise<void> {
-  const body = `
-    <p style="margin:0 0 16px;color:#111111;font-size:24px;line-height:1.3;font-weight:700;">
-      Request received
-    </p>
-    <p style="margin:0 0 18px;color:#444444;font-size:15px;line-height:1.7;">
-      Hi ${escapeHtml(input.name)}, we received your SETVA Headquarters access request.
-      SETVA leadership will review it and email you a SETVA ID if approved.
-    </p>
-  `;
-
-  await sendEmail({
-    from: hqTeamFromAddress(),
-    to: input.email,
-    replyTo: site.contact.email,
-    subject: "SETVA Headquarters access request received",
-    html: emailShell("Request received", body),
-  });
+  if (error) throw new Error(error.message);
 }

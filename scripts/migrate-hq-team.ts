@@ -1,6 +1,5 @@
 /**
- * Migrate existing HQ dev account into Supabase team storage, issue SETVA ID,
- * bump session version (force re-login), and email the member.
+ * Seed or update the primary HQ admin account in Supabase.
  *
  * Usage:
  *   npx tsx scripts/migrate-hq-team.ts
@@ -8,10 +7,9 @@
  */
 import { readFileSync } from "fs";
 import { resolve } from "path";
-import { sendHQApprovalEmail } from "../src/lib/hq-team/email";
+import { sendHQWelcomeEmail } from "../src/lib/hq-team/email";
 import { hashPassword } from "../src/lib/hq-team/password";
-import { issueHQTeamMember } from "../src/lib/hq-team/store";
-import { siteUrl } from "../src/lib/sponsor-deck";
+import { registerHQTeamMember } from "../src/lib/hq-team/store";
 
 function loadEnvFile() {
   const envPath = resolve(process.cwd(), ".env.local");
@@ -47,26 +45,17 @@ async function main() {
   const phone = process.env.HEADQUARTERS_DEV_PHONE?.trim() || "4093442349";
 
   const passwordHash = await hashPassword(password);
-  const member = await issueHQTeamMember({
-    name,
-    email,
-    phone,
-    passwordHash,
-    forceRelogin: true,
-  });
+  const member = await registerHQTeamMember({ name, email, passwordHash, phone });
 
-  console.log(`Issued ${member.setvaId} for ${member.email} (session v${member.sessionVersion})`);
+  console.log(`Registered ${member.setvaId} for ${member.email}`);
 
   if (sendEmail) {
-    const activateUrl = `${siteUrl()}/headquarters/login`;
-    await sendHQApprovalEmail({
+    await sendHQWelcomeEmail({
       name: member.name,
       email: member.email,
       setvaId: member.setvaId,
-      activateUrl,
-      forceRelogin: true,
     });
-    console.log("Force re-login email sent.");
+    console.log("Welcome email sent.");
   } else {
     console.log("Skipped email. Re-run with --send-email to notify the member.");
   }

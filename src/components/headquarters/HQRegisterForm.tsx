@@ -1,34 +1,46 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { brandLogos, site } from "@/lib/site";
+import {
+  HQAuthCard,
+  hqAuthButtonClass,
+  hqAuthInputClass,
+  hqAuthLabelClass,
+} from "@/components/headquarters/HQAuthCard";
 
 export function HQRegisterForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch("/api/headquarters/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({ name, email, password, accessCode }),
       });
 
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError("Unable to create account.");
+        setError(data.error ?? "Unable to create account.");
         return;
       }
 
@@ -42,80 +54,105 @@ export function HQRegisterForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-ink px-4 py-12">
-      <div className="card-glow w-full max-w-md rounded-2xl border border-gold/20 bg-ink-deep/80 p-8 sm:p-10">
-        <Link href="/" className="group mb-8 flex justify-center">
-          <Image
-            src={brandLogos.onDark}
-            alt={site.fullName}
-            width={1024}
-            height={576}
-            className="h-auto w-[160px] object-contain transition group-hover:scale-[1.02]"
-            sizes="160px"
-            priority
-          />
-        </Link>
-        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-gold/70">
-          Headquarters
-        </p>
-        <h1 className="mt-3 text-center font-display text-2xl text-cream">Create Account</h1>
-        <p className="mt-2 text-center text-sm text-cream/50">Set up your team access profile.</p>
-
-        <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-4">
-          <input
-            placeholder="Full name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-            required
-          />
-          <input
-            type="tel"
-            placeholder="Phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none focus:border-gold/50"
-            required
-          />
-
-          {error ? (
-            <p className="rounded-lg border border-ruby/30 bg-ruby/10 px-4 py-3 text-sm text-cream/80">
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full border border-gold/40 bg-gold/15 py-3 text-sm font-semibold text-gold transition hover:bg-gold/25 disabled:opacity-60"
-          >
-            {loading ? "Creating…" : "Create account"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-xs text-cream/45">
-          Already have access?{" "}
+    <HQAuthCard
+      title="Create account"
+      subtitle="Join SETVA Headquarters with your team access code. You only enter the access code once during signup."
+      footer={
+        <>
+          Already have an account?{" "}
           <Link href="/headquarters/login" className="text-gold hover:text-gold/80">
             Sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+        <div>
+          <label htmlFor="hq-name" className={hqAuthLabelClass}>
+            Full name
+          </label>
+          <input
+            id="hq-name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={hqAuthInputClass}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="hq-email" className={hqAuthLabelClass}>
+            Email
+          </label>
+          <input
+            id="hq-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={hqAuthInputClass}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="hq-password" className={hqAuthLabelClass}>
+            Password
+          </label>
+          <input
+            id="hq-password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={hqAuthInputClass}
+            minLength={8}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="hq-confirm-password" className={hqAuthLabelClass}>
+            Confirm password
+          </label>
+          <input
+            id="hq-confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className={hqAuthInputClass}
+            minLength={8}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="hq-access-code" className={hqAuthLabelClass}>
+            Team access code
+          </label>
+          <input
+            id="hq-access-code"
+            type="password"
+            autoComplete="off"
+            placeholder="Provided by SETVA admin"
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            className={hqAuthInputClass}
+            required
+          />
+          <p className="mt-1.5 text-xs text-cream/40">
+            One-time code from SETVA leadership. Not needed when signing in later.
+          </p>
+        </div>
+
+        {error ? (
+          <p className="rounded-xl border border-ruby/30 bg-ruby/10 px-4 py-3 text-sm text-cream/85">
+            {error}
+          </p>
+        ) : null}
+
+        <button type="submit" disabled={loading} className={hqAuthButtonClass}>
+          {loading ? "Creating account…" : "Create account"}
+        </button>
+      </form>
+    </HQAuthCard>
   );
 }

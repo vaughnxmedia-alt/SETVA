@@ -6,6 +6,7 @@ export const hqNav = [
   { href: "/headquarters/categories", label: "Categories" },
   { href: "/headquarters/nominees", label: "Nominees" },
   { href: "/headquarters/magazine", label: "Visionary Magazine" },
+  { href: "/headquarters/users", label: "Users" },
   { href: "/headquarters/payments", label: "Payments" },
   { href: "/headquarters/settings", label: "Settings" },
 ] as const;

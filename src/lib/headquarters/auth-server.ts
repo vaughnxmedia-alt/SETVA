@@ -85,7 +85,7 @@ function decodeHQSessionToken(token: string): HQSessionPayload | null {
     ) as HQSessionPayload;
 
     if (typeof payload.exp !== "number" || payload.exp < Date.now()) return null;
-    if (!payload.email || !payload.name || !payload.phone) return null;
+    if (!payload.email || !payload.name) return null;
     if (typeof payload.sv !== "number") return null;
 
     return payload;
@@ -125,15 +125,9 @@ export async function resolveHQSessionUser(token: string): Promise<HQUser | null
 export async function verifyHQTeamCredentials(
   email: string,
   password: string,
-  setvaId: string,
 ): Promise<{ user: HQUser; sessionVersion: number } | null> {
-  const normalizedSetvaId = setvaId.trim().toUpperCase();
-  if (!normalizedSetvaId) return null;
-
   const member = await getHQTeamMemberByEmail(email);
   if (member?.status === "active" && member.passwordHash) {
-    if (member.setvaId.toUpperCase() !== normalizedSetvaId) return null;
-
     const valid = await verifyPassword(password, member.passwordHash);
     if (!valid) return null;
 
@@ -157,6 +151,7 @@ export async function verifyHQTeamCredentials(
 export function createHQSessionToken(user: HQUser, sessionVersion = 1): string {
   const payload: HQSessionPayload = {
     ...user,
+    phone: user.phone ?? "",
     exp: Date.now() + SESSION_TTL_MS,
     sv: sessionVersion,
   };
