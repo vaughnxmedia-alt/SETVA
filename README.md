@@ -94,8 +94,35 @@ git push origin main
 | `RESEND_API_KEY` | `re_...` |
 | `SPONSOR_DECK_FROM_EMAIL` | `SETVA <sponsors@setvawards.com>` |
 | `SPONSOR_DECK_NOTIFY_EMAIL` | your team inbox |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `HEADQUARTERS_ADMIN_SIGNUP_PASSWORD` | one-time team signup code (default: `Visionary2526`) |
+| `HEADQUARTERS_SESSION_SECRET` | long random string for HQ login cookies |
+| `HEADQUARTERS_TEAM_FROM_EMAIL` | `SETVA <sponsors@setvawards.com>` |
 
 3. **Custom domain** — in Vercel → Project → Settings → Domains, add `setvawards.com` and `www.setvawards.com`. Vercel shows the DNS records to add at your registrar (or in Microsoft 365 DNS if that is where the domain is managed).
+
+## Headquarters (live site)
+
+Headquarters at `/headquarters` needs **Supabase** and **session** env vars on Vercel Production. Without them, signup fails with storage errors and saved nominee video/image imports cannot persist.
+
+1. Copy `.env.example` to `.env.local` for local development.
+2. In **Vercel → Project → Settings → Environment Variables** (Production), set at minimum:
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+   - `HEADQUARTERS_SESSION_SECRET` (any long random string)
+   - `HEADQUARTERS_ADMIN_SIGNUP_PASSWORD` (team code for **Create account** — use `Visionary2526` or your own value)
+   - `NEXT_PUBLIC_SITE_URL=https://setvawards.com`
+   - `RESEND_API_KEY` (optional; welcome emails after signup)
+3. **Redeploy** after changing env vars (Vercel → Deployments → Redeploy).
+4. **Seed your admin account** once Supabase is connected (from your machine with `.env.local` filled in):
+
+```bash
+npx tsx scripts/migrate-hq-team.ts --send-email
+```
+
+Then sign in at `/headquarters/login` with that email and password. New teammates use **Create account** with the team access code; they do not need the code when signing in later.
+
+Nominee videos and graphics import from **Headquarters → Nominees** or **Categories** (Nomination Media Import). Files are saved under `public/nominations/` and metadata in Supabase.
 
 ## Resend + Microsoft 365 email
 
