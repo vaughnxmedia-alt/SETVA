@@ -61,6 +61,9 @@ const blankNominee = (categoryId = "") => ({
   confirmationStatus: "Pending",
 });
 
+const downloadLinkClass =
+  "inline-flex rounded-lg border border-gold/20 px-3 py-1.5 text-sm font-medium text-cream/80 transition hover:border-gold/40 hover:text-gold";
+
 export function NomineesView({
   initialNominees = [],
   initialCategories = [],
@@ -437,7 +440,7 @@ export function NomineesView({
         <div className="space-y-8">
           {nomineesByCategory.map(([categoryId, rows]) => (
             <section key={categoryId}>
-              <div className="mb-4 flex items-end justify-between gap-3">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold/70">
                     Category
@@ -448,9 +451,20 @@ export function NomineesView({
                       : categoryTitle(categoryId)}
                   </h2>
                 </div>
-                <p className="text-sm text-cream/45">
-                  {rows.length} nominee{rows.length === 1 ? "" : "s"}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {categoryVideoUrl(categoryId, categories) ? (
+                    <a
+                      href={categoryVideoUrl(categoryId, categories)}
+                      download={downloadFileName(categoryTitle(categoryId), "video")}
+                      className={downloadLinkClass}
+                    >
+                      Download video
+                    </a>
+                  ) : null}
+                  <p className="text-sm text-cream/45">
+                    {rows.length} nominee{rows.length === 1 ? "" : "s"}
+                  </p>
+                </div>
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
@@ -510,6 +524,16 @@ export function NomineesView({
                         >
                           {graphicUrl ? "Change graphic" : "Add graphic"}
                         </HQButton>
+                        {graphicUrl ? (
+                          <a
+                            href={graphicUrl}
+                            download={downloadFileName(nominee.name, "graphic")}
+                            className="mt-2 text-xs font-medium text-gold hover:text-gold/80"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            Download graphic
+                          </a>
+                        ) : null}
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -816,6 +840,15 @@ function articleFor(nomineeId: string, articles: NomineeMagazineArticle[]): Nomi
 
 function votingFor(nomineeId: string, setups: NomineeVotingSetup[]): NomineeVotingSetup | undefined {
   return setups.find((setup) => setup.nomineeIds.includes(nomineeId));
+}
+
+function categoryVideoUrl(categoryId: string, categories: NomineeCategory[]): string {
+  return categories.find((category) => category.id === categoryId)?.videoUrl ?? "";
+}
+
+function downloadFileName(name: string, fallback: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return slug || fallback;
 }
 
 function statusTone(status: SimpleStatus): "default" | "gold" | "green" | "amber" | "red" {
