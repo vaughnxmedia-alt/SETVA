@@ -7,9 +7,22 @@
  */
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import {
+  createFormSubmission,
+  FORM_TYPES,
+  updateFormSubmission,
+} from "../src/lib/form-submissions";
 import { sendHQWelcomeEmail } from "../src/lib/hq-team/email";
 import { hashPassword } from "../src/lib/hq-team/password";
-import { registerHQTeamMember } from "../src/lib/hq-team/store";
+import { getHQTeamMemberByEmail, nextSetvaId } from "../src/lib/hq-team/store";
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function memberExternalId(email: string): string {
+  return `hq_member_${normalizeEmail(email)}`;
+}
 
 function loadEnvFile() {
   const envPath = resolve(process.cwd(), ".env.local");
@@ -45,9 +58,39 @@ async function main() {
   const phone = process.env.HEADQUARTERS_DEV_PHONE?.trim() || "4093442349";
 
   const passwordHash = await hashPassword(password);
-  const member = await registerHQTeamMember({ name, email, passwordHash, phone });
+  const existing = await getHQTeamMemberByEmail(email);
+  const now = new Date().toISOString();
+  const member = {
+    setvaId: existing?.setvaId || (await nextSetvaId()),
+    name,
+    email,
+    phone: phone || existing?.phone || "",
+    passwordHash,
+    status: "active" as const,
+    sessionVersion: (existing?.sessionVersion ?? 0) + 1,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
 
-  console.log(`Registered ${member.setvaId} for ${member.email}`);
+  const record = existing
+    ? await updateFormSubmission(memberExternalId(email), FORM_TYPES.hqTeamMembers, {
+        status: "active",
+        contactEmail: email,
+        contactName: name,
+        payload: member,
+      })
+    : await createFormSubmission({
+        externalId: memberExternalId(email),
+        formType: FORM_TYPES.hqTeamMembers,
+        status: "active",
+        contactEmail: email,
+        contactName: name,
+        payload: member,
+      });
+
+  if (!record) throw new Error("Failed to save HQ team member.");
+
+  console.log(`${existing ? "Updated" : "Registered"} ${member.setvaId} for ${member.email}`);
 
   if (sendEmail) {
     await sendHQWelcomeEmail({
