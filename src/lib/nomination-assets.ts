@@ -1,8 +1,10 @@
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import path from "path";
+import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase/server";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov"]);
+const NOMINATION_ASSETS_BUCKET = "nomination-assets";
 
 function extensionFromName(filename: string, fallback: string): string {
   const ext = path.extname(filename).toLowerCase();
@@ -11,6 +13,82 @@ function extensionFromName(filename: string, fallback: string): string {
 
 function publicUrl(categoryId: string, filename: string): string {
   return `/nominations/${categoryId}/${filename}`;
+}
+
+function contentTypeForExtension(ext: string): string {
+  const types: Record<string, string> = {
+    ".gif": "image/gif",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".mov": "video/quicktime",
+    ".mp4": "video/mp4",
+    ".png": "image/png",
+    ".webm": "video/webm",
+    ".webp": "image/webp",
+  };
+  return types[ext] ?? "application/octet-stream";
+}
+
+async function ensureNominationAssetsBucket() {
+  const client = supabaseAdmin();
+  if (!client) return null;
+
+  const { data } = await client.storage.getBucket(NOMINATION_ASSETS_BUCKET);
+  if (!data) {
+    const { error } = await client.storage.createBucket(NOMINATION_ASSETS_BUCKET, {
+      public: true,
+      fileSizeLimit: 1024 * 1024 * 500,
+    });
+    if (error) throw error;
+  } else if (!data.public) {
+    const { error } = await client.storage.updateBucket(NOMINATION_ASSETS_BUCKET, {
+      public: true,
+      fileSizeLimit: 1024 * 1024 * 500,
+    });
+    if (error) throw error;
+  }
+
+  return client;
+}
+
+async function removeMatchingObjects(categoryId: string, matcher: (filename: string) => boolean) {
+  const client = supabaseAdmin();
+  if (!client) return;
+
+  const { data, error } = await client.storage.from(NOMINATION_ASSETS_BUCKET).list(categoryId);
+  if (error || !data) return;
+
+  const paths = data
+    .map((object) => object.name)
+    .filter(matcher)
+    .map((filename) => `${categoryId}/${filename}`);
+
+  if (paths.length) {
+    await client.storage.from(NOMINATION_ASSETS_BUCKET).remove(paths);
+  }
+}
+
+async function writeSupabasePublicFile(input: {
+  categoryId: string;
+  filename: string;
+  buffer: Buffer;
+  contentType: string;
+}): Promise<string> {
+  const client = await ensureNominationAssetsBucket();
+  if (!client) throw new Error("Nomination asset storage is not configured.");
+
+  const objectPath = `${input.categoryId}/${input.filename}`;
+  const { error } = await client.storage
+    .from(NOMINATION_ASSETS_BUCKET)
+    .upload(objectPath, input.buffer, {
+      contentType: input.contentType,
+      upsert: true,
+    });
+
+  if (error) throw error;
+
+  const { data } = client.storage.from(NOMINATION_ASSETS_BUCKET).getPublicUrl(objectPath);
+  return data.publicUrl;
 }
 
 async function removeMatchingFiles(categoryDir: string, matcher: (filename: string) => boolean) {
@@ -46,14 +124,27 @@ export async function writeNomineeGraphicFile(input: {
     throw new Error("Nominee graphic must be an image file.");
   }
 
-  const categoryDir = path.join(process.cwd(), "public", "nominations", categoryId);
-  await mkdir(categoryDir, { recursive: true });
-
   let filename = `${nomineeId}${ext}`;
   const existingPath = input.existingUrl?.trim() ?? "";
   if (existingPath.startsWith(`/nominations/${categoryId}/`)) {
     filename = path.basename(existingPath);
   }
+
+  if (isSupabaseConfigured()) {
+    await removeMatchingObjects(
+      categoryId,
+      (file) => file === filename || file.startsWith(`${nomineeId}.`),
+    );
+    return writeSupabasePublicFile({
+      categoryId,
+      filename,
+      buffer: input.buffer,
+      contentType: contentTypeForExtension(ext),
+    });
+  }
+
+  const categoryDir = path.join(process.cwd(), "public", "nominations", categoryId);
+  await mkdir(categoryDir, { recursive: true });
 
   await removeMatchingFiles(categoryDir, (file) => file === filename || file.startsWith(`${nomineeId}.`));
   await writeFile(path.join(categoryDir, filename), input.buffer);
@@ -75,14 +166,27 @@ export async function writeCategoryVideoFile(input: {
     throw new Error("Category video must be a video file.");
   }
 
-  const categoryDir = path.join(process.cwd(), "public", "nominations", categoryId);
-  await mkdir(categoryDir, { recursive: true });
-
   let filename = `video${ext}`;
   const existingPath = input.existingUrl?.trim() ?? "";
   if (existingPath.startsWith(`/nominations/${categoryId}/`)) {
     filename = path.basename(existingPath);
   }
+
+  if (isSupabaseConfigured()) {
+    await removeMatchingObjects(
+      categoryId,
+      (file) => file === filename || file.startsWith("video."),
+    );
+    return writeSupabasePublicFile({
+      categoryId,
+      filename,
+      buffer: input.buffer,
+      contentType: contentTypeForExtension(ext),
+    });
+  }
+
+  const categoryDir = path.join(process.cwd(), "public", "nominations", categoryId);
+  await mkdir(categoryDir, { recursive: true });
 
   await removeMatchingFiles(
     categoryDir,

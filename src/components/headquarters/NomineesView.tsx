@@ -86,6 +86,7 @@ export function NomineesView({
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
   const [graphicUrl, setGraphicUrl] = useState("");
+  const [graphicPreviewUrl, setGraphicPreviewUrl] = useState("");
   const [graphicFile, setGraphicFile] = useState<File | null>(null);
   const [articleForm, setArticleForm] = useState<Omit<MagazineArticleFormState, "nomineeId">>(() => {
     const { nomineeId: _, ...rest } = blankMagazineArticleForm();
@@ -218,6 +219,7 @@ export function NomineesView({
     const entry = pageEntryFor(nominee.id, pageEntries);
     setActiveNomineeId(nominee.id);
     setGraphicUrl(entry?.nomineeGraphicUrl ?? "");
+    setGraphicPreviewUrl(entry?.nomineeGraphicUrl ?? "");
     setGraphicFile(null);
     setModal("graphic");
     setError(null);
@@ -274,6 +276,9 @@ export function NomineesView({
     if (!activeNominee) return graphicUrl;
 
     if (!graphicFile) {
+      if (graphicUrl.startsWith("blob:")) {
+        throw new Error("Choose an image file before saving. Browser preview URLs cannot be saved.");
+      }
       return graphicUrl;
     }
 
@@ -323,6 +328,7 @@ export function NomineesView({
         },
       });
       setGraphicUrl(savedGraphicUrl);
+      setGraphicPreviewUrl(savedGraphicUrl);
       setGraphicFile(null);
       setMessage(
         publish
@@ -333,8 +339,8 @@ export function NomineesView({
       );
       setModal(null);
       await refresh();
-    } catch {
-      setError("Could not save graphic.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not save graphic.");
     } finally {
       setBusy(false);
     }
@@ -599,6 +605,8 @@ export function NomineesView({
                 <GraphicFields
                   graphicUrl={graphicUrl}
                   setGraphicUrl={setGraphicUrl}
+                  previewUrl={graphicPreviewUrl}
+                  setPreviewUrl={setGraphicPreviewUrl}
                   onFileSelected={setGraphicFile}
                 />
               ) : null}
@@ -713,10 +721,14 @@ function NomineeFields({
 function GraphicFields({
   graphicUrl,
   setGraphicUrl,
+  previewUrl,
+  setPreviewUrl,
   onFileSelected,
 }: {
   graphicUrl: string;
   setGraphicUrl: (value: string) => void;
+  previewUrl: string;
+  setPreviewUrl: (value: string) => void;
   onFileSelected: (file: File | null) => void;
 }) {
   return (
@@ -732,17 +744,16 @@ function GraphicFields({
           accept="image/*"
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
-            event.currentTarget.value = "";
             onFileSelected(file);
             if (file) {
-              setGraphicUrl(URL.createObjectURL(file));
+              setPreviewUrl(URL.createObjectURL(file));
             }
           }}
           className={`${hqInputClass} w-full`}
         />
       </label>
-      {graphicUrl ? (
-        <img src={graphicUrl} alt="Nominee graphic preview" className="max-h-64 rounded-xl border border-gold/20 object-contain" />
+      {previewUrl ? (
+        <img src={previewUrl} alt="Nominee graphic preview" className="max-h-64 rounded-xl border border-gold/20 object-contain" />
       ) : null}
     </>
   );
