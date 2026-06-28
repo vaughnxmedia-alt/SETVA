@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase/server";
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov"]);
 const NOMINATION_ASSETS_BUCKET = "nomination-assets";
-const NOMINATION_ASSETS_FILE_SIZE_LIMIT = "500MB";
+const NOMINATION_ASSETS_FILE_SIZE_LIMIT = "50MB";
 
 function extensionFromName(filename: string, fallback: string): string {
   const ext = path.extname(filename).toLowerCase();
