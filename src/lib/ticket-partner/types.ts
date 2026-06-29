@@ -1,6 +1,6 @@
 export type TicketPartnerSource = "nominee" | "ambassador";
 
-export type TicketLinkEventType = "click" | "purchase";
+export type TicketLinkEventType = "click" | "lead" | "purchase";
 
 export type TicketLinkEvent = {
   id: string;
@@ -12,6 +12,19 @@ export type TicketLinkEvent = {
   occurredAt: string;
   referrer: string;
   userAgent: string;
+  buyerName: string;
+  leadId: string;
+};
+
+export type TicketPartnerLead = {
+  id: string;
+  buyerName: string;
+  slug: string;
+  sourceType: TicketPartnerSource;
+  sourceId: string;
+  sourceName: string;
+  partnerCategory: string;
+  submittedAt: string;
 };
 
 export type TicketPartnerLinkStats = {

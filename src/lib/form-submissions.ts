@@ -16,6 +16,7 @@ export const FORM_TYPES = {
   checkout: "checkout",
   hqTeamMembers: "hq_team_members",
   ticketLinkEvents: "ticket_link_events",
+  ticketPartnerLeads: "ticket_partner_leads",
 } as const;
 
 export type FormType = (typeof FORM_TYPES)[keyof typeof FORM_TYPES];

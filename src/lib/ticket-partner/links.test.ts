@@ -20,4 +20,9 @@ describe("ticket partner links", () => {
     expect(url).toContain("utm_medium=ticket_partner");
     expect(url).toContain("setva_ref=justice-vaughn-abcd12");
   });
+
+  it("includes lead id when provided", () => {
+    const url = ticketmasterPartnerDestination("justice-vaughn-abcd12", "tpl_123");
+    expect(url).toContain("setva_lead=tpl_123");
+  });
 });

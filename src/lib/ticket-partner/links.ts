@@ -28,7 +28,7 @@ export function ticketPartnerPurchaseThanksUrl(slug: string): string {
 }
 
 /** Ticketmaster destination with partner attribution params. */
-export function ticketmasterPartnerDestination(slug: string): string {
+export function ticketmasterPartnerDestination(slug: string, leadId?: string): string {
   const base = getTicketmasterUrl();
   try {
     const url = new URL(base);
@@ -36,9 +36,13 @@ export function ticketmasterPartnerDestination(slug: string): string {
     url.searchParams.set("utm_medium", "ticket_partner");
     url.searchParams.set("utm_campaign", slug);
     url.searchParams.set("setva_ref", slug);
+    if (leadId?.trim()) {
+      url.searchParams.set("setva_lead", leadId.trim());
+    }
     return url.toString();
   } catch {
     const joiner = base.includes("?") ? "&" : "?";
-    return `${base}${joiner}utm_source=setva&utm_medium=ticket_partner&utm_campaign=${encodeURIComponent(slug)}&setva_ref=${encodeURIComponent(slug)}`;
+    const leadParam = leadId?.trim() ? `&setva_lead=${encodeURIComponent(leadId.trim())}` : "";
+    return `${base}${joiner}utm_source=setva&utm_medium=ticket_partner&utm_campaign=${encodeURIComponent(slug)}&setva_ref=${encodeURIComponent(slug)}${leadParam}`;
   }
 }

@@ -23,6 +23,8 @@ type TicketLinkEventPayload = {
   eventType: TicketLinkEventType;
   referrer: string;
   userAgent: string;
+  buyerName: string;
+  leadId: string;
 };
 
 function createEventId(): string {
@@ -41,6 +43,8 @@ function eventFromRecord(record: FormSubmissionRecord): TicketLinkEvent {
     occurredAt: record.submitted_at,
     referrer: payload.referrer,
     userAgent: payload.userAgent,
+    buyerName: payload.buyerName ?? "",
+    leadId: payload.leadId ?? "",
   };
 }
 
@@ -52,6 +56,8 @@ export async function recordTicketLinkEvent(input: {
   eventType: TicketLinkEventType;
   referrer?: string;
   userAgent?: string;
+  buyerName?: string;
+  leadId?: string;
 }): Promise<TicketLinkEvent | null> {
   if (formStorageMode() !== "supabase") return null;
 
@@ -64,6 +70,8 @@ export async function recordTicketLinkEvent(input: {
     eventType: input.eventType,
     referrer: input.referrer?.slice(0, 500) ?? "",
     userAgent: input.userAgent?.slice(0, 500) ?? "",
+    buyerName: input.buyerName?.trim().slice(0, 120) ?? "",
+    leadId: input.leadId?.trim() ?? "",
   };
 
   const record = await createFormSubmission({
