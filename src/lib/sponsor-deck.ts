@@ -1,21 +1,13 @@
 import { createDeckAccessToken } from "@/lib/deck-access";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export const sponsorDeck = {
   title: "SETVA 2026 Torch of Excellence",
 } as const;
 
-const CANONICAL_SITE = "https://setvawards.com";
-
 /** Public site origin for sponsor-deck emails and share links. */
 export function siteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  if (configured && !/vercel\.app/i.test(configured)) {
-    return configured;
-  }
-  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
-    return CANONICAL_SITE;
-  }
-  return configured || "http://localhost:3000";
+  return getPublicSiteUrl();
 }
 
 export function slugifyDeckRecipient(name: string): string {

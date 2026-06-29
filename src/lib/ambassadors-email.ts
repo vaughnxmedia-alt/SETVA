@@ -3,6 +3,7 @@ import { site } from "@/lib/site";
 import { teamNotifyEmails } from "@/lib/team-notify";
 import type { AmbassadorRegistration } from "@/lib/ambassadors";
 import { ambassadorSuccessMessage } from "@/lib/ambassadors";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 function resendClient(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();
@@ -91,7 +92,7 @@ export async function sendAmbassadorTeamNotification(
     return;
   }
 
-  const hqUrl = `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000"}/headquarters/ambassadors`;
+  const hqUrl = `${getPublicSiteUrl()}/headquarters/ambassadors`;
 
   const { error } = await resend.emails.send({
     from: fromAddress(),

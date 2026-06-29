@@ -17,9 +17,10 @@ import {
 import { FORM_TYPES } from "@/lib/form-submissions";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/square";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return getPublicSiteUrl();
 }
 
 export const POST = safeApiHandler(async (req: NextRequest) => {

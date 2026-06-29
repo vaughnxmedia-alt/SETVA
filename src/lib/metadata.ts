@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { site } from "@/lib/site";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export function getSiteUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://setvawards.com";
-  return url.replace(/\/$/, "");
+  return getPublicSiteUrl();
 }
 
 export const shareImage = {

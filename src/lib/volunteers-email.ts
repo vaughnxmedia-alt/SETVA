@@ -3,6 +3,7 @@ import { site } from "@/lib/site";
 import { teamNotifyEmails } from "@/lib/team-notify";
 import type { VolunteerRegistration } from "@/lib/volunteers";
 import { volunteerSuccessMessage } from "@/lib/volunteers";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 function resendClient(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();
@@ -111,7 +112,7 @@ export async function sendVolunteerTeamNotification(
     return;
   }
 
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000"}/admin/volunteers`;
+  const adminUrl = `${getPublicSiteUrl()}/admin/volunteers`;
 
   const { error } = await resend.emails.send({
     from: fromAddress(),

@@ -5,6 +5,7 @@ import {
   safeApiHandler,
 } from "@/lib/errors";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/square";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 type CheckoutBody = {
   type: "ticket" | "donation" | "sponsor" | "vendor";
@@ -14,7 +15,7 @@ type CheckoutBody = {
 };
 
 function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return getPublicSiteUrl();
 }
 
 export const POST = safeApiHandler(async (req: NextRequest) => {

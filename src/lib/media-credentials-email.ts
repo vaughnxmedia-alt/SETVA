@@ -6,6 +6,7 @@ import {
   mediaCredentialAccessZones,
   mediaCredentialSuccessMessage,
 } from "@/lib/media-credentials";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 function resendClient(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();
@@ -136,7 +137,7 @@ export async function sendMediaCredentialTeamNotification(
     return;
   }
 
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000"}/admin/media-credentials`;
+  const adminUrl = `${getPublicSiteUrl()}/admin/media-credentials`;
 
   const { error } = await resend.emails.send({
     from: fromAddress(),
