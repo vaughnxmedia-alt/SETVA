@@ -38,6 +38,9 @@ export type AmbassadorAdminFields = {
   ambassadorLink: string;
   ticketPartnerSlug: string;
   internalNotes: string;
+  reviewedByName: string;
+  reviewedByEmail: string;
+  reviewedAt: string;
 };
 
 export type AmbassadorRegistration = AmbassadorRegistrationData &
@@ -91,6 +94,9 @@ export function defaultAmbassadorAdminFields(): AmbassadorAdminFields {
     ambassadorLink: "",
     ticketPartnerSlug: "",
     internalNotes: "",
+    reviewedByName: "",
+    reviewedByEmail: "",
+    reviewedAt: "",
   };
 }
 

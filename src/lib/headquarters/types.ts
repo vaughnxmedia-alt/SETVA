@@ -72,6 +72,9 @@ export type AmbassadorRecord = {
   ambassadorLink: string;
   ticketPartnerSlug: string;
   status: string;
+  reviewedByName: string;
+  reviewedByEmail: string;
+  reviewedAt: string;
   clickCount: number;
   purchaseCount: number;
   lastClickAt: string | null;

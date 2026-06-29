@@ -11,6 +11,7 @@ import {
   hqTableWrapClass,
 } from "@/components/headquarters/ui";
 import { ambassadorStatusOptions } from "@/lib/ambassadors";
+import type { HQUser } from "@/lib/headquarters/auth";
 import type { AmbassadorRecord, NomineeTicketPartnerRecord } from "@/lib/headquarters/types";
 
 const PENDING_STATUSES = new Set(["Pending Review"]);
@@ -27,9 +28,14 @@ function copyLink(url: string) {
 type AmbassadorsViewProps = {
   nomineeLinks: NomineeTicketPartnerRecord[];
   ambassadors: AmbassadorRecord[];
+  currentUser?: HQUser | null;
 };
 
-export function AmbassadorsView({ nomineeLinks: initialNomineeLinks, ambassadors: initialAmbassadors }: AmbassadorsViewProps) {
+export function AmbassadorsView({
+  nomineeLinks: initialNomineeLinks,
+  ambassadors: initialAmbassadors,
+  currentUser,
+}: AmbassadorsViewProps) {
   const [nomineeLinks] = useState(initialNomineeLinks);
   const [ambassadors, setAmbassadors] = useState(initialAmbassadors);
   const [search, setSearch] = useState("");
@@ -94,9 +100,9 @@ export function AmbassadorsView({ nomineeLinks: initialNomineeLinks, ambassadors
   }
 
   return (
-    <HQShell title="Ambassadors">
+    <HQShell title="Ambassadors" user={currentUser}>
       <p className="mb-6 text-sm text-cream/50">
-        Nominee ticket partner links are created automatically. Ambassador applications from the public form appear below for review and approval.
+        Nominee ticket partner links are created automatically. Any logged-in Headquarters team member can approve ambassador applications below.
       </p>
 
       {message ? (
@@ -200,7 +206,7 @@ export function AmbassadorsView({ nomineeLinks: initialNomineeLinks, ambassadors
           <div>
             <h2 className="font-display text-lg text-gold">Ambassador applications</h2>
             <p className="mt-1 text-sm text-cream/50">
-              Public form submissions that need review before a tracked ticket link is issued.
+              Public form submissions. Approve to activate immediately and issue a tracked ticket link.
             </p>
           </div>
           {pendingCount > 0 ? <HQBadge tone="amber">{pendingCount} pending</HQBadge> : null}
@@ -264,6 +270,12 @@ export function AmbassadorsView({ nomineeLinks: initialNomineeLinks, ambassadors
                       <HQBadge tone={item.status === "Active" ? "green" : PENDING_STATUSES.has(item.status) ? "amber" : "default"}>
                         {item.status}
                       </HQBadge>
+                      {item.reviewedByName ? (
+                        <p className="mt-1 text-xs text-cream/40">
+                          by {item.reviewedByName}
+                          {item.reviewedAt ? ` · ${formatWhen(item.reviewedAt)}` : ""}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       {PENDING_STATUSES.has(item.status) ? (
@@ -271,7 +283,7 @@ export function AmbassadorsView({ nomineeLinks: initialNomineeLinks, ambassadors
                           <HQButton
                             className="!px-3 !py-1.5 text-xs"
                             disabled={busyId === item.id}
-                            onClick={() => void updateAmbassador(item.id, "Approved")}
+                            onClick={() => void updateAmbassador(item.id, "Active")}
                           >
                             Approve
                           </HQButton>

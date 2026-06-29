@@ -82,7 +82,7 @@ export function UsersView({
       <div className="space-y-6">
         <HQCardHeader
           title="Team users"
-          subtitle="View Headquarters accounts and manage access. Roles coming soon."
+          subtitle="View Headquarters accounts and manage access. All active team members have full admin access."
         />
 
         <div className={`${hqPanelClass} space-y-4 p-4`}>

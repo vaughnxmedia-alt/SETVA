@@ -22,6 +22,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 }, { workflow: "HQ Ambassadors" });
 
 export const PATCH = safeApiHandler(async (req: NextRequest) => {
+  // Any authenticated Headquarters user can review ambassador applications.
   const user = await getHQSessionUserFromRequest(req);
   if (!user) return publicErrorResponse(401);
 
@@ -41,10 +42,18 @@ export const PATCH = safeApiHandler(async (req: NextRequest) => {
       return NextResponse.json({ success: false, error: "Invalid status." }, { status: 400 });
     }
 
+    const reviewedAt = status ? new Date().toISOString() : undefined;
     const updated = await updateAmbassadorRegistration(id, {
       admin: {
         ...(status ? { status: status as (typeof ambassadorStatusOptions)[number] } : {}),
         ...(body.internalNotes !== undefined ? { internalNotes: body.internalNotes } : {}),
+        ...(status
+          ? {
+              reviewedByName: user.name,
+              reviewedByEmail: user.email,
+              reviewedAt: reviewedAt ?? new Date().toISOString(),
+            }
+          : {}),
       },
     });
 
