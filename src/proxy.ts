@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { CANONICAL_SITE_HOST, isVercelAppHost } from "@/lib/site-url";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
 
