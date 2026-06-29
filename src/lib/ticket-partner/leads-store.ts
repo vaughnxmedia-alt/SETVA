@@ -10,6 +10,8 @@ import type { TicketPartnerLead, TicketPartnerSource } from "@/lib/ticket-partne
 
 type TicketPartnerLeadPayload = {
   buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
   slug: string;
   sourceType: TicketPartnerSource;
   sourceId: string;
@@ -26,6 +28,8 @@ function leadFromRecord(record: FormSubmissionRecord): TicketPartnerLead {
   return {
     id: record.external_id ?? record.id,
     buyerName: payload.buyerName,
+    buyerEmail: payload.buyerEmail ?? "",
+    buyerPhone: payload.buyerPhone ?? "",
     slug: payload.slug,
     sourceType: payload.sourceType,
     sourceId: payload.sourceId,
@@ -37,6 +41,8 @@ function leadFromRecord(record: FormSubmissionRecord): TicketPartnerLead {
 
 export async function saveTicketPartnerLead(input: {
   buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
   slug: string;
   sourceType: TicketPartnerSource;
   sourceId: string;
@@ -46,11 +52,15 @@ export async function saveTicketPartnerLead(input: {
   if (formStorageMode() !== "supabase") return null;
 
   const buyerName = input.buyerName.trim().slice(0, 120);
-  if (!buyerName) return null;
+  const buyerEmail = input.buyerEmail.trim().toLowerCase().slice(0, 254);
+  const buyerPhone = input.buyerPhone.trim().slice(0, 40);
+  if (!buyerName || !buyerEmail || !buyerPhone) return null;
 
   const id = createLeadId();
   const payload: TicketPartnerLeadPayload = {
     buyerName,
+    buyerEmail,
+    buyerPhone,
     slug: input.slug,
     sourceType: input.sourceType,
     sourceId: input.sourceId,
@@ -63,6 +73,7 @@ export async function saveTicketPartnerLead(input: {
     formType: FORM_TYPES.ticketPartnerLeads,
     status: "captured",
     contactName: buyerName,
+    contactEmail: buyerEmail,
     payload,
   });
 

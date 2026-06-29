@@ -19,6 +19,8 @@ export type TicketLinkEvent = {
 export type TicketPartnerLead = {
   id: string;
   buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
   slug: string;
   sourceType: TicketPartnerSource;
   sourceId: string;

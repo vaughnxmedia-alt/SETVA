@@ -13,6 +13,8 @@ type TicketPartnerGateFormProps = {
 
 export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
   const [buyerName, setBuyerName] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
       const res = await fetch("/api/ticket-partner/continue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: partner.slug, buyerName }),
+        body: JSON.stringify({ slug: partner.slug, buyerName, buyerEmail, buyerPhone }),
       });
       const data = (await res.json()) as { error?: string; redirectUrl?: string };
       if (!res.ok || !data.redirectUrl) {
@@ -72,10 +74,6 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-5">
         <label className="block">
           <span className="text-sm font-medium text-cream/90">Your name</span>
-          <span className="mt-1 block text-xs text-cream/50">
-            We use this to connect your ticket interest to this {partnerLabel} when Ticketmaster
-            data becomes available. This does not guarantee commission.
-          </span>
           <input
             type="text"
             autoComplete="name"
@@ -87,6 +85,39 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
             maxLength={120}
           />
         </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-cream/90">Email</span>
+          <input
+            type="email"
+            autoComplete="email"
+            value={buyerEmail}
+            onChange={(e) => setBuyerEmail(e.target.value)}
+            className={fieldClass}
+            placeholder="you@example.com"
+            required
+            maxLength={254}
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-cream/90">Phone number</span>
+          <input
+            type="tel"
+            autoComplete="tel"
+            value={buyerPhone}
+            onChange={(e) => setBuyerPhone(e.target.value)}
+            className={fieldClass}
+            placeholder="(409) 555-1234"
+            required
+            maxLength={40}
+          />
+        </label>
+
+        <p className="text-xs text-cream/50">
+          We use this information to connect your ticket interest to this {partnerLabel} when
+          Ticketmaster data becomes available. This does not guarantee commission.
+        </p>
 
         {error ? (
           <p className="rounded-xl border border-ruby/30 bg-ruby/10 px-4 py-3 text-sm text-cream/85">

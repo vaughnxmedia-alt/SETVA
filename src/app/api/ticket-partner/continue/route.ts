@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { recordTicketLinkEvent } from "@/lib/ticket-link-events-store";
 import { ticketmasterPartnerDestination } from "@/lib/ticket-partner/links";
 import { saveTicketPartnerLead } from "@/lib/ticket-partner/leads-store";
+import { parseTicketPartnerLeadInput } from "@/lib/ticket-partner/parse-lead";
 import { resolveTicketPartnerBySlug } from "@/lib/ticket-partner/resolve";
 
 const REF_COOKIE = "setva_ticket_ref";
@@ -9,21 +10,24 @@ const LEAD_COOKIE = "setva_ticket_lead";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 14;
 
 export async function POST(req: NextRequest) {
-  let body: { slug?: string; buyerName?: string };
+  let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as { slug?: string; buyerName?: string };
+    body = (await req.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const slug = body.slug?.trim() ?? "";
-  const buyerName = body.buyerName?.trim() ?? "";
+  const slug = String(body.slug ?? "").trim();
   if (!slug) {
     return NextResponse.json({ error: "Missing partner link." }, { status: 400 });
   }
-  if (!buyerName) {
-    return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
+
+  const parsed = parseTicketPartnerLeadInput(body);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+
+  const { buyerName, buyerEmail, buyerPhone } = parsed.data;
 
   const partner = await resolveTicketPartnerBySlug(slug);
   if (!partner) {
@@ -32,6 +36,8 @@ export async function POST(req: NextRequest) {
 
   const lead = await saveTicketPartnerLead({
     buyerName,
+    buyerEmail,
+    buyerPhone,
     slug: partner.slug,
     sourceType: partner.sourceType,
     sourceId: partner.sourceId,

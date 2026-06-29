@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: TicketPartnerGatePageProps) {
   const partner = await resolveTicketPartnerBySlug(slug);
   return createPageMetadata({
     title: partner ? `Tickets via ${partner.sourceName}` : "Ticket partner link",
-    description: "Enter your name to continue to Ticketmaster through a SETVA ticket partner link.",
+    description: "Enter your name, email, and phone to continue to Ticketmaster through a SETVA ticket partner link.",
     path: `/go/tickets/${slug}`,
   });
 }
