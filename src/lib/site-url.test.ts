@@ -15,12 +15,12 @@ describe("site url", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://setva.vercel.app");
-    expect(getPublicSiteUrl()).toBe("https://setvawards.com");
+    expect(getPublicSiteUrl()).toBe("https://www.setvawards.com");
   });
 
   it("uses configured custom domain when set", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://setvawards.com");
-    expect(getPublicSiteUrl()).toBe("https://setvawards.com");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://www.setvawards.com");
+    expect(getPublicSiteUrl()).toBe("https://www.setvawards.com");
   });
 });

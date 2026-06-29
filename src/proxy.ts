@@ -13,13 +13,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  if (hostname === `www.${CANONICAL_SITE_HOST}`) {
-    const url = request.nextUrl.clone();
-    url.protocol = "https";
-    url.host = CANONICAL_SITE_HOST;
-    return NextResponse.redirect(url, 308);
-  }
-
   return NextResponse.next();
 }
 

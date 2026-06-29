@@ -1,5 +1,5 @@
-export const CANONICAL_SITE_URL = "https://setvawards.com";
-export const CANONICAL_SITE_HOST = "setvawards.com";
+export const CANONICAL_SITE_URL = "https://www.setvawards.com";
+export const CANONICAL_SITE_HOST = "www.setvawards.com";
 
 /** True when the hostname is a Vercel preview/default deployment URL. */
 export function isVercelAppHost(host: string): boolean {
