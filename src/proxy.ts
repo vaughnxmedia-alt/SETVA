@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { CANONICAL_SITE_HOST, isVercelAppHost } from "@/lib/site-url";
+
+const CANONICAL_SITE_HOST = "www.setvawards.com";
+
+function isVercelAppHost(host: string): boolean {
+  return /\.vercel\.app$/i.test(host.trim());
+}
 
 export function proxy(request: NextRequest) {
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
