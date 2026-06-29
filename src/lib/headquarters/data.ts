@@ -4,8 +4,14 @@ import { listMediaCredentialApplications } from "@/lib/media-credentials-store";
 import { listVolunteerRegistrations } from "@/lib/volunteers-store";
 import { listAmbassadorRegistrations } from "@/lib/ambassadors-store";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
-import { listNominees } from "@/lib/nominees-store";
+import { listNomineesWithTicketPartnerSlugs } from "@/lib/nominees-store";
 import { sponsorPackages } from "@/lib/site";
+import {
+  ambassadorTicketPartnerLink,
+  buildTicketPartnerAnalytics,
+  listTicketLinkEvents,
+  nomineeTicketPartnerLink,
+} from "@/lib/ticket-link-events-store";
 import type {
   ActivityCategory,
   ActivityItem,
@@ -17,6 +23,7 @@ import type {
   SponsorLead,
   VolunteerRecord,
   AmbassadorRecord,
+  NomineeTicketPartnerRecord,
 } from "@/lib/headquarters/types";
 
 const EMPTY_ANALYTICS: HQAnalytics = {
@@ -39,6 +46,13 @@ const EMPTY_ANALYTICS: HQAnalytics = {
     volunteerRegistrations: 0,
     ambassadorRegistrations: 0,
     contactMessages: 0,
+  },
+  ticketPartners: {
+    totalClicks: 0,
+    totalPurchases: 0,
+    nomineeLinks: 0,
+    ambassadorLinks: 0,
+    topLinks: [],
   },
 };
 
@@ -143,9 +157,60 @@ export async function getHQVolunteers(): Promise<VolunteerRecord[]> {
   }));
 }
 
-export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
-  const registrations = await listAmbassadorRegistrations();
-  return registrations.map((reg) => ({
+export async function getTicketPartnerAnalyticsData() {
+  const [nominees, ambassadors, categories, events] = await Promise.all([
+    listNomineesWithTicketPartnerSlugs(),
+    listAmbassadorRegistrations(),
+    listNomineeCategories(),
+    listTicketLinkEvents(),
+  ]);
+
+  const nomineeLinks = nominees.map((nominee) =>
+    nomineeTicketPartnerLink({
+      id: nominee.id,
+      name: nominee.name,
+      category: categoryTitleById(categories, nominee.categoryId),
+      email: nominee.contactEmail,
+      slug: nominee.ticketPartnerSlug,
+    }),
+  );
+
+  const ambassadorLinks = ambassadors
+    .filter((reg) => reg.ticketPartnerSlug.trim())
+    .map((reg) =>
+      ambassadorTicketPartnerLink({
+        id: reg.id,
+        name: reg.fullName,
+        email: reg.email,
+        slug: reg.ticketPartnerSlug,
+      }),
+    );
+
+  return buildTicketPartnerAnalytics([...nomineeLinks, ...ambassadorLinks], events);
+}
+
+function mapStatsToNomineeRecord(
+  stats: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number],
+): NomineeTicketPartnerRecord {
+  return {
+    id: stats.sourceId,
+    name: stats.name,
+    category: stats.category,
+    email: stats.email,
+    ticketPartnerSlug: stats.slug,
+    trackingUrl: stats.trackingUrl,
+    clickCount: stats.clickCount,
+    purchaseCount: stats.purchaseCount,
+    lastClickAt: stats.lastClickAt,
+    lastPurchaseAt: stats.lastPurchaseAt,
+  };
+}
+
+function mapStatsToAmbassadorRecord(
+  reg: Awaited<ReturnType<typeof listAmbassadorRegistrations>>[number],
+  stats?: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number],
+): AmbassadorRecord {
+  return {
     id: reg.id,
     name: reg.fullName,
     email: reg.email,
@@ -153,12 +218,41 @@ export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
     organization: reg.organization || "—",
     channels: reg.promotionChannels.join(", ") || "—",
     ambassadorLink: reg.ambassadorLink,
+    ticketPartnerSlug: reg.ticketPartnerSlug,
     status: reg.status,
-  }));
+    clickCount: stats?.clickCount ?? 0,
+    purchaseCount: stats?.purchaseCount ?? 0,
+    lastClickAt: stats?.lastClickAt ?? null,
+    lastPurchaseAt: stats?.lastPurchaseAt ?? null,
+  };
+}
+
+export async function getHQNomineeTicketPartners(): Promise<NomineeTicketPartnerRecord[]> {
+  const analytics = await getTicketPartnerAnalyticsData();
+  return analytics.links
+    .filter((link) => link.sourceType === "nominee")
+    .map(mapStatsToNomineeRecord);
+}
+
+export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
+  const [registrations, analytics] = await Promise.all([
+    listAmbassadorRegistrations(),
+    getTicketPartnerAnalyticsData(),
+  ]);
+  const statsById = new Map(
+    analytics.links
+      .filter((link) => link.sourceType === "ambassador")
+      .map((link) => [link.sourceId, link]),
+  );
+
+  return registrations.map((reg) => mapStatsToAmbassadorRecord(reg, statsById.get(reg.id)));
 }
 
 export async function getHQNominees(): Promise<NomineeRecord[]> {
-  const [nominees, categories] = await Promise.all([listNominees(), listNomineeCategories()]);
+  const [nominees, categories] = await Promise.all([
+    listNomineesWithTicketPartnerSlugs(),
+    listNomineeCategories(),
+  ]);
   return nominees.map((nominee) => ({
     id: nominee.id,
     name: nominee.name,
@@ -225,6 +319,8 @@ function activityCategoryForFormType(formType: string): ActivityCategory {
       return "Headquarters";
     case FORM_TYPES.checkout:
       return "Payments";
+    case FORM_TYPES.ticketLinkEvents:
+      return "Ambassadors";
     default:
       return "General";
   }
@@ -266,11 +362,12 @@ export async function getHQActivityFeed(): Promise<ActivityItem[]> {
 }
 
 export async function getHQAnalytics(): Promise<HQAnalytics> {
-  const [sponsors, media, volunteers, ambassadors] = await Promise.all([
+  const [sponsors, media, volunteers, ambassadors, ticketPartners] = await Promise.all([
     listFormSubmissions(FORM_TYPES.sponsorIntake),
     listFormSubmissions(FORM_TYPES.mediaCredentials),
     listFormSubmissions(FORM_TYPES.volunteers),
     listFormSubmissions(FORM_TYPES.ambassadors),
+    getTicketPartnerAnalyticsData(),
   ]);
 
   return {
@@ -281,6 +378,18 @@ export async function getHQAnalytics(): Promise<HQAnalytics> {
       volunteerRegistrations: volunteers.length,
       ambassadorRegistrations: ambassadors.length,
       contactMessages: 0,
+    },
+    ticketPartners: {
+      totalClicks: ticketPartners.totalClicks,
+      totalPurchases: ticketPartners.totalPurchases,
+      nomineeLinks: ticketPartners.links.filter((link) => link.sourceType === "nominee").length,
+      ambassadorLinks: ticketPartners.links.filter((link) => link.sourceType === "ambassador").length,
+      topLinks: ticketPartners.links.slice(0, 8).map((link) => ({
+        name: link.name,
+        sourceType: link.sourceType,
+        clicks: link.clickCount,
+        purchases: link.purchaseCount,
+      })),
     },
   };
 }

@@ -1,7 +1,10 @@
 import { AmbassadorsView } from "@/components/headquarters/AmbassadorsView";
-import { getHQAmbassadors } from "@/lib/headquarters/data";
+import { getHQAmbassadors, getHQNomineeTicketPartners } from "@/lib/headquarters/data";
 
 export default async function AmbassadorsPage() {
-  const ambassadors = await getHQAmbassadors();
-  return <AmbassadorsView ambassadors={ambassadors} />;
+  const [nomineeLinks, ambassadors] = await Promise.all([
+    getHQNomineeTicketPartners(),
+    getHQAmbassadors(),
+  ]);
+  return <AmbassadorsView nomineeLinks={nomineeLinks} ambassadors={ambassadors} />;
 }

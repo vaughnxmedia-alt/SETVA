@@ -36,6 +36,7 @@ export type AmbassadorRegistrationData = {
 export type AmbassadorAdminFields = {
   status: AmbassadorStatus;
   ambassadorLink: string;
+  ticketPartnerSlug: string;
   internalNotes: string;
 };
 
@@ -88,6 +89,7 @@ export function defaultAmbassadorAdminFields(): AmbassadorAdminFields {
   return {
     status: "Pending Review",
     ambassadorLink: "",
+    ticketPartnerSlug: "",
     internalNotes: "",
   };
 }

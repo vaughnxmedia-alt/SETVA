@@ -15,6 +15,7 @@ import {
   type NomineeData,
   type NomineeRecordFull,
 } from "@/lib/nominees";
+import { ensureNomineeTicketPartnerSlug } from "@/lib/ticket-partner/resolve";
 
 function createNomineeId(): string {
   return `nom_${Date.now()}_${randomBytes(4).toString("hex")}`;
@@ -56,6 +57,16 @@ function nomineeToStorage(record: NomineeRecordFull): {
   return { payload, adminData };
 }
 
+async function withTicketPartnerSlug(nominee: NomineeRecordFull): Promise<NomineeRecordFull> {
+  const ticketPartnerSlug = await ensureNomineeTicketPartnerSlug({
+    id: nominee.id,
+    name: nominee.name,
+    ticketPartnerSlug: nominee.ticketPartnerSlug,
+  });
+  if (ticketPartnerSlug === nominee.ticketPartnerSlug) return nominee;
+  return { ...nominee, ticketPartnerSlug };
+}
+
 export async function listNominees(): Promise<NomineeRecordFull[]> {
   if (formStorageMode() !== "supabase") return [];
   const records = await listFormSubmissions(FORM_TYPES.nominees);
@@ -86,6 +97,7 @@ export async function upsertNominee(
       ? {
           addedByName: existing.addedByName,
           addedByEmail: existing.addedByEmail,
+          ticketPartnerSlug: existing.ticketPartnerSlug,
         }
       : {}),
     id,
@@ -93,12 +105,13 @@ export async function upsertNominee(
     updatedAt: now,
   };
 
-  const { payload, adminData } = nomineeToStorage(nominee);
+  const withSlug = await withTicketPartnerSlug(nominee);
+  const { payload, adminData } = nomineeToStorage(withSlug);
   const record = existing
     ? await updateFormSubmission(id, FORM_TYPES.nominees, {
         status: "directory_record",
-        contactEmail: nominee.contactEmail || undefined,
-        contactName: nominee.name,
+        contactEmail: withSlug.contactEmail || undefined,
+        contactName: withSlug.name,
         payload,
         adminData,
       })
@@ -106,8 +119,8 @@ export async function upsertNominee(
         externalId: id,
         formType: FORM_TYPES.nominees,
         status: "directory_record",
-        contactEmail: nominee.contactEmail || undefined,
-        contactName: nominee.name,
+        contactEmail: withSlug.contactEmail || undefined,
+        contactName: withSlug.name,
         payload,
         adminData,
       });
@@ -137,13 +150,14 @@ export async function saveNominee(
     updatedAt: now,
   };
 
-  const { payload, adminData } = nomineeToStorage(nominee);
+  const withSlug = await withTicketPartnerSlug(nominee);
+  const { payload, adminData } = nomineeToStorage(withSlug);
   const record = await createFormSubmission({
     externalId: id,
     formType: FORM_TYPES.nominees,
     status: "directory_record",
-    contactEmail: nominee.contactEmail || undefined,
-    contactName: nominee.name,
+    contactEmail: withSlug.contactEmail || undefined,
+    contactName: withSlug.name,
     payload,
     adminData,
   });
@@ -194,16 +208,45 @@ export async function updateNominee(
     updatedAt: new Date().toISOString(),
   };
 
-  const { payload, adminData } = nomineeToStorage(next);
+  const withSlug = await withTicketPartnerSlug(next);
+  const { payload, adminData } = nomineeToStorage(withSlug);
   const record = await updateFormSubmission(id, FORM_TYPES.nominees, {
     status: "directory_record",
-    contactEmail: next.contactEmail || undefined,
-    contactName: next.name,
+    contactEmail: withSlug.contactEmail || undefined,
+    contactName: withSlug.name,
     payload,
     adminData,
   });
 
   return record ? nomineeFromRecord(record) : null;
+}
+
+export async function ensureNomineeStoredTicketPartnerSlug(
+  id: string,
+): Promise<NomineeRecordFull | null> {
+  const nominee = await getNominee(id);
+  if (!nominee) return null;
+  if (nominee.ticketPartnerSlug.trim()) return nominee;
+  const ticketPartnerSlug = await ensureNomineeTicketPartnerSlug({
+    id: nominee.id,
+    name: nominee.name,
+    ticketPartnerSlug: "",
+  });
+  return updateNominee(id, { admin: { ticketPartnerSlug } });
+}
+
+export async function listNomineesWithTicketPartnerSlugs(): Promise<NomineeRecordFull[]> {
+  const nominees = await listNominees();
+  const results: NomineeRecordFull[] = [];
+  for (const nominee of nominees) {
+    if (nominee.ticketPartnerSlug.trim()) {
+      results.push(nominee);
+      continue;
+    }
+    const updated = await ensureNomineeStoredTicketPartnerSlug(nominee.id);
+    results.push(updated ?? nominee);
+  }
+  return results;
 }
 
 export async function deleteNominee(id: string): Promise<boolean> {

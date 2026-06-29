@@ -15,6 +15,8 @@ import {
   type AmbassadorRegistration,
   type AmbassadorRegistrationData,
 } from "@/lib/ambassadors";
+import { ticketPartnerTrackingUrl } from "@/lib/ticket-partner/links";
+import { ensureAmbassadorTicketPartnerSlug } from "@/lib/ticket-partner/resolve";
 
 function createRegistrationId(): string {
   return `amb_${Date.now()}_${randomBytes(4).toString("hex")}`;
@@ -57,6 +59,33 @@ function registrationToPayload(registration: AmbassadorRegistration): {
   }
 
   return { payload, adminData };
+}
+
+async function withTicketPartnerFields(
+  registration: AmbassadorRegistration,
+): Promise<AmbassadorRegistration> {
+  const activeStatuses = new Set(["Approved", "Active"]);
+  if (!activeStatuses.has(registration.status)) return registration;
+
+  const ticketPartnerSlug = await ensureAmbassadorTicketPartnerSlug({
+    id: registration.id,
+    fullName: registration.fullName,
+    ticketPartnerSlug: registration.ticketPartnerSlug,
+  });
+  const ambassadorLink = ticketPartnerTrackingUrl(ticketPartnerSlug);
+
+  if (
+    ticketPartnerSlug === registration.ticketPartnerSlug &&
+    ambassadorLink === registration.ambassadorLink
+  ) {
+    return registration;
+  }
+
+  return {
+    ...registration,
+    ticketPartnerSlug,
+    ambassadorLink,
+  };
 }
 
 export async function saveAmbassadorRegistration(
@@ -119,7 +148,7 @@ export async function updateAmbassadorRegistration(
   const current = await getAmbassadorRegistration(id);
   if (!current) return null;
 
-  const next: AmbassadorRegistration = {
+  const next: AmbassadorRegistration = await withTicketPartnerFields({
     ...current,
     ...updates.admin,
     updatedAt: new Date().toISOString(),
@@ -127,7 +156,7 @@ export async function updateAmbassadorRegistration(
       updates.lastStatusEmailAt === undefined
         ? current.lastStatusEmailAt
         : updates.lastStatusEmailAt,
-  };
+  });
 
   if (formStorageMode() !== "supabase") return null;
 

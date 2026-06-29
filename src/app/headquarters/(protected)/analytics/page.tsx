@@ -5,13 +5,43 @@ import { getHQActivityFeed, getHQAnalytics } from "@/lib/headquarters/data";
 
 export default async function AnalyticsPage() {
   const [analytics, activity] = await Promise.all([getHQAnalytics(), getHQActivityFeed()]);
-  const { website, communications, applications } = analytics;
+  const { website, communications, applications, ticketPartners } = analytics;
 
   return (
     <HQShell title="Analytics" showActivityRail={false}>
       <p className="mb-6 text-sm text-cream/50">
-        Performance across website, communications, applications, and team activity.
+        Performance across ticket partner links, website, communications, applications, and team activity.
       </p>
+
+      <h2 className="mb-3 font-display text-base text-gold">Ticket Partner Performance</h2>
+      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <HQStatCard label="Total link clicks" value={ticketPartners.totalClicks} />
+        <HQStatCard label="Recorded purchases" value={ticketPartners.totalPurchases} />
+        <HQStatCard label="Nominee links" value={ticketPartners.nomineeLinks} />
+        <HQStatCard label="Ambassador links" value={ticketPartners.ambassadorLinks} />
+      </div>
+      <HQCard className="mb-8 p-4">
+        <p className="text-[11px] uppercase tracking-wider text-cream/40">Top performing links</p>
+        {ticketPartners.topLinks.length === 0 ? (
+          <p className="mt-3 text-sm text-cream/40">
+            Clicks are logged when fans use nominee or ambassador tracking links. Purchases are recorded when buyers return to the purchase confirmation page after Ticketmaster checkout.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {ticketPartners.topLinks.map((link) => (
+              <li key={`${link.sourceType}-${link.name}`} className="flex justify-between gap-4 text-sm">
+                <span className="text-cream/70">
+                  {link.name}
+                  <span className="ml-2 text-xs uppercase text-cream/40">{link.sourceType}</span>
+                </span>
+                <span className="shrink-0 text-gold">
+                  {link.clicks} clicks · {link.purchases} purchases
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </HQCard>
 
       <h2 className="mb-3 font-display text-base text-gold">Website Performance</h2>
       <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -79,6 +79,7 @@ export type NomineeData = {
 export type NomineeAdminFields = {
   addedByName: string;
   addedByEmail: string;
+  ticketPartnerSlug: string;
 };
 
 export type NomineeRecordFull = NomineeData &
@@ -170,6 +171,7 @@ export function defaultNomineeAdminFields(
   return {
     addedByName: addedBy?.name ?? "",
     addedByEmail: addedBy?.email ?? "",
+    ticketPartnerSlug: "",
   };
 }
 

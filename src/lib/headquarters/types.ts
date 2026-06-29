@@ -70,7 +70,25 @@ export type AmbassadorRecord = {
   organization: string;
   channels: string;
   ambassadorLink: string;
+  ticketPartnerSlug: string;
   status: string;
+  clickCount: number;
+  purchaseCount: number;
+  lastClickAt: string | null;
+  lastPurchaseAt: string | null;
+};
+
+export type NomineeTicketPartnerRecord = {
+  id: string;
+  name: string;
+  category: string;
+  email: string;
+  ticketPartnerSlug: string;
+  trackingUrl: string;
+  clickCount: number;
+  purchaseCount: number;
+  lastClickAt: string | null;
+  lastPurchaseAt: string | null;
 };
 
 export type NomineeRecord = {
@@ -124,5 +142,17 @@ export type HQAnalytics = {
     volunteerRegistrations: number;
     ambassadorRegistrations: number;
     contactMessages: number;
+  };
+  ticketPartners: {
+    totalClicks: number;
+    totalPurchases: number;
+    nomineeLinks: number;
+    ambassadorLinks: number;
+    topLinks: {
+      name: string;
+      sourceType: string;
+      clicks: number;
+      purchases: number;
+    }[];
   };
 };
