@@ -126,20 +126,51 @@ export function NomineesView({
     });
   }, [nominees, search, categoryFilter]);
 
+  const sortByNomineeCompletion = useCallback(
+    (rows: NomineeRow[]): NomineeRow[] =>
+      rows
+        .map((nominee, index) => ({ nominee, index }))
+        .sort((a, b) => {
+          const rankGap = nomineeCompletionRank(a.nominee, pageEntries) -
+            nomineeCompletionRank(b.nominee, pageEntries);
+          if (rankGap !== 0) return rankGap;
+          return a.index - b.index;
+        })
+        .map((entry) => entry.nominee),
+    [pageEntries],
+  );
+
   const nomineesByCategory = useMemo(() => {
-    const sections: [string, NomineeRow[]][] = [];
     const assignedIds = new Set(activeCategories.map((category) => category.id));
 
-    for (const category of activeCategories) {
-      const rows = filteredNominees.filter((nominee) => nominee.categoryId === category.id);
-      if (rows.length) sections.push([category.id, rows]);
-    }
+    // Build category sections in their configured order, then float the most
+    // complete categories (live/published nominees with graphics) to the top and
+    // push unfinished categories (no graphics yet) to the bottom. A stable sort
+    // preserves the configured order within each completion bucket.
+    const categorySections = activeCategories
+      .map((category) => {
+        const rows = filteredNominees.filter((nominee) => nominee.categoryId === category.id);
+        return { categoryId: category.id, rows: sortByNomineeCompletion(rows) };
+      })
+      .filter((section) => section.rows.length > 0)
+      .map((section, index) => ({ ...section, index }))
+      .sort((a, b) => {
+        const rankGap =
+          categoryCompletionRank(a.rows, pageEntries) - categoryCompletionRank(b.rows, pageEntries);
+        if (rankGap !== 0) return rankGap;
+        return a.index - b.index;
+      });
+
+    const sections: [string, NomineeRow[]][] = categorySections.map((section) => [
+      section.categoryId,
+      section.rows,
+    ]);
 
     const unassigned = filteredNominees.filter((nominee) => !assignedIds.has(nominee.categoryId));
-    if (unassigned.length) sections.push(["unassigned", unassigned]);
+    if (unassigned.length) sections.push(["unassigned", sortByNomineeCompletion(unassigned)]);
 
     return sections;
-  }, [activeCategories, filteredNominees]);
+  }, [activeCategories, filteredNominees, sortByNomineeCompletion, pageEntries]);
 
   const activeNominee = nominees.find((nominee) => nominee.id === activeNomineeId) ?? null;
 
@@ -506,17 +537,17 @@ export function NomineesView({
 
                       <div className="mt-3 flex flex-col items-center">
                         {graphicUrl ? (
-                          <div className="relative h-28 w-full max-w-[7.5rem] overflow-hidden rounded-lg border border-gold/20 bg-black/40">
+                          <div className="relative aspect-square w-full max-w-[16rem] overflow-hidden rounded-lg border border-gold/20 bg-black/40">
                             <Image
                               src={graphicUrl}
                               alt={`${nominee.name} graphic`}
                               fill
-                              className="object-contain p-1"
-                              sizes="120px"
+                              className="object-contain"
+                              sizes="256px"
                             />
                           </div>
                         ) : (
-                          <div className="flex h-28 w-full max-w-[7.5rem] items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-2 text-center text-[11px] text-cream/40">
+                          <div className="flex aspect-square w-full max-w-[16rem] items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-2 text-center text-xs text-cream/40">
                             No graphic yet
                           </div>
                         )}
@@ -836,6 +867,32 @@ function hubStatus(
 
 function pageEntryFor(nomineeId: string, entries: NomineePageEntry[]): NomineePageEntry | undefined {
   return entries.find((entry) => entry.nomineeId === nomineeId);
+}
+
+/**
+ * Lower rank sorts higher. Live nominees with a published graphic come first,
+ * then nominees that have a graphic (ready but not published), then the rest.
+ */
+function nomineeCompletionRank(nominee: NomineeRow, entries: NomineePageEntry[]): number {
+  const pageEntry = pageEntryFor(nominee.id, entries);
+  const hasGraphic = Boolean(pageEntry?.nomineeGraphicUrl || pageEntry?.nomineeGraphicMediaId);
+  const isLive = Boolean(pageEntry?.publishToNomineePage && pageEntry.status === "Published");
+
+  if (isLive && hasGraphic) return 0;
+  if (hasGraphic) return 1;
+  return 2;
+}
+
+/**
+ * Ranks a whole category by its most complete nominee, so categories with live
+ * published nominees sort above categories that only have graphics, which in turn
+ * sort above categories with nothing uploaded yet.
+ */
+function categoryCompletionRank(rows: NomineeRow[], entries: NomineePageEntry[]): number {
+  return rows.reduce(
+    (best, nominee) => Math.min(best, nomineeCompletionRank(nominee, entries)),
+    Number.POSITIVE_INFINITY,
+  );
 }
 
 function articleFor(nomineeId: string, articles: NomineeMagazineArticle[]): NomineeMagazineArticle | undefined {

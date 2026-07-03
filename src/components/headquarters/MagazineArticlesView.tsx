@@ -19,12 +19,12 @@ import {
 } from "@/components/headquarters/ui";
 import type { NomineeMagazineArticle } from "@/lib/nominees";
 
-type NomineeOption = { id: string; name: string; categoryId: string };
+type HonoreeOption = { id: string; name: string; awardTitle?: string };
 type EditorMode = "none" | "new" | "edit";
 
 export function MagazineArticlesView() {
   const [articles, setArticles] = useState<NomineeMagazineArticle[]>([]);
-  const [nominees, setNominees] = useState<NomineeOption[]>([]);
+  const [honorees, setHonorees] = useState<HonoreeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -36,29 +36,29 @@ export function MagazineArticlesView() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const nomineeNameById = useMemo(
-    () => new Map(nominees.map((nominee) => [nominee.id, nominee.name])),
-    [nominees],
+  const honoreeNameById = useMemo(
+    () => new Map(honorees.map((honoree) => [honoree.id, honoree.name])),
+    [honorees],
   );
 
   const filteredArticles = useMemo(() => {
     const q = search.toLowerCase();
     if (!q) return articles;
     return articles.filter((article) => {
-      const nomineeName = nomineeNameById.get(article.nomineeId) ?? "";
-      return [article.articleTitle, article.slug, nomineeName].join(" ").toLowerCase().includes(q);
+      const honoreeName = honoreeNameById.get(article.nomineeId) ?? "";
+      return [article.articleTitle, article.slug, honoreeName].join(" ").toLowerCase().includes(q);
     });
-  }, [articles, search, nomineeNameById]);
+  }, [articles, search, honoreeNameById]);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/headquarters/magazine");
     if (!res.ok) throw new Error("Could not load magazine articles.");
     const data = (await res.json()) as {
       articles: NomineeMagazineArticle[];
-      nominees: NomineeOption[];
+      honorees: HonoreeOption[];
     };
     setArticles(data.articles ?? []);
-    setNominees(data.nominees ?? []);
+    setHonorees(data.honorees ?? []);
   }, []);
 
   useEffect(() => {
@@ -235,10 +235,10 @@ export function MagazineArticlesView() {
                         </div>
                         {article.nomineeId ? (
                           <p className="mt-1 text-xs text-cream/45">
-                            {nomineeNameById.get(article.nomineeId) ?? "Linked nominee"}
+                            {honoreeNameById.get(article.nomineeId) ?? "Linked honoree"}
                           </p>
                         ) : (
-                          <p className="mt-1 text-xs text-cream/35">Standalone</p>
+                          <p className="mt-1 text-xs text-cream/35">No honoree linked</p>
                         )}
                         <p className="mt-1 text-[11px] text-cream/30">
                           Updated {formatDate(article.updatedAt)}
@@ -285,8 +285,8 @@ export function MagazineArticlesView() {
                 <MagazineArticleFields
                   form={form}
                   setForm={setForm}
-                  nominees={nominees}
-                  showNomineeLink
+                  honorees={honorees}
+                  showHonoreeLink
                 />
                 <div className="flex flex-wrap gap-2 border-t border-gold/10 pt-4">
                   <HQButton disabled={busy} onClick={() => saveArticle(false)}>

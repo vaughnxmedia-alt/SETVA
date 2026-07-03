@@ -37,20 +37,20 @@ export function blankMagazineArticleForm(): MagazineArticleFormState {
   };
 }
 
-type NomineeOption = { id: string; name: string };
+type HonoreeOption = { id: string; name: string; awardTitle?: string };
 
 export function MagazineArticleFields({
   form,
   setForm,
-  nominees = [],
-  showNomineeLink = false,
+  honorees = [],
+  showHonoreeLink = false,
 }: {
   form: MagazineArticleFormState;
   setForm: (
     fn: MagazineArticleFormState | ((form: MagazineArticleFormState) => MagazineArticleFormState),
   ) => void;
-  nominees?: NomineeOption[];
-  showNomineeLink?: boolean;
+  honorees?: HonoreeOption[];
+  showHonoreeLink?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -60,18 +60,18 @@ export function MagazineArticleFields({
         onChange={(value) => setForm((f) => ({ ...f, articleTitle: value }))}
         required
       />
-      {showNomineeLink ? (
+      {showHonoreeLink ? (
         <label className="block">
-          <span className="mb-1 block text-xs text-cream/50">Linked nominee (optional)</span>
+          <span className="mb-1 block text-xs text-cream/50">Honoree</span>
           <select
             value={form.nomineeId}
             onChange={(event) => setForm((f) => ({ ...f, nomineeId: event.target.value }))}
             className={`${hqInputClass} w-full`}
           >
-            <option value="">Standalone article</option>
-            {nominees.map((nominee) => (
-              <option key={nominee.id} value={nominee.id}>
-                {nominee.name}
+            <option value="">Select an honoree…</option>
+            {honorees.map((honoree) => (
+              <option key={honoree.id} value={honoree.id}>
+                {honoree.awardTitle ? `${honoree.name} — ${honoree.awardTitle}` : honoree.name}
               </option>
             ))}
           </select>

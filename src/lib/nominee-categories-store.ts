@@ -43,6 +43,26 @@ export async function listNomineeCategories(): Promise<NomineeCategory[]> {
   return stored.length ? stored : seedCategories();
 }
 
+function categoryIsComplete(category: NomineeCategory): boolean {
+  return Boolean(category.videoUrl?.trim() && category.videoPosterUrl?.trim());
+}
+
+/**
+ * Orders categories so the completed ones (video + thumbnail) sit at the top,
+ * then renumbers sortOrder. The sort is stable and keyed on the existing
+ * sortOrder, so already-completed categories keep their relative order and a
+ * newly completed category lands at the bottom of the completed group.
+ */
+function orderCategoriesByCompletion(categories: NomineeCategory[]): NomineeCategory[] {
+  return [...categories]
+    .sort((a, b) => {
+      const completeGap = Number(categoryIsComplete(b)) - Number(categoryIsComplete(a));
+      if (completeGap !== 0) return completeGap;
+      return a.sortOrder - b.sortOrder;
+    })
+    .map((category, index) => ({ ...category, sortOrder: index }));
+}
+
 export async function saveNomineeCategories(
   categories: NomineeCategory[],
 ): Promise<NomineeCategory[]> {
@@ -50,7 +70,7 @@ export async function saveNomineeCategories(
     throw new Error("Nominee category storage is not configured");
   }
 
-  const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sorted = orderCategoriesByCompletion(categories);
   const record = await upsertFormSubmissionByExternalId({
     externalId: CATEGORIES_CONFIG_ID,
     formType: FORM_TYPES.nomineeCategories,

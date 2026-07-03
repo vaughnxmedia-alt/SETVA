@@ -50,7 +50,7 @@ export function NominationCategoryShowcase({
                   src={nominee.imageSrc}
                   alt={`${nominee.nomineeName} — ${category.title}`}
                   fill
-                  className="object-contain p-3 sm:p-4"
+                  className="object-cover"
                   sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
                   priority={index === 0 && nomineeIndex === 0}
                 />

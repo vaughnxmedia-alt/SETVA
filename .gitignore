@@ -41,6 +41,10 @@ yarn-error.log*
 # media credential applications (local JSON storage)
 /data/
 
+# local Facebook content downloads (dev-only, do not commit)
+/facebook-downloads/
+/scripts/facebook-video-list.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

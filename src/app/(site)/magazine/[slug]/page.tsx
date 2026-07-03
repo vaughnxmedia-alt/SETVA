@@ -5,6 +5,7 @@ import { MagazineArticleBody } from "@/components/magazine/MagazineArticleBody";
 import { SetvaGradientPageShell } from "@/components/SetvaGradientPageShell";
 import {
   getMagazineArticle,
+  MAGAZINE_PUBLIC_ENABLED,
   visionaryMagazine,
 } from "@/lib/magazine";
 
@@ -32,6 +33,8 @@ export async function generateMetadata({
 }
 
 export default async function MagazineArticlePage({ params }: MagazineArticlePageProps) {
+  if (!MAGAZINE_PUBLIC_ENABLED) notFound();
+
   const { slug } = await params;
   const article = await getMagazineArticle(slug);
 

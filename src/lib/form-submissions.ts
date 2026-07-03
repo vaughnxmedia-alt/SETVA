@@ -10,6 +10,7 @@ export const FORM_TYPES = {
   nomineeMagazineArticles: "nominee_magazine_articles",
   nomineeVotingSetups: "nominee_voting_setups",
   nomineeMediaAssets: "nominee_media_assets",
+  honorees: "honorees",
   sponsorDeck: "sponsor_deck",
   sponsorIntake: "sponsor_intake",
   sponsorCheckoutConfirmed: "sponsor_checkout_confirmed",

@@ -153,6 +153,39 @@ export async function writeNomineeGraphicFile(input: {
   return publicUrl(categoryId, filename);
 }
 
+export async function writeHonoreeGraphicFile(input: {
+  slug: string;
+  buffer: Buffer;
+  fileName: string;
+}): Promise<string> {
+  const slug = input.slug.trim();
+  if (!slug) throw new Error("Honoree slug is required.");
+
+  const ext = extensionFromName(input.fileName, ".png");
+  if (!IMAGE_EXTENSIONS.has(ext)) {
+    throw new Error("Honoree graphic must be an image file.");
+  }
+
+  const filename = `${slug}${ext}`;
+
+  if (isSupabaseConfigured()) {
+    await removeMatchingObjects("honorees", (file) => file.startsWith(`${slug}.`));
+    return writeSupabasePublicFile({
+      categoryId: "honorees",
+      filename,
+      buffer: input.buffer,
+      contentType: contentTypeForExtension(ext),
+    });
+  }
+
+  const dir = path.join(process.cwd(), "public", "nominations", "honorees");
+  await mkdir(dir, { recursive: true });
+  await removeMatchingFiles(dir, (file) => file.startsWith(`${slug}.`));
+  await writeFile(path.join(dir, filename), input.buffer);
+
+  return publicUrl("honorees", filename);
+}
+
 export async function writeCategoryVideoFile(input: {
   categoryId: string;
   buffer: Buffer;
