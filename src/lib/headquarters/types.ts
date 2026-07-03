@@ -62,6 +62,14 @@ export type VolunteerRecord = {
   status: string;
 };
 
+export type TicketFormLead = {
+  id: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  submittedAt: string;
+};
+
 export type AmbassadorRecord = {
   id: string;
   name: string;
@@ -79,6 +87,7 @@ export type AmbassadorRecord = {
   purchaseCount: number;
   lastClickAt: string | null;
   lastPurchaseAt: string | null;
+  leads: TicketFormLead[];
 };
 
 export type NomineeTicketPartnerRecord = {
@@ -92,6 +101,53 @@ export type NomineeTicketPartnerRecord = {
   purchaseCount: number;
   lastClickAt: string | null;
   lastPurchaseAt: string | null;
+  leads: TicketFormLead[];
+};
+
+export type TicketSalesMatchedBuyer = {
+  purchaseId: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  quantity: number;
+  amount: number;
+  orderRef: string;
+  matchType: "email" | "name";
+  ambiguous: boolean;
+};
+
+export type TicketSalesSourceRow = {
+  sourceId: string;
+  sourceType: "nominee" | "ambassador";
+  name: string;
+  category: string;
+  email: string;
+  trackingUrl: string;
+  clickCount: number;
+  leads: TicketFormLead[];
+  matchedBuyers: TicketSalesMatchedBuyer[];
+  ticketsSold: number;
+  salesAmount: number;
+};
+
+export type TicketSalesReconciliation = {
+  rows: TicketSalesSourceRow[];
+  unmatchedBuyers: {
+    purchaseId: string;
+    buyerName: string;
+    buyerEmail: string;
+    buyerPhone: string;
+    quantity: number;
+    amount: number;
+    orderRef: string;
+  }[];
+  totals: {
+    totalLeads: number;
+    importedBuyers: number;
+    matchedBuyers: number;
+    ticketsSold: number;
+    salesAmount: number;
+  };
 };
 
 export type NomineeRecord = {

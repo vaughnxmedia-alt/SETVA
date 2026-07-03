@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
   HQBadge,
@@ -43,6 +43,11 @@ export function AmbassadorsView({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expandedNomineeId, setExpandedNomineeId] = useState<string | null>(null);
+
+  function toggleNominee(id: string) {
+    setExpandedNomineeId((prev) => (prev === id ? null : id));
+  }
 
   const filteredNominees = useMemo(() => {
     const q = search.toLowerCase();
@@ -139,7 +144,12 @@ export function AmbassadorsView({
           <div>
             <h2 className="font-display text-lg text-gold">Nominee ticket links</h2>
             <p className="mt-1 text-sm text-cream/50">
-              Every nominee gets a tracked Ticketmaster partner link. Clicks and purchases appear in Analytics.
+              Every nominee gets a tracked Ticketmaster partner link. Click a nominee to see the ticket
+              forms filled out on their behalf. Match buyers and track commission in{" "}
+              <a href="/headquarters/ticket-sales" className="text-gold hover:underline">
+                Ticket Sales
+              </a>
+              .
             </p>
           </div>
           <HQBadge tone="gold">{filteredNominees.length} links</HQBadge>
@@ -152,49 +162,102 @@ export function AmbassadorsView({
           />
         ) : (
           <div className={hqTableWrapClass}>
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b border-gold/15 bg-gold/5 text-[11px] uppercase tracking-wider text-cream/40">
                 <tr>
                   <th className="px-4 py-3">Nominee</th>
                   <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Forms filled</th>
                   <th className="px-4 py-3">Tracking link</th>
                   <th className="px-4 py-3">Clicks</th>
-                  <th className="px-4 py-3">Purchases</th>
                   <th className="px-4 py-3">Last click</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold/10">
-                {filteredNominees.map((item) => (
-                  <tr key={item.id} className="hover:bg-gold/[0.03]">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-cream">{item.name}</p>
-                      <p className="text-xs text-cream/50">{item.email || "No email on file"}</p>
-                    </td>
-                    <td className="px-4 py-3 text-cream/70">{item.category}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <a
-                          href={item.trackingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gold hover:underline"
-                        >
-                          Open link
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyLink(item.trackingUrl)}
-                          className="text-left text-xs text-cream/50 hover:text-cream/80"
-                        >
-                          Copy link
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-cream">{item.clickCount}</td>
-                    <td className="px-4 py-3 text-cream">{item.purchaseCount}</td>
-                    <td className="px-4 py-3 text-cream/70">{formatWhen(item.lastClickAt)}</td>
-                  </tr>
-                ))}
+                {filteredNominees.map((item) => {
+                  const expanded = expandedNomineeId === item.id;
+                  return (
+                    <Fragment key={item.id}>
+                      <tr
+                        className="cursor-pointer hover:bg-gold/[0.03]"
+                        onClick={() => toggleNominee(item.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-cream">
+                            <span className="mr-2 text-gold/60">{expanded ? "▾" : "▸"}</span>
+                            {item.name}
+                          </p>
+                          <p className="pl-5 text-xs text-cream/50">{item.email || "No email on file"}</p>
+                        </td>
+                        <td className="px-4 py-3 text-cream/70">{item.category}</td>
+                        <td className="px-4 py-3">
+                          <HQBadge tone={item.leads.length > 0 ? "green" : "default"}>
+                            {item.leads.length} form{item.leads.length === 1 ? "" : "s"}
+                          </HQBadge>
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-col gap-1">
+                            <a
+                              href={item.trackingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gold hover:underline"
+                            >
+                              Open link
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyLink(item.trackingUrl)}
+                              className="text-left text-xs text-cream/50 hover:text-cream/80"
+                            >
+                              Copy link
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-cream">{item.clickCount}</td>
+                        <td className="px-4 py-3 text-cream/70">{formatWhen(item.lastClickAt)}</td>
+                      </tr>
+                      {expanded ? (
+                        <tr className="bg-black/30">
+                          <td colSpan={6} className="px-4 py-4">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-cream/40">
+                              Ticket forms filled out for {item.name} ({item.leads.length})
+                            </p>
+                            {item.leads.length === 0 ? (
+                              <p className="text-sm text-cream/40">
+                                No ticket forms submitted yet. Forms are captured when a supporter
+                                enters their info on this nominee&apos;s ticket link.
+                              </p>
+                            ) : (
+                              <div className="overflow-x-auto rounded-lg border border-gold/10">
+                                <table className="w-full min-w-[620px] text-left text-sm">
+                                  <thead className="border-b border-gold/15 bg-gold/5 text-[11px] uppercase tracking-wider text-cream/40">
+                                    <tr>
+                                      <th className="px-4 py-2.5">Name</th>
+                                      <th className="px-4 py-2.5">Email</th>
+                                      <th className="px-4 py-2.5">Phone</th>
+                                      <th className="px-4 py-2.5">Submitted</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gold/10">
+                                    {item.leads.map((lead) => (
+                                      <tr key={lead.id} className="hover:bg-gold/[0.03]">
+                                        <td className="px-4 py-2.5 text-cream">{lead.buyerName || "—"}</td>
+                                        <td className="px-4 py-2.5 text-cream/70">{lead.buyerEmail || "—"}</td>
+                                        <td className="px-4 py-2.5 text-cream/70">{lead.buyerPhone || "—"}</td>
+                                        <td className="px-4 py-2.5 text-cream/50">{formatWhen(lead.submittedAt)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

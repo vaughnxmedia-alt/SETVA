@@ -12,6 +12,10 @@ import {
   listTicketLinkEvents,
   nomineeTicketPartnerLink,
 } from "@/lib/ticket-link-events-store";
+import { listTicketPartnerLeads } from "@/lib/ticket-partner/leads-store";
+import { listTicketPurchases } from "@/lib/ticket-partner/purchases-store";
+import { reconcilePurchases } from "@/lib/ticket-partner/reconcile";
+import type { TicketPartnerLead } from "@/lib/ticket-partner/types";
 import type {
   ActivityCategory,
   ActivityItem,
@@ -24,6 +28,9 @@ import type {
   VolunteerRecord,
   AmbassadorRecord,
   NomineeTicketPartnerRecord,
+  TicketFormLead,
+  TicketSalesReconciliation,
+  TicketSalesSourceRow,
 } from "@/lib/headquarters/types";
 
 const EMPTY_ANALYTICS: HQAnalytics = {
@@ -189,8 +196,48 @@ export async function getTicketPartnerAnalyticsData() {
   return buildTicketPartnerAnalytics([...nomineeLinks, ...ambassadorLinks], events);
 }
 
+const LEAD_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** A ticket form only counts once name, a valid email, and phone are all present. */
+function isCompleteLead(lead: TicketPartnerLead): boolean {
+  return (
+    Boolean(lead.buyerName.trim()) &&
+    Boolean(lead.buyerPhone.trim()) &&
+    LEAD_EMAIL_PATTERN.test(lead.buyerEmail.trim())
+  );
+}
+
+function toTicketFormLead(lead: TicketPartnerLead): TicketFormLead {
+  return {
+    id: lead.id,
+    buyerName: lead.buyerName,
+    buyerEmail: lead.buyerEmail,
+    buyerPhone: lead.buyerPhone,
+    submittedAt: lead.submittedAt,
+  };
+}
+
+/**
+ * Groups captured ticket-form leads by their source (nominee/ambassador) id,
+ * keeping only completed forms (name, valid email, and phone all present).
+ */
+function groupLeadsBySource(leads: TicketPartnerLead[]): Map<string, TicketFormLead[]> {
+  const bySource = new Map<string, TicketFormLead[]>();
+  for (const lead of leads) {
+    if (!isCompleteLead(lead)) continue;
+    const list = bySource.get(lead.sourceId) ?? [];
+    list.push(toTicketFormLead(lead));
+    bySource.set(lead.sourceId, list);
+  }
+  for (const list of bySource.values()) {
+    list.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  }
+  return bySource;
+}
+
 function mapStatsToNomineeRecord(
   stats: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number],
+  leads: TicketFormLead[],
 ): NomineeTicketPartnerRecord {
   return {
     id: stats.sourceId,
@@ -203,12 +250,14 @@ function mapStatsToNomineeRecord(
     purchaseCount: stats.purchaseCount,
     lastClickAt: stats.lastClickAt,
     lastPurchaseAt: stats.lastPurchaseAt,
+    leads,
   };
 }
 
 function mapStatsToAmbassadorRecord(
   reg: Awaited<ReturnType<typeof listAmbassadorRegistrations>>[number],
-  stats?: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number],
+  stats: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number] | undefined,
+  leads: TicketFormLead[],
 ): AmbassadorRecord {
   return {
     id: reg.id,
@@ -227,28 +276,95 @@ function mapStatsToAmbassadorRecord(
     purchaseCount: stats?.purchaseCount ?? 0,
     lastClickAt: stats?.lastClickAt ?? null,
     lastPurchaseAt: stats?.lastPurchaseAt ?? null,
+    leads,
   };
 }
 
 export async function getHQNomineeTicketPartners(): Promise<NomineeTicketPartnerRecord[]> {
-  const analytics = await getTicketPartnerAnalyticsData();
+  const [analytics, leads] = await Promise.all([
+    getTicketPartnerAnalyticsData(),
+    listTicketPartnerLeads(),
+  ]);
+  const leadsBySource = groupLeadsBySource(leads);
   return analytics.links
     .filter((link) => link.sourceType === "nominee")
-    .map(mapStatsToNomineeRecord);
+    .map((link) => mapStatsToNomineeRecord(link, leadsBySource.get(link.sourceId) ?? []));
 }
 
 export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
-  const [registrations, analytics] = await Promise.all([
+  const [registrations, analytics, leads] = await Promise.all([
     listAmbassadorRegistrations(),
     getTicketPartnerAnalyticsData(),
+    listTicketPartnerLeads(),
   ]);
   const statsById = new Map(
     analytics.links
       .filter((link) => link.sourceType === "ambassador")
       .map((link) => [link.sourceId, link]),
   );
+  const leadsBySource = groupLeadsBySource(leads);
 
-  return registrations.map((reg) => mapStatsToAmbassadorRecord(reg, statsById.get(reg.id)));
+  return registrations.map((reg) =>
+    mapStatsToAmbassadorRecord(reg, statsById.get(reg.id), leadsBySource.get(reg.id) ?? []),
+  );
+}
+
+/**
+ * Reconciles imported Ticketmaster buyers against captured ticket-form leads,
+ * attributing sales (and commission basis) to each nominee/ambassador.
+ */
+export async function getTicketSalesReconciliation(): Promise<TicketSalesReconciliation> {
+  const [analytics, allLeads, purchases] = await Promise.all([
+    getTicketPartnerAnalyticsData(),
+    listTicketPartnerLeads(),
+    listTicketPurchases(),
+  ]);
+
+  // Only reconcile against completed forms (name + valid email + phone).
+  const leads = allLeads.filter(isCompleteLead);
+  const leadsBySource = groupLeadsBySource(leads);
+  const reconciliation = reconcilePurchases(leads, purchases);
+
+  const rows: TicketSalesSourceRow[] = analytics.links
+    .map((link) => {
+      const sourceLeads = leadsBySource.get(link.sourceId) ?? [];
+      const match = reconciliation.bySourceId.get(link.sourceId);
+      const matchedBuyers = match?.matchedBuyers ?? [];
+      // Only surface partners that have activity worth reconciling.
+      if (sourceLeads.length === 0 && matchedBuyers.length === 0) return null;
+      return {
+        sourceId: link.sourceId,
+        sourceType: link.sourceType,
+        name: link.name,
+        category: link.category,
+        email: link.email,
+        trackingUrl: link.trackingUrl,
+        clickCount: link.clickCount,
+        leads: sourceLeads,
+        matchedBuyers,
+        ticketsSold: match?.ticketsSold ?? 0,
+        salesAmount: match?.salesAmount ?? 0,
+      } satisfies TicketSalesSourceRow;
+    })
+    .filter((row): row is TicketSalesSourceRow => row !== null)
+    .sort(
+      (a, b) =>
+        b.ticketsSold - a.ticketsSold ||
+        b.leads.length - a.leads.length ||
+        a.name.localeCompare(b.name),
+    );
+
+  return {
+    rows,
+    unmatchedBuyers: reconciliation.unmatchedBuyers,
+    totals: {
+      totalLeads: leads.length,
+      importedBuyers: reconciliation.totals.importedBuyers,
+      matchedBuyers: reconciliation.totals.matchedBuyers,
+      ticketsSold: reconciliation.totals.ticketsSold,
+      salesAmount: reconciliation.totals.salesAmount,
+    },
+  };
 }
 
 export async function getHQNominees(): Promise<NomineeRecord[]> {

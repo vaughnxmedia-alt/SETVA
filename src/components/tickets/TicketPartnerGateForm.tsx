@@ -21,6 +21,13 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!buyerName.trim() || !buyerPhone.trim() || !emailPattern.test(buyerEmail.trim())) {
+      setError("Your name, a valid email, and phone number are all required.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -73,7 +80,9 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-5">
         <label className="block">
-          <span className="text-sm font-medium text-cream/90">Your name</span>
+          <span className="text-sm font-medium text-cream/90">
+            Your name <span className="text-ruby">*</span>
+          </span>
           <input
             type="text"
             autoComplete="name"
@@ -87,7 +96,9 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-cream/90">Email</span>
+          <span className="text-sm font-medium text-cream/90">
+            Email <span className="text-ruby">*</span>
+          </span>
           <input
             type="email"
             autoComplete="email"
@@ -101,7 +112,9 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-cream/90">Phone number</span>
+          <span className="text-sm font-medium text-cream/90">
+            Phone number <span className="text-ruby">*</span>
+          </span>
           <input
             type="tel"
             autoComplete="tel"
@@ -113,6 +126,8 @@ export function TicketPartnerGateForm({ partner }: TicketPartnerGateFormProps) {
             maxLength={40}
           />
         </label>
+
+        <p className="text-xs text-cream/40">All fields are required.</p>
 
         <p className="text-xs text-cream/50">
           We use this information to connect your ticket interest to this {partnerLabel} when
