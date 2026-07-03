@@ -162,8 +162,10 @@ export type PublicNomineePageCategory = {
   imageSrcs: string[];
   nominees: {
     id: string;
+    nomineeId: string;
     imageSrc: string;
     nomineeName: string;
+    ticketHref: string;
   }[];
 };
 

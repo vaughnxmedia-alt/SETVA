@@ -12,6 +12,8 @@ import {
 } from "@/lib/form-submissions";
 import { categoryById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
+import { ticketPartnerTrackingPath } from "@/lib/ticket-partner/links";
+import { ticketPurchaseHref } from "@/lib/ticket-sales";
 import type {
   NomineeMagazineArticle,
   NomineeMediaAsset,
@@ -214,10 +216,15 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
             : null;
           const imageSrc = entry.nomineeGraphicUrl || asset?.fileUrl || "";
           if (!imageSrc) return null;
+          const nomineeRecord = nomineeById.get(entry.nomineeId);
+          const slug = nomineeRecord?.ticketPartnerSlug?.trim() ?? "";
+          const ticketHref = slug ? ticketPartnerTrackingPath(slug) : ticketPurchaseHref();
           return {
             id: entry.id,
+            nomineeId: entry.nomineeId,
             imageSrc,
-            nomineeName: nomineeById.get(entry.nomineeId)?.name ?? "Nominee",
+            nomineeName: nomineeRecord?.name ?? "Nominee",
+            ticketHref,
           };
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);

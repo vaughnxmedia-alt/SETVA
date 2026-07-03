@@ -78,6 +78,7 @@ export function NomineesView({
   const [articles, setArticles] = useState(initialMagazineArticles);
   const [votingSetups, setVotingSetups] = useState(initialVotingSetups);
   const [publishQueue, setPublishQueue] = useState(initialPublishQueue);
+  const [voteTallies, setVoteTallies] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(initialNominees.length === 0);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -200,6 +201,7 @@ export function NomineesView({
       magazineArticles: NomineeMagazineArticle[];
       votingSetups: NomineeVotingSetup[];
       publishQueue: PublishQueueItem[];
+      voteTallies?: Record<string, number>;
     };
     setNominees(directory.nominees);
     setCategories(directory.categories);
@@ -207,6 +209,7 @@ export function NomineesView({
     setArticles(workflows.magazineArticles);
     setVotingSetups(workflows.votingSetups);
     setPublishQueue(workflows.publishQueue);
+    setVoteTallies(workflows.voteTallies ?? {});
   }, []);
 
   useEffect(() => {
@@ -510,6 +513,7 @@ export function NomineesView({
                   const expanded = expandedNomineeIds.has(nominee.id);
                   const pageEntry = pageEntryFor(nominee.id, pageEntries);
                   const graphicUrl = pageEntry?.nomineeGraphicUrl ?? "";
+                  const voteCount = voteTallies[nominee.id] ?? 0;
                   return (
                     <HQCard key={nominee.id} className="p-5">
                       <button
@@ -519,7 +523,12 @@ export function NomineesView({
                         className="flex w-full items-start justify-between gap-3 text-left"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="font-display text-xl text-cream">{nominee.name}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-display text-xl text-cream">{nominee.name}</p>
+                            {voteCount > 0 ? (
+                              <HQBadge tone="green">{voteCount} vote{voteCount === 1 ? "" : "s"}</HQBadge>
+                            ) : null}
+                          </div>
                           <p className="mt-1 text-sm text-cream/50">{categoryTitle(nominee.categoryId)}</p>
                           {nominee.cityRegion ? (
                             <p className="mt-1 text-xs text-cream/40">{nominee.cityRegion}</p>

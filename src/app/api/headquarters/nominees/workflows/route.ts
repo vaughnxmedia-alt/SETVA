@@ -22,6 +22,7 @@ import {
   saveNomineePageEntry,
   saveNomineeVotingSetup,
 } from "@/lib/nominee-workflows-store";
+import { getNomineeVoteTallies } from "@/lib/votes-store";
 
 type WorkflowKind = "nomineePage" | "magazineArticle" | "votingSetup" | "mediaAsset";
 
@@ -30,13 +31,14 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
   if (!user) return publicErrorResponse(401);
 
   try {
-    const [nomineePageEntries, magazineArticles, votingSetups, mediaAssets, publishQueue] =
+    const [nomineePageEntries, magazineArticles, votingSetups, mediaAssets, publishQueue, voteTallies] =
       await Promise.all([
         listNomineePageEntries(),
         listNomineeMagazineArticles(),
         listNomineeVotingSetups(),
         listNomineeMediaAssets(),
         getNomineePublishQueue(),
+        getNomineeVoteTallies(),
       ]);
 
     return NextResponse.json({
@@ -46,6 +48,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
       votingSetups,
       mediaAssets,
       publishQueue,
+      voteTallies,
     });
   } catch (error) {
     return handleApiFailure(error, {

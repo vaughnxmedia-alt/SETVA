@@ -3,13 +3,15 @@
 import Image from "next/image";
 import type { PublicNomineePageCategory } from "@/lib/nominees";
 
+type NominationCategoryShowcaseProps = {
+  category: PublicNomineePageCategory;
+  index: number;
+};
+
 export function NominationCategoryShowcase({
   category,
   index,
-}: {
-  category: PublicNomineePageCategory;
-  index: number;
-}) {
+}: NominationCategoryShowcaseProps) {
   return (
     <section
       id={category.id}
@@ -41,30 +43,53 @@ export function NominationCategoryShowcase({
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {category.nominees.map((nominee, nomineeIndex) => (
-            <figure
+            <NomineeCard
               key={nominee.id}
-              className="overflow-hidden rounded-2xl border border-gold/20 bg-black/70"
-            >
-              <div className="relative aspect-[4/5] w-full">
-                <Image
-                  src={nominee.imageSrc}
-                  alt={`${nominee.nomineeName} — ${category.title}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                  priority={index === 0 && nomineeIndex === 0}
-                />
-              </div>
-              <figcaption className="border-t border-white/10 bg-black/80 px-4 py-3">
-                <p className="font-display text-lg text-white">{nominee.nomineeName}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gold/80">
-                  {category.title}
-                </p>
-              </figcaption>
-            </figure>
+              nominee={nominee}
+              categoryTitle={category.title}
+              priority={index === 0 && nomineeIndex === 0}
+            />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function NomineeCard({
+  nominee,
+  categoryTitle,
+  priority,
+}: {
+  nominee: PublicNomineePageCategory["nominees"][number];
+  categoryTitle: string;
+  priority: boolean;
+}) {
+  return (
+    <figure className="group overflow-hidden rounded-2xl border border-gold/20 bg-black/70 transition hover:border-gold/45">
+      <a
+        href={nominee.ticketHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+        aria-label={`Support and vote for ${nominee.nomineeName}`}
+      >
+        <div className="relative aspect-[4/5] w-full">
+          <Image
+            src={nominee.imageSrc}
+            alt={`${nominee.nomineeName} — ${categoryTitle}`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            priority={priority}
+          />
+        </div>
+        <figcaption className="border-t border-white/10 bg-black/80 px-4 py-3">
+          <p className="font-display text-lg text-white">{nominee.nomineeName}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gold/80">{categoryTitle}</p>
+          <p className="mt-2 text-xs text-white/55">Support &amp; vote →</p>
+        </figcaption>
+      </a>
+    </figure>
   );
 }

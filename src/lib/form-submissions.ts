@@ -18,6 +18,7 @@ export const FORM_TYPES = {
   hqTeamMembers: "hq_team_members",
   ticketLinkEvents: "ticket_link_events",
   ticketPartnerLeads: "ticket_partner_leads",
+  nomineeVotes: "nominee_votes",
 } as const;
 
 export type FormType = (typeof FORM_TYPES)[keyof typeof FORM_TYPES];
