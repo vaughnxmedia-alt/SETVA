@@ -61,6 +61,7 @@ export type NomineeCategory = {
   status: NomineeCategoryStatus;
   videoMediaId: string;
   videoUrl: string;
+  videoPosterUrl?: string;
   publishVideo: boolean;
   active: boolean;
 };
@@ -157,6 +158,7 @@ export type PublicNomineePageCategory = {
   id: string;
   title: string;
   videoSrc: string;
+  videoPoster: string;
   imageSrcs: string[];
   nominees: {
     id: string;
@@ -257,6 +259,7 @@ export function parseNomineeCategories(body: unknown): NomineeCategory[] | null 
       status: parseOption(row.status, nomineeCategoryStatusOptions, "Draft"),
       videoMediaId: String(row.videoMediaId ?? "").trim(),
       videoUrl: String(row.videoUrl ?? "").trim(),
+      videoPosterUrl: String(row.videoPosterUrl ?? "").trim(),
       publishVideo: parseBoolean(row.publishVideo),
       active: row.active !== false,
     });

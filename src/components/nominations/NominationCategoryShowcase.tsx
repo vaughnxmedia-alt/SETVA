@@ -30,7 +30,7 @@ export function NominationCategoryShowcase({
           <div className="mt-4 overflow-hidden rounded-2xl border border-gold/20 bg-black/70">
             <video
               src={category.videoSrc}
-              poster={category.nominees[0]?.imageSrc}
+              poster={category.videoPoster || category.nominees[0]?.imageSrc}
               controls
               playsInline
               preload="metadata"

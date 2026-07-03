@@ -228,6 +228,7 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
         videoSrc: category.publishVideo
           ? category.videoUrl || videoAsset?.fileUrl || ""
           : "",
+        videoPoster: category.publishVideo ? category.videoPosterUrl || "" : "",
         imageSrcs: categoryEntries.map((entry) => entry.imageSrc),
         nominees: categoryEntries,
       };

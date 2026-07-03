@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: "Explore SETVA 2026 nominations by category — artists, albums, bands, and more.",
 };
 
+// Always render fresh so Headquarters edits to published nominees, graphics,
+// videos, and categories appear on the live site immediately.
+export const dynamic = "force-dynamic";
+
 export default async function NominationsPage() {
   const categories = await listPublishedNomineePageCategories();
 

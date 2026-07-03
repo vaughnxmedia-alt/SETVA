@@ -11,6 +11,7 @@ import {
 } from "@/components/headquarters/ui";
 import type { NomineeCategory } from "@/lib/nominees";
 import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
+import { generateVideoPoster } from "@/lib/video-thumbnail";
 
 export function NomineeCategoriesView({
   initialCategories,
@@ -19,24 +20,33 @@ export function NomineeCategoriesView({
 }) {
   const [categories, setCategories] = useState(initialCategories);
   const [pendingVideoFiles, setPendingVideoFiles] = useState<Record<string, File>>({});
+  const [pendingPosterFiles, setPendingPosterFiles] = useState<Record<string, File>>({});
+  const [posterPreviews, setPosterPreviews] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function uploadCategoryVideo(category: NomineeCategory, file: File): Promise<string> {
+  async function uploadCategoryMedia(
+    category: NomineeCategory,
+    file?: File,
+    poster?: File,
+  ): Promise<{ url?: string; posterUrl?: string }> {
     const formData = new FormData();
-    formData.append("file", file);
     formData.append("categoryId", category.id);
-    if (category.videoUrl) formData.append("existingUrl", category.videoUrl);
+    if (file) formData.append("file", file);
+    if (poster) formData.append("poster", poster);
+    if (category.videoUrl && !category.videoUrl.startsWith("blob:")) {
+      formData.append("existingUrl", category.videoUrl);
+    }
 
     const res = await fetch("/api/headquarters/nominee-categories/media", {
       method: "POST",
       body: formData,
     });
     if (!res.ok) throw new Error("Video upload failed");
-    const data = (await res.json()) as { url?: string };
-    if (!data.url) throw new Error("Video upload failed");
-    return data.url;
+    const data = (await res.json()) as { url?: string; posterUrl?: string };
+    if (file && !data.url) throw new Error("Video upload failed");
+    return { url: data.url, posterUrl: data.posterUrl };
   }
 
   async function saveCategories() {
@@ -47,10 +57,14 @@ export function NomineeCategoriesView({
       for (const [index, category] of categories
         .filter((item) => item.title.trim())
         .entries()) {
-        let videoUrl = category.videoUrl;
+        let videoUrl = category.videoUrl.startsWith("blob:") ? "" : category.videoUrl;
+        let videoPosterUrl = category.videoPosterUrl ?? "";
         const pendingFile = pendingVideoFiles[category.id];
-        if (pendingFile) {
-          videoUrl = await uploadCategoryVideo(category, pendingFile);
+        const pendingPoster = pendingPosterFiles[category.id];
+        if (pendingFile || pendingPoster) {
+          const uploaded = await uploadCategoryMedia(category, pendingFile, pendingPoster);
+          if (uploaded.url) videoUrl = uploaded.url;
+          if (uploaded.posterUrl) videoPosterUrl = uploaded.posterUrl;
         }
 
         const isLive = category.status === "Published";
@@ -58,6 +72,7 @@ export function NomineeCategoriesView({
           ...category,
           sortOrder: index,
           videoUrl,
+          videoPosterUrl,
           status: isLive ? "Published" : "Draft",
           publishVideo: isLive && Boolean(videoUrl),
           active: true,
@@ -76,6 +91,8 @@ export function NomineeCategoriesView({
       };
       setCategories(data.categories ?? normalized);
       setPendingVideoFiles({});
+      setPendingPosterFiles({});
+      setPosterPreviews({});
       setMessage("Categories saved internally.");
     } catch {
       setError("Could not save categories.");
@@ -91,10 +108,14 @@ export function NomineeCategoriesView({
     setBusy(true);
     setError(null);
     try {
-      let videoUrl = category.videoUrl;
+      let videoUrl = category.videoUrl.startsWith("blob:") ? "" : category.videoUrl;
+      let videoPosterUrl = category.videoPosterUrl ?? "";
       const pendingFile = pendingVideoFiles[category.id];
-      if (pendingFile) {
-        videoUrl = await uploadCategoryVideo(category, pendingFile);
+      const pendingPoster = pendingPosterFiles[category.id];
+      if (pendingFile || pendingPoster) {
+        const uploaded = await uploadCategoryMedia(category, pendingFile, pendingPoster);
+        if (uploaded.url) videoUrl = uploaded.url;
+        if (uploaded.posterUrl) videoPosterUrl = uploaded.posterUrl;
       }
 
       const normalized = categories
@@ -102,13 +123,15 @@ export function NomineeCategoriesView({
         .map((item, itemIndex) => {
           const isTarget = item.id === category.id;
           const nextVideoUrl = isTarget ? videoUrl : item.videoUrl;
+          const nextPosterUrl = isTarget ? videoPosterUrl : item.videoPosterUrl ?? "";
           const isLive = isTarget ? true : item.status === "Published";
           return {
             ...item,
             sortOrder: itemIndex,
-            videoUrl: isTarget ? nextVideoUrl : item.videoUrl,
+            videoUrl: nextVideoUrl,
+            videoPosterUrl: nextPosterUrl,
             status: isLive ? "Published" : "Draft",
-            publishVideo: isLive && Boolean(isTarget ? nextVideoUrl : item.videoUrl),
+            publishVideo: isLive && Boolean(nextVideoUrl),
             active: true,
           } as NomineeCategory;
         });
@@ -123,6 +146,16 @@ export function NomineeCategoriesView({
       const data = (await res.json()) as { categories?: NomineeCategory[] };
       setCategories(data.categories ?? normalized);
       setPendingVideoFiles((current) => {
+        const next = { ...current };
+        delete next[category.id];
+        return next;
+      });
+      setPendingPosterFiles((current) => {
+        const next = { ...current };
+        delete next[category.id];
+        return next;
+      });
+      setPosterPreviews((current) => {
         const next = { ...current };
         delete next[category.id];
         return next;
@@ -152,6 +185,7 @@ export function NomineeCategoriesView({
         status: "Draft",
         videoMediaId: "",
         videoUrl: "",
+        videoPosterUrl: "",
         publishVideo: false,
         active: true,
       },
@@ -272,7 +306,7 @@ export function NomineeCategoriesView({
           {categories.map((category, index) => (
             <div
               key={category.id}
-              className="grid gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
+              className="grid min-h-[8rem] items-center gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
             >
               <input
                 value={category.title}
@@ -286,30 +320,70 @@ export function NomineeCategoriesView({
                 placeholder="Description (optional)"
                 className={hqInputClass}
               />
-              <div className="flex gap-2">
-                <input
-                  value={category.videoUrl}
-                  onChange={(event) => updateCategory(index, { videoUrl: event.target.value })}
-                  placeholder="Category video URL"
-                  className={`${hqInputClass} min-w-0 flex-1`}
-                />
-                <label className="cursor-pointer rounded-lg border border-gold/20 bg-black/40 px-3 py-2 text-sm text-cream/70">
-                  Upload
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.currentTarget.value = "";
-                      if (!file) return;
-                      setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
-                      updateCategory(index, { videoUrl: URL.createObjectURL(file) });
-                    }}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <CategoryVideoPreview
+                    category={category}
+                    pendingFile={pendingVideoFiles[category.id]}
+                    posterOverride={posterPreviews[category.id] || category.videoPosterUrl}
                   />
-                </label>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <label className="cursor-pointer rounded-lg border border-gold/20 bg-black/40 px-3 py-1.5 text-center text-xs text-cream/75 transition hover:border-gold/40 hover:text-gold">
+                      {categoryHasVideo(category, pendingVideoFiles[category.id])
+                        ? "Replace video"
+                        : "Upload video (.mp4)"}
+                      <input
+                        type="file"
+                        accept="video/mp4,video/*"
+                        className="hidden"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          event.currentTarget.value = "";
+                          if (!file) return;
+                          setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
+                          updateCategory(index, { videoUrl: URL.createObjectURL(file) });
+                          const poster = await generateVideoPoster(file);
+                          if (poster) {
+                            setPendingPosterFiles((current) => ({ ...current, [category.id]: poster }));
+                            setPosterPreviews((current) => ({
+                              ...current,
+                              [category.id]: URL.createObjectURL(poster),
+                            }));
+                          }
+                        }}
+                      />
+                    </label>
+                    {categoryHasVideo(category, pendingVideoFiles[category.id]) ? (
+                      <label className="cursor-pointer text-center text-[11px] font-medium text-gold/80 transition hover:text-gold">
+                        Replace thumbnail
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.currentTarget.value = "";
+                            if (!file) return;
+                            setPendingPosterFiles((current) => ({ ...current, [category.id]: file }));
+                            setPosterPreviews((current) => ({
+                              ...current,
+                              [category.id]: URL.createObjectURL(file),
+                            }));
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="min-h-[1rem] truncate text-[11px] text-cream/45" title={category.videoUrl}>
+                  {pendingVideoFiles[category.id]
+                    ? `${pendingVideoFiles[category.id].name} — save to upload`
+                    : savedVideoLabel(category.videoUrl)
+                      ? `Saved: ${savedVideoLabel(category.videoUrl)}`
+                      : ""}
+                </p>
               </div>
-              <div className="flex flex-col items-start gap-2">
+              <div className="flex min-w-[7rem] flex-col items-start gap-2">
                 <HQBadge tone={category.status === "Published" ? "green" : "amber"}>
                   {category.status === "Published" ? "Live" : "Draft"}
                 </HQBadge>
@@ -322,7 +396,9 @@ export function NomineeCategoriesView({
                   >
                     Publish to site
                   </HQButton>
-                ) : null}
+                ) : (
+                  <span className="text-[11px] text-cream/40">Published</span>
+                )}
               </div>
             </div>
           ))}
@@ -332,6 +408,83 @@ export function NomineeCategoriesView({
         </div>
       </HQCard>
     </HQShell>
+  );
+}
+
+function categoryHasVideo(category: NomineeCategory, pendingFile?: File): boolean {
+  if (pendingFile) return true;
+  const url = category.videoUrl.trim();
+  return Boolean(url && !url.startsWith("blob:"));
+}
+
+function resolveCategoryMediaUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith("blob:")) return trimmed;
+  // Relative paths work in the browser and avoid SSR/client hydration mismatches.
+  if (trimmed.startsWith("/")) return trimmed;
+  return trimmed;
+}
+
+function savedVideoLabel(videoUrl: string): string {
+  const trimmed = videoUrl.trim();
+  if (!trimmed || trimmed.startsWith("blob:")) return "";
+  if (trimmed.startsWith("http")) {
+    try {
+      const pathname = new URL(trimmed).pathname;
+      return pathname.split("/").slice(-2).join("/") || "video.mp4";
+    } catch {
+      return "video.mp4";
+    }
+  }
+  return trimmed.replace(/^\//, "");
+}
+
+function CategoryVideoPreview({
+  category,
+  pendingFile,
+  posterOverride,
+}: {
+  category: NomineeCategory;
+  pendingFile?: File;
+  posterOverride?: string;
+}) {
+  const savedUrl = category.videoUrl.trim();
+  const hasSavedVideo = Boolean(savedUrl && !savedUrl.startsWith("blob:"));
+  const videoSrc = pendingFile
+    ? savedUrl.startsWith("blob:")
+      ? savedUrl
+      : URL.createObjectURL(pendingFile)
+    : hasSavedVideo
+      ? resolveCategoryMediaUrl(savedUrl)
+      : "";
+
+  if (posterOverride) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={posterOverride}
+        alt={`${category.title || "Category"} video thumbnail`}
+        className="h-12 w-20 shrink-0 rounded-md border border-gold/20 object-cover"
+      />
+    );
+  }
+
+  if (videoSrc) {
+    return (
+      <video
+        src={videoSrc}
+        muted
+        playsInline
+        preload="metadata"
+        className="h-12 w-20 shrink-0 rounded-md border border-gold/20 bg-black object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-md border border-dashed border-gold/20 bg-black/30 text-center text-[10px] leading-tight text-cream/40">
+      No video
+    </div>
   );
 }
 
@@ -384,6 +537,7 @@ function parseCategorySpreadsheet(
         : existing?.status ?? "Draft",
       videoMediaId: existing?.videoMediaId ?? "",
       videoUrl: valueAt(cells, videoIndex) || existing?.videoUrl || "",
+      videoPosterUrl: existing?.videoPosterUrl ?? "",
       publishVideo: shouldPublishVideo(valueAt(cells, publishIndex), existing) && Boolean(
         valueAt(cells, videoIndex) || existing?.videoUrl,
       ),

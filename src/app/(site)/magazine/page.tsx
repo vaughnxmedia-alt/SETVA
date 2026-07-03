@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description: visionaryMagazine.tagline,
 };
 
+// Always render fresh so published nominee articles appear on the live site immediately.
+export const dynamic = "force-dynamic";
+
 export default async function MagazinePage() {
   const articles = await listMagazineArticles();
 

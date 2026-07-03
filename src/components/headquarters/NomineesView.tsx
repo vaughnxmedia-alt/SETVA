@@ -603,8 +603,6 @@ export function NomineesView({
 
               {modal === "graphic" ? (
                 <GraphicFields
-                  graphicUrl={graphicUrl}
-                  setGraphicUrl={setGraphicUrl}
                   previewUrl={graphicPreviewUrl}
                   setPreviewUrl={setGraphicPreviewUrl}
                   onFileSelected={setGraphicFile}
@@ -719,14 +717,10 @@ function NomineeFields({
 }
 
 function GraphicFields({
-  graphicUrl,
-  setGraphicUrl,
   previewUrl,
   setPreviewUrl,
   onFileSelected,
 }: {
-  graphicUrl: string;
-  setGraphicUrl: (value: string) => void;
   previewUrl: string;
   setPreviewUrl: (value: string) => void;
   onFileSelected: (file: File | null) => void;
@@ -734,9 +728,8 @@ function GraphicFields({
   return (
     <>
       <p className="text-sm text-cream/55">
-        Save stores the graphic internally and replaces the previous file. Use Publish on the nominee card to make it live.
+        Upload an image file. Save stores the graphic internally and replaces the previous file. Use Publish on the nominee card to make it live.
       </p>
-      <Field label="Graphic URL" value={graphicUrl} onChange={setGraphicUrl} />
       <label className="block">
         <span className="mb-1 block text-xs text-cream/50">Upload graphic</span>
         <input

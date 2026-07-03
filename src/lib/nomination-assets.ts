@@ -197,3 +197,37 @@ export async function writeCategoryVideoFile(input: {
 
   return publicUrl(categoryId, filename);
 }
+
+export async function writeCategoryPosterFile(input: {
+  categoryId: string;
+  buffer: Buffer;
+  fileName: string;
+}): Promise<string> {
+  const categoryId = input.categoryId.trim();
+  if (!categoryId) throw new Error("Category is required.");
+
+  const ext = extensionFromName(input.fileName, ".jpg");
+  if (!IMAGE_EXTENSIONS.has(ext)) {
+    throw new Error("Video thumbnail must be an image file.");
+  }
+
+  const filename = `poster${ext}`;
+
+  if (isSupabaseConfigured()) {
+    await removeMatchingObjects(categoryId, (file) => file.startsWith("poster."));
+    return writeSupabasePublicFile({
+      categoryId,
+      filename,
+      buffer: input.buffer,
+      contentType: contentTypeForExtension(ext),
+    });
+  }
+
+  const categoryDir = path.join(process.cwd(), "public", "nominations", categoryId);
+  await mkdir(categoryDir, { recursive: true });
+
+  await removeMatchingFiles(categoryDir, (file) => file.startsWith("poster."));
+  await writeFile(path.join(categoryDir, filename), input.buffer);
+
+  return publicUrl(categoryId, filename);
+}

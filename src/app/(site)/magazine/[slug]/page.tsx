@@ -12,6 +12,9 @@ type MagazineArticlePageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// Always render fresh so published nominee article edits appear on the live site immediately.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: MagazineArticlePageProps): Promise<Metadata> {
