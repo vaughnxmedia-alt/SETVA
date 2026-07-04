@@ -31,7 +31,7 @@ import {
 import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
 
 type SimpleStatus = "Missing" | "Draft" | "Ready" | "Published";
-type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | null;
+type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | "delete" | null;
 type NomineeRow = NomineeRecordFull & { categoryTitle: string };
 type NomineeFormState = ReturnType<typeof blankNominee>;
 type ArticleFormState = Omit<MagazineArticleFormState, "nomineeId">;
@@ -61,6 +61,20 @@ const blankNominee = (categoryId = "") => ({
   confirmationStatus: "Pending",
 });
 
+// One category the new nominee is entered into, with its own graphic.
+type CategoryGraphicEntry = {
+  key: string;
+  categoryId: string;
+  file: File | null;
+  previewUrl: string;
+};
+
+let entryKeyCounter = 0;
+function newEntryKey(): string {
+  entryKeyCounter += 1;
+  return `entry_${Date.now()}_${entryKeyCounter}`;
+}
+
 const downloadLinkClass =
   "inline-flex rounded-lg border border-gold/20 px-3 py-1.5 text-sm font-medium text-cream/80 transition hover:border-gold/40 hover:text-gold";
 
@@ -86,6 +100,7 @@ export function NomineesView({
   const [activeNomineeId, setActiveNomineeId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
+  const [categoryEntries, setCategoryEntries] = useState<CategoryGraphicEntry[]>([]);
   const [graphicUrl, setGraphicUrl] = useState("");
   const [graphicPreviewUrl, setGraphicPreviewUrl] = useState("");
   const [graphicFile, setGraphicFile] = useState<File | null>(null);
@@ -245,6 +260,12 @@ export function NomineesView({
           }
         : blankNominee(activeCategories[0]?.id ?? ""),
     );
+    // Adding a new nominee starts with one category + graphic block.
+    setCategoryEntries(
+      nominee
+        ? []
+        : [{ key: newEntryKey(), categoryId: activeCategories[0]?.id ?? "", file: null, previewUrl: "" }],
+    );
     setModal("nominee");
     setError(null);
   }
@@ -301,6 +322,85 @@ export function NomineesView({
       await refresh();
     } catch {
       setError("Could not save nominee.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Adds a new nominee to one or more categories at once. Each category gets its
+  // own nominee record and a category-specific graphic (mirroring how the rest of
+  // the system treats a person across categories by name).
+  async function saveNomineeMulti() {
+    const entries = categoryEntries.filter((entry) => entry.categoryId);
+    if (!nomineeForm.name.trim()) {
+      setError("Nominee name is required.");
+      return;
+    }
+    if (entries.length === 0) {
+      setError("Add at least one category.");
+      return;
+    }
+    const seen = new Set<string>();
+    for (const entry of entries) {
+      if (seen.has(entry.categoryId)) {
+        setError("Each category can only be added once.");
+        return;
+      }
+      seen.add(entry.categoryId);
+    }
+    if (entries.some((entry) => !entry.file)) {
+      setError("Add a graphic for each category.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      for (const entry of entries) {
+        const res = await fetch("/api/headquarters/nominees", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...nomineeForm, categoryId: entry.categoryId }),
+        });
+        if (!res.ok) throw new Error("Could not save nominee.");
+        const data = (await res.json()) as { nominee?: { id: string } };
+        const newId = data.nominee?.id;
+        if (!newId) throw new Error("Could not save nominee.");
+
+        const formData = new FormData();
+        formData.append("file", entry.file as File);
+        formData.append("nomineeId", newId);
+        formData.append("categoryId", entry.categoryId);
+        const graphicRes = await fetch("/api/headquarters/nominees/graphics", {
+          method: "POST",
+          body: formData,
+        });
+        if (!graphicRes.ok) throw new Error("Could not upload graphic.");
+        const graphicData = (await graphicRes.json()) as { url?: string };
+        const url = graphicData.url ?? "";
+
+        await saveWorkflow("nomineePage", {
+          payload: {
+            nomineeId: newId,
+            categoryId: entry.categoryId,
+            nomineeGraphicMediaId: "",
+            nomineeGraphicUrl: url,
+            displayOrder: 0,
+            publishToNomineePage: false,
+            status: url ? "Ready" : "Draft",
+          },
+        });
+      }
+
+      setMessage(
+        entries.length > 1
+          ? `${nomineeForm.name} added to ${entries.length} categories.`
+          : "Nominee added.",
+      );
+      setModal(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save nominee.");
     } finally {
       setBusy(false);
     }
@@ -402,6 +502,30 @@ export function NomineesView({
       await refresh();
     } catch {
       setError("Could not save article.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openDelete(nominee: NomineeRow) {
+    setActiveNomineeId(nominee.id);
+    setModal("delete");
+    setError(null);
+  }
+
+  async function confirmDeleteNominee() {
+    if (!activeNominee) return;
+    const nominee = activeNominee;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      setMessage(`${nominee.name} deleted.`);
+      setModal(null);
+      await refresh();
+    } catch {
+      setError("Could not delete nominee.");
     } finally {
       setBusy(false);
     }
@@ -604,6 +728,14 @@ export function NomineesView({
                             <HQButton variant="outline" onClick={() => openArticle(nominee)}>Write Article</HQButton>
                             <HQButton variant="outline" onClick={() => openVoting(nominee)}>Add to Voting</HQButton>
                             <HQButton onClick={() => { setActiveNomineeId(nominee.id); setModal("publish"); }}>Publish</HQButton>
+                            <button
+                              type="button"
+                              onClick={() => openDelete(nominee)}
+                              disabled={busy}
+                              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </>
                       ) : null}
@@ -628,17 +760,27 @@ export function NomineesView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className={`${hqPanelClass} max-h-[90vh] w-full max-w-2xl overflow-y-auto`}>
             <HQCardHeader
-              title={modalTitle(modal)}
+              title={modalTitle(modal, Boolean(activeNomineeId))}
               subtitle={activeNominee?.name}
               action={<HQButton variant="ghost" onClick={() => setModal(null)} disabled={busy}>Close</HQButton>}
             />
             <div className="space-y-4 p-5">
               {modal === "nominee" ? (
-                <NomineeFields
-                  form={nomineeForm}
-                  setForm={setNomineeForm}
-                  categories={activeCategories}
-                />
+                activeNomineeId ? (
+                  <NomineeFields
+                    form={nomineeForm}
+                    setForm={setNomineeForm}
+                    categories={activeCategories}
+                  />
+                ) : (
+                  <NomineeMultiCategoryFields
+                    form={nomineeForm}
+                    setForm={setNomineeForm}
+                    categories={activeCategories}
+                    entries={categoryEntries}
+                    setEntries={setCategoryEntries}
+                  />
+                )
               ) : null}
 
               {modal === "graphic" ? (
@@ -677,10 +819,32 @@ export function NomineesView({
                   This publishes the nominee graphic to the public nominations page. Saving a graphic alone does not publish it.
                 </p>
               ) : null}
+
+              {modal === "delete" ? (
+                <p className="text-sm text-cream/80">
+                  Are you sure you want to delete{" "}
+                  <strong className="text-cream">{activeNominee?.name}</strong>
+                  {activeNominee ? (
+                    <> from <strong className="text-cream">{categoryTitle(activeNominee.categoryId)}</strong></>
+                  ) : null}
+                  ? This removes their graphic and page entry for this category and cannot be undone.
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t border-gold/10 px-5 py-4">
-              <HQButton variant="outline" onClick={() => setModal(null)} disabled={busy}>Cancel</HQButton>
-              {modal === "nominee" ? <HQButton onClick={saveNominee} disabled={busy || !nomineeForm.name || !nomineeForm.categoryId}>Save Nominee</HQButton> : null}
+              <HQButton variant="outline" onClick={() => setModal(null)} disabled={busy}>{modal === "delete" ? "No, keep it" : "Cancel"}</HQButton>
+              {modal === "nominee" ? (
+                activeNomineeId ? (
+                  <HQButton onClick={saveNominee} disabled={busy || !nomineeForm.name || !nomineeForm.categoryId}>Save Nominee</HQButton>
+                ) : (
+                  <HQButton
+                    onClick={saveNomineeMulti}
+                    disabled={busy || !nomineeForm.name || categoryEntries.filter((entry) => entry.categoryId).length === 0}
+                  >
+                    {busy ? "Saving…" : "Save Nominee"}
+                  </HQButton>
+                )
+              ) : null}
               {modal === "graphic" ? <HQButton onClick={() => saveGraphic(false)} disabled={busy}>Save Graphic</HQButton> : null}
               {modal === "article" ? (
                 <>
@@ -690,6 +854,16 @@ export function NomineesView({
               ) : null}
               {modal === "voting" ? <HQButton onClick={saveVoting} disabled={busy}>Add to Voting</HQButton> : null}
               {modal === "publish" ? <HQButton onClick={() => saveGraphic(true)} disabled={busy || !pageEntryFor(activeNomineeId ?? "", pageEntries)?.nomineeGraphicUrl}>Publish to Nominee Page</HQButton> : null}
+              {modal === "delete" ? (
+                <button
+                  type="button"
+                  onClick={() => void confirmDeleteNominee()}
+                  disabled={busy}
+                  className="rounded-lg border border-red-500/40 bg-red-500/20 px-3 py-1.5 text-sm font-medium text-red-200 transition hover:bg-red-500/30 disabled:opacity-50"
+                >
+                  {busy ? "Deleting…" : "Yes, delete"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -752,6 +926,147 @@ function NomineeFields({
       </label>
       <TextArea label="Social media links" value={form.socialLinks} onChange={(value) => setForm((f) => ({ ...f, socialLinks: value }))} />
       <TextArea label="Internal notes" value={form.internalNotes} onChange={(value) => setForm((f) => ({ ...f, internalNotes: value }))} />
+    </div>
+  );
+}
+
+function NomineeMultiCategoryFields({
+  form,
+  setForm,
+  categories,
+  entries,
+  setEntries,
+}: {
+  form: NomineeFormState;
+  setForm: (fn: NomineeFormState | ((form: NomineeFormState) => NomineeFormState)) => void;
+  categories: NomineeCategory[];
+  entries: CategoryGraphicEntry[];
+  setEntries: (fn: CategoryGraphicEntry[] | ((entries: CategoryGraphicEntry[]) => CategoryGraphicEntry[])) => void;
+}) {
+  const usedCategoryIds = new Set(entries.map((entry) => entry.categoryId).filter(Boolean));
+
+  function updateEntry(key: string, patch: Partial<CategoryGraphicEntry>) {
+    setEntries((prev) => prev.map((entry) => (entry.key === key ? { ...entry, ...patch } : entry)));
+  }
+
+  function addEntry() {
+    const firstUnused = categories.find((category) => !usedCategoryIds.has(category.id));
+    setEntries((prev) => [
+      ...prev,
+      { key: newEntryKey(), categoryId: firstUnused?.id ?? "", file: null, previewUrl: "" },
+    ]);
+  }
+
+  function removeEntry(key: string) {
+    setEntries((prev) => prev.filter((entry) => entry.key !== key));
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nominee name" value={form.name} onChange={(value) => setForm((f) => ({ ...f, name: value }))} required />
+        <Field label="City / region" value={form.cityRegion} onChange={(value) => setForm((f) => ({ ...f, cityRegion: value }))} />
+        <Field label="Contact email" value={form.contactEmail} onChange={(value) => setForm((f) => ({ ...f, contactEmail: value }))} />
+        <Field label="Contact phone" value={form.contactPhone} onChange={(value) => setForm((f) => ({ ...f, contactPhone: value }))} />
+        <label className="block">
+          <span className="mb-1 block text-xs text-cream/50">Confirmation status</span>
+          <select value={form.confirmationStatus} onChange={(event) => setForm((f) => ({ ...f, confirmationStatus: event.target.value }))} className={`${hqInputClass} w-full`}>
+            {nomineeConfirmationStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>
+        <TextArea label="Social media links" value={form.socialLinks} onChange={(value) => setForm((f) => ({ ...f, socialLinks: value }))} />
+        <TextArea label="Internal notes" value={form.internalNotes} onChange={(value) => setForm((f) => ({ ...f, internalNotes: value }))} />
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-medium text-cream/90">Categories &amp; graphics</p>
+          <span className="text-xs text-cream/45">
+            {entries.length} categor{entries.length === 1 ? "y" : "ies"}
+          </span>
+        </div>
+        <p className="mb-3 text-xs text-cream/45">
+          Add this nominee to each category they belong to. Every category needs its own graphic.
+        </p>
+
+        <div className="space-y-4">
+          {entries.map((entry, index) => (
+            <div key={entry.key} className="rounded-xl border border-gold/20 bg-black/20 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold/70">
+                  Category {index + 1}
+                </p>
+                {entries.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => removeEntry(entry.key)}
+                    className="text-xs text-cream/45 transition hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+
+              <label className="block">
+                <span className="mb-1 block text-xs text-cream/50">Category</span>
+                <select
+                  value={entry.categoryId}
+                  onChange={(event) => updateEntry(entry.key, { categoryId: event.target.value })}
+                  className={`${hqInputClass} w-full`}
+                >
+                  <option value="">Select a category…</option>
+                  {categories.map((category) => (
+                    <option
+                      key={category.id}
+                      value={category.id}
+                      disabled={category.id !== entry.categoryId && usedCategoryIds.has(category.id)}
+                    >
+                      {category.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="mt-3 block">
+                <span className="mb-1 block text-xs text-cream/50">Graphic for this category *</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    updateEntry(entry.key, {
+                      file,
+                      previewUrl: file ? URL.createObjectURL(file) : "",
+                    });
+                  }}
+                  className={`${hqInputClass} w-full`}
+                />
+              </label>
+              {entry.previewUrl ? (
+                <img
+                  src={entry.previewUrl}
+                  alt="Graphic preview"
+                  className="mt-3 max-h-48 rounded-lg border border-gold/20 object-contain"
+                />
+              ) : (
+                <p className="mt-2 text-xs text-amber-300/80">No graphic chosen yet for this category.</p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <HQButton
+          variant="outline"
+          className="mt-4"
+          onClick={addEntry}
+          disabled={entries.length >= categories.length}
+        >
+          + Add category
+        </HQButton>
+        {entries.length >= categories.length ? (
+          <p className="mt-2 text-xs text-cream/40">All categories have been added.</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -928,11 +1243,12 @@ function statusTone(status: SimpleStatus): "default" | "gold" | "green" | "amber
   return "red";
 }
 
-function modalTitle(modal: Exclude<ModalMode, null>): string {
-  if (modal === "nominee") return "Edit Nominee";
+function modalTitle(modal: Exclude<ModalMode, null>, editing = false): string {
+  if (modal === "nominee") return editing ? "Edit Nominee" : "Add Nominee";
   if (modal === "graphic") return "Upload Graphic";
   if (modal === "article") return "Visionary Magazine Article";
   if (modal === "voting") return "Add to Voting";
+  if (modal === "delete") return "Delete Nominee";
   return "Publish";
 }
 
