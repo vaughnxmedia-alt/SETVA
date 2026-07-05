@@ -191,6 +191,73 @@ export async function sendMediaCredentialApprovedEmail(
   if (error) throw error;
 }
 
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? fullName.trim();
+}
+
+/**
+ * Sends the official SETVA media sign-in confirmation used when a credential is
+ * approved from Headquarters. Check-in time and location are provided per-send.
+ */
+export async function sendMediaCredentialApprovalConfirmationEmail(
+  application: MediaCredentialApplication,
+  options: { checkInTime: string; checkInLocation: string },
+): Promise<void> {
+  const checkInTime = options.checkInTime.trim() || "To be announced";
+  const checkInLocation = options.checkInLocation.trim() || "Designated Media Check-In area";
+
+  const resend = resendClient();
+  if (!resend) {
+    console.info("[demo] Media credential approval confirmation:", application.email, {
+      checkInTime,
+      checkInLocation,
+    });
+    return;
+  }
+
+  const requirements = [
+    "Your full name",
+    "Media outlet / platform name",
+    "Photo ID",
+    "Confirmation email",
+    "Any approved equipment listed on your application",
+  ];
+
+  const { error } = await resend.emails.send({
+    from: fromAddress(),
+    to: application.email,
+    replyTo: site.contact.email,
+    subject: "SETVA 2026 Media Credential Approved — Sign-In Confirmation",
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:640px;color:#111;line-height:1.6;">
+        <p style="margin:0 0 16px;">Hello ${escapeHtml(firstName(application.fullName))},</p>
+        <p style="margin:0 0 16px;">Congratulations, your media credential request for the 2026 Southeast Texas Visionary Awards has been approved.</p>
+        <p style="margin:0 0 16px;">To receive your media pass on event day, you will be required to check in at the designated Media Check-In area and verify your information.</p>
+        <p style="margin:0 0 8px;"><strong>Please be prepared to provide:</strong></p>
+        <ul style="margin:0 0 16px;padding-left:20px;">${listHtml(requirements)}</ul>
+        <p style="margin:0 0 16px;">Media passes are non-transferable and must only be used by the approved applicant. Additional guests, assistants, photographers, or videographers must be approved separately.</p>
+        <p style="margin:0 0 16px;">Approved media will receive access based on credential type and assigned coverage areas. Please note that access may vary between red carpet, outside media areas, and inside venue coverage.</p>
+        <div style="margin:16px 0;padding:16px;border-radius:12px;background:#f8f8f8;">
+          <p style="margin:0 0 8px;"><strong>Event Details</strong></p>
+          <p style="margin:0 0 4px;">2026 Southeast Texas Visionary Awards</p>
+          <p style="margin:0 0 4px;">Saturday, August 8, 2026</p>
+          <p style="margin:0 0 4px;">Jefferson Theatre</p>
+          <p style="margin:0 0 12px;">Beaumont, Texas</p>
+          <p style="margin:0 0 4px;"><strong>Media Check-In Time:</strong> ${escapeHtml(checkInTime)}</p>
+          <p style="margin:0;"><strong>Media Check-In Location:</strong> ${escapeHtml(checkInLocation)}</p>
+        </div>
+        <p style="margin:0 0 16px;">Thank you for your interest in covering SETVA 2026. We look forward to welcoming you.</p>
+        <p style="margin:0 0 4px;">Sincerely,</p>
+        <p style="margin:0 0 4px;">SETVA Media Relations Team</p>
+        <p style="margin:0 0 4px;">${escapeHtml(site.contact.email)}</p>
+        <p style="margin:0;">${escapeHtml(getPublicSiteUrl())}</p>
+      </div>
+    `.trim(),
+  });
+
+  if (error) throw error;
+}
+
 export async function sendMediaCredentialWaitlistedEmail(
   application: MediaCredentialApplication,
 ): Promise<void> {

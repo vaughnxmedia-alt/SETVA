@@ -1,8 +1,10 @@
 import { randomBytes } from "crypto";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { rm } from "fs/promises";
 import {
   createFormSubmission,
+  deleteFormSubmission,
   FORM_TYPES,
   formStorageMode,
   getFormSubmissionByExternalId,
@@ -261,4 +263,21 @@ export async function updateMediaCredentialApplication(
 
   await saveLocalApplication(next);
   return next;
+}
+
+export async function deleteMediaCredentialApplication(id: string): Promise<boolean> {
+  const current = await getMediaCredentialApplication(id);
+  if (!current) return false;
+
+  if (formStorageMode() === "supabase") {
+    return deleteFormSubmission(id, FORM_TYPES.mediaCredentials);
+  }
+
+  if (!/^mc_[a-z0-9_]+$/i.test(id)) return false;
+  try {
+    await rm(applicationPath(id));
+    return true;
+  } catch {
+    return false;
+  }
 }
