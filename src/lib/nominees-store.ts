@@ -239,12 +239,18 @@ export async function listNomineesWithTicketPartnerSlugs(): Promise<NomineeRecor
   const nominees = await listNominees();
   const results: NomineeRecordFull[] = [];
   for (const nominee of nominees) {
-    if (nominee.ticketPartnerSlug.trim()) {
+    const canonical = await ensureNomineeTicketPartnerSlug({
+      id: nominee.id,
+      name: nominee.name,
+      ticketPartnerSlug: nominee.ticketPartnerSlug,
+    });
+    const stored = nominee.ticketPartnerSlug.trim();
+    if (stored && stored.toLowerCase() === canonical.toLowerCase()) {
       results.push(nominee);
       continue;
     }
-    const updated = await ensureNomineeStoredTicketPartnerSlug(nominee.id);
-    results.push(updated ?? nominee);
+    const updated = await updateNominee(nominee.id, { admin: { ticketPartnerSlug: canonical } });
+    results.push(updated ?? { ...nominee, ticketPartnerSlug: canonical });
   }
   return results;
 }

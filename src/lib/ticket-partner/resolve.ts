@@ -2,6 +2,7 @@ import { listAmbassadorRegistrations } from "@/lib/ambassadors-store";
 import { listNominees } from "@/lib/nominees-store";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNomineePageEntries } from "@/lib/nominee-workflows-store";
+import { slugifyTicketPartner } from "@/lib/ticket-partner/links";
 import type { TicketPartnerSource } from "@/lib/ticket-partner/types";
 
 export type ResolvedTicketPartner = {
@@ -71,10 +72,13 @@ export async function resolveTicketPartnerBySlug(slug: string): Promise<Resolved
     listNomineeCategories(),
   ]);
 
-  const nominee = nominees.find((item) => item.ticketPartnerSlug.toLowerCase() === normalized);
+  const nominee = nominees.find((item) => {
+    if (item.ticketPartnerSlug.toLowerCase() === normalized) return true;
+    return slugifyTicketPartner(item.name, item.id).toLowerCase() === normalized;
+  });
   if (nominee) {
     return {
-      slug: nominee.ticketPartnerSlug,
+      slug: slugifyTicketPartner(nominee.name, nominee.id),
       sourceType: "nominee",
       sourceId: nominee.id,
       sourceName: nominee.name,
@@ -83,10 +87,13 @@ export async function resolveTicketPartnerBySlug(slug: string): Promise<Resolved
     };
   }
 
-  const ambassador = ambassadors.find((item) => item.ticketPartnerSlug.toLowerCase() === normalized);
+  const ambassador = ambassadors.find((item) => {
+    if (item.ticketPartnerSlug.toLowerCase() === normalized) return true;
+    return slugifyTicketPartner(item.fullName, item.id).toLowerCase() === normalized;
+  });
   if (ambassador) {
     return {
-      slug: ambassador.ticketPartnerSlug,
+      slug: slugifyTicketPartner(ambassador.fullName, ambassador.id),
       sourceType: "ambassador",
       sourceId: ambassador.id,
       sourceName: ambassador.fullName,
@@ -101,15 +108,19 @@ export async function resolveTicketPartnerBySlug(slug: string): Promise<Resolved
 export async function ensureNomineeTicketPartnerSlug(
   nominee: { id: string; name: string; ticketPartnerSlug: string },
 ): Promise<string> {
-  if (nominee.ticketPartnerSlug.trim()) return nominee.ticketPartnerSlug.trim();
   const { slugifyTicketPartner } = await import("@/lib/ticket-partner/links");
-  return slugifyTicketPartner(nominee.name, nominee.id);
+  const canonical = slugifyTicketPartner(nominee.name, nominee.id);
+  const stored = nominee.ticketPartnerSlug.trim();
+  if (stored && stored.toLowerCase() === canonical.toLowerCase()) return stored;
+  return canonical;
 }
 
 export async function ensureAmbassadorTicketPartnerSlug(
   ambassador: { id: string; fullName: string; ticketPartnerSlug: string },
 ): Promise<string> {
-  if (ambassador.ticketPartnerSlug.trim()) return ambassador.ticketPartnerSlug.trim();
   const { slugifyTicketPartner } = await import("@/lib/ticket-partner/links");
-  return slugifyTicketPartner(ambassador.fullName, ambassador.id);
+  const canonical = slugifyTicketPartner(ambassador.fullName, ambassador.id);
+  const stored = ambassador.ticketPartnerSlug.trim();
+  if (stored && stored.toLowerCase() === canonical.toLowerCase()) return stored;
+  return canonical;
 }

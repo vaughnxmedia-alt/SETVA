@@ -12,7 +12,7 @@ import {
 } from "@/lib/form-submissions";
 import { categoryById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
-import { ticketPartnerTrackingPath } from "@/lib/ticket-partner/links";
+import { ticketPartnerTrackingPath, slugifyTicketPartner } from "@/lib/ticket-partner/links";
 import { ticketPurchaseHref } from "@/lib/ticket-sales";
 import type {
   NomineeMagazineArticle,
@@ -217,7 +217,9 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
           const imageSrc = entry.nomineeGraphicUrl || asset?.fileUrl || "";
           if (!imageSrc) return null;
           const nomineeRecord = nomineeById.get(entry.nomineeId);
-          const slug = nomineeRecord?.ticketPartnerSlug?.trim() ?? "";
+          const slug = nomineeRecord
+            ? slugifyTicketPartner(nomineeRecord.name, nomineeRecord.id)
+            : "";
           const ticketHref = slug ? ticketPartnerTrackingPath(slug) : ticketPurchaseHref();
           return {
             id: entry.id,
