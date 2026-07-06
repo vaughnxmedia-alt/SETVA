@@ -1,5 +1,5 @@
 import type { NomineeVotingSetup } from "@/lib/nominees";
-import { listNomineeVotingSetups } from "@/lib/nominee-workflows-store";
+import { listNomineePageEntries, listNomineeVotingSetups } from "@/lib/nominee-workflows-store";
 
 export const VOTER_COOKIE = "setva_voter";
 
@@ -16,6 +16,9 @@ export const PUBLIC_VOTING_OPENS_AT = "2026-07-06T21:00:00-05:00";
 
 /** Shown across the public site while voting is locked. */
 export const VOTING_STARTS_MESSAGE = "Voting starts today at 9pm Central Time.";
+
+/** Shown once the public voting launch time has passed. */
+export const VOTING_LIVE_MESSAGE = "Voting is live — cast your vote below.";
 
 const votingLabelFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: VOTE_TIMEZONE,
@@ -43,26 +46,37 @@ export function votingWindowForSetup(setup: NomineeVotingSetup): {
   };
 }
 
-export function isSetupVotingOpen(setup: NomineeVotingSetup, now = Date.now()): boolean {
-  if (!isPublicVotingOpen(now)) return false;
-  if (setup.votingStatus !== "Published") return false;
-  const { open, close } = votingWindowForSetup(setup);
-  if (!Number.isFinite(open)) return false;
-  return now >= open && now <= close;
+function isPublishedPageEntry(
+  entry: Awaited<ReturnType<typeof listNomineePageEntries>>[number],
+  input: { categoryId: string; nomineeId: string; pageEntryId?: string },
+): boolean {
+  if (!entry.publishToNomineePage || entry.status !== "Published") return false;
+  if (entry.categoryId !== input.categoryId || entry.nomineeId !== input.nomineeId) return false;
+  if (input.pageEntryId && entry.id !== input.pageEntryId) return false;
+  return true;
 }
 
-export async function listCurrentlyOpenVotingSetups(
-  now = Date.now(),
-): Promise<NomineeVotingSetup[]> {
+/** Categories with at least one published nominee on the public nominations page. */
+export async function listPublishedVoteCategoryIds(now = Date.now()): Promise<string[]> {
   if (!isPublicVotingOpen(now)) return [];
-  const setups = await listNomineeVotingSetups();
-  return setups.filter((setup) => isSetupVotingOpen(setup, now));
+
+  const entries = await listNomineePageEntries();
+  const categoryIds = new Set<string>();
+
+  for (const entry of entries) {
+    if (entry.publishToNomineePage && entry.status === "Published") {
+      categoryIds.add(entry.categoryId);
+    }
+  }
+
+  return [...categoryIds];
 }
 
-/** True when at least one published Headquarters voting window is currently open. */
+/** True when public voting is live and at least one nominee is published for voting. */
 export async function isVotingOpen(now = Date.now()): Promise<boolean> {
-  const openSetups = await listCurrentlyOpenVotingSetups(now);
-  return openSetups.length > 0;
+  if (!isPublicVotingOpen(now)) return false;
+  const categories = await listPublishedVoteCategoryIds(now);
+  return categories.length > 0;
 }
 
 export async function isCategoryVotingOpen(
@@ -70,44 +84,29 @@ export async function isCategoryVotingOpen(
   now = Date.now(),
 ): Promise<boolean> {
   if (!isPublicVotingOpen(now)) return false;
-  const setups = await listNomineeVotingSetups();
-  return setups.some(
-    (setup) => setup.categoryId === categoryId && isSetupVotingOpen(setup, now),
-  );
+  const categoryIds = await listPublishedVoteCategoryIds(now);
+  return categoryIds.includes(categoryId);
 }
 
 export async function canRecordVote(input: {
   categoryId: string;
   nomineeId: string;
+  pageEntryId?: string;
   now?: number;
 }): Promise<boolean> {
   const now = input.now ?? Date.now();
   if (!isPublicVotingOpen(now)) return false;
-  const setups = await listNomineeVotingSetups();
-  return setups.some(
-    (setup) =>
-      setup.categoryId === input.categoryId &&
-      setup.nomineeIds.includes(input.nomineeId) &&
-      isSetupVotingOpen(setup, now),
-  );
+
+  const entries = await listNomineePageEntries();
+  return entries.some((entry) => isPublishedPageEntry(entry, input));
 }
 
-export function isVoteInPublishedWindow(
-  vote: { categoryId: string; nomineeId: string; votedAt: string },
-  setups: NomineeVotingSetup[],
-): boolean {
+/** Count votes cast on or after the public voting launch. */
+export function isVoteCountable(vote: { votedAt: string }, now = Date.now()): boolean {
+  if (!isPublicVotingOpen(now)) return false;
+
   const votedAt = Date.parse(vote.votedAt);
-  if (!Number.isFinite(votedAt) || votedAt < publicVotingOpensAtMs()) return false;
-
-  const setup = setups.find(
-    (item) => item.votingStatus === "Published" && item.categoryId === vote.categoryId,
-  );
-  if (!setup || !setup.nomineeIds.includes(vote.nomineeId)) return false;
-
-  const { open, close } = votingWindowForSetup(setup);
-  if (!Number.isFinite(open)) return false;
-
-  return votedAt >= open && votedAt <= close;
+  return Number.isFinite(votedAt) && votedAt >= publicVotingOpensAtMs();
 }
 
 export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
@@ -115,12 +114,16 @@ export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
     return VOTING_STARTS_MESSAGE;
   }
 
+  if (await isVotingOpen(now)) {
+    return VOTING_LIVE_MESSAGE;
+  }
+
   const published = (await listNomineeVotingSetups()).filter(
     (setup) => setup.votingStatus === "Published",
   );
 
   if (published.length === 0) {
-    return "when voting is scheduled in Headquarters";
+    return VOTING_LIVE_MESSAGE;
   }
 
   const futureOpens = published
@@ -132,11 +135,7 @@ export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
     return votingLabelFormatter.format(new Date(futureOpens[0]));
   }
 
-  if (published.some((setup) => isSetupVotingOpen(setup, now))) {
-    return "now";
-  }
-
-  return "when the next voting window opens";
+  return VOTING_LIVE_MESSAGE;
 }
 
 /** Returns the current vote day as YYYY-MM-DD in Central time (the daily-limit bucket). */

@@ -30,7 +30,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       );
     }
 
-    if (!(await canRecordVote({ categoryId, nomineeId }))) {
+    if (!(await canRecordVote({ categoryId, nomineeId, pageEntryId }))) {
       return NextResponse.json(
         { success: false, error: "Voting is not open for this category yet." },
         { status: 403 },

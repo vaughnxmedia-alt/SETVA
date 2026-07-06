@@ -7,8 +7,7 @@ import {
   listFormSubmissions,
   type FormSubmissionRecord,
 } from "@/lib/form-submissions";
-import { DAILY_VOTE_LIMIT, voteDayKey, isVoteInPublishedWindow } from "@/lib/voting";
-import { listNomineeVotingSetups } from "@/lib/nominee-workflows-store";
+import { DAILY_VOTE_LIMIT, voteDayKey, isVoteCountable } from "@/lib/voting";
 
 export type NomineeVote = {
   id: string;
@@ -146,11 +145,10 @@ export async function listNomineeVotes(): Promise<NomineeVote[]> {
 
 export async function getNomineeVoteTallies(): Promise<Record<string, number>> {
   const votes = await listNomineeVotes();
-  const setups = await listNomineeVotingSetups();
   const tallies: Record<string, number> = {};
 
   for (const vote of votes) {
-    if (!isVoteInPublishedWindow(vote, setups)) continue;
+    if (!isVoteCountable(vote)) continue;
     tallies[vote.nomineeId] = (tallies[vote.nomineeId] ?? 0) + 1;
   }
 

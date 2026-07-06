@@ -9,7 +9,7 @@ import { listNomineeVoteTargets, resolveTicketPartnerBySlug } from "@/lib/ticket
 import { getVoterDailyStatus } from "@/lib/votes-store";
 import {
   DAILY_VOTE_LIMIT,
-  listCurrentlyOpenVotingSetups,
+  isPublicVotingOpen,
   VOTER_COOKIE,
 } from "@/lib/voting";
 
@@ -48,12 +48,9 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
 
   const isNominee = partner.sourceType === "nominee";
 
-  const [openSetups, voteTargets] = await Promise.all([
-    listCurrentlyOpenVotingSetups(),
-    isNominee ? listNomineeVoteTargets(partner.sourceName) : Promise.resolve([]),
-  ]);
-  const openCategoryIds = new Set(openSetups.map((setup) => setup.categoryId));
-  const votingOpen = openCategoryIds.size > 0;
+  const voteTargets = isNominee ? await listNomineeVoteTargets(partner.sourceName) : [];
+  const votingOpen = isPublicVotingOpen() && voteTargets.length > 0;
+  const openCategoryIds = votingOpen ? voteTargets.map((target) => target.categoryId) : [];
 
   const voterKey = (await cookies()).get(VOTER_COOKIE)?.value?.trim() ?? "";
   const dailyStatus =
@@ -69,7 +66,7 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
         nomineeName={partner.sourceName}
         targets={voteTargets}
         votingOpen={votingOpen}
-        openCategoryIds={[...openCategoryIds]}
+        openCategoryIds={openCategoryIds}
         votesRemaining={dailyStatus.votesRemaining}
         votedCategoryIds={dailyStatus.votedCategoryIds}
       />

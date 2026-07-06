@@ -104,7 +104,7 @@ function NomineeCard({
           <p className="font-display text-lg text-white">{nominee.nomineeName}</p>
           <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gold/80">{categoryTitle}</p>
           <p className="mt-2 text-xs text-white/55">
-            {votingLocked ? VOTING_STARTS_MESSAGE : "Support & vote →"}
+            {votingLocked ? VOTING_STARTS_MESSAGE : "Vote now →"}
           </p>
         </figcaption>
       </a>

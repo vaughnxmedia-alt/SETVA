@@ -237,3 +237,108 @@ body {
     font-size: 1.875rem;
   }
 }
+
+@keyframes voting-hourglass-flip {
+  0%,
+  45% {
+    transform: rotate(0deg);
+  }
+  50%,
+  95% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes voting-hourglass-sand-top {
+  0%,
+  45% {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+  50%,
+  95% {
+    opacity: 0.2;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+}
+
+@keyframes voting-hourglass-sand-bottom {
+  0%,
+  45% {
+    opacity: 0.2;
+    transform: translateY(-4px);
+  }
+  50%,
+  95% {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes voting-hourglass-grain {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  95% {
+    opacity: 1;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes voting-countdown-tick {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+  35% {
+    transform: scale(1.04);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 45%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+.voting-hourglass {
+  animation: voting-hourglass-flip 4s ease-in-out infinite;
+  transform-origin: center center;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 35%, transparent));
+}
+
+.voting-hourglass-sand-top {
+  animation: voting-hourglass-sand-top 4s ease-in-out infinite;
+}
+
+.voting-hourglass-sand-bottom {
+  animation: voting-hourglass-sand-bottom 4s ease-in-out infinite;
+}
+
+.voting-hourglass-grain {
+  animation: voting-hourglass-grain 4s ease-in-out infinite;
+}
+
+.voting-countdown-tick {
+  animation: voting-countdown-tick 1s ease-out;
+}
