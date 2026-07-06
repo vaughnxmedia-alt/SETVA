@@ -1,4 +1,5 @@
 import { FORM_TYPES, listFormSubmissions, type FormSubmissionRecord } from "@/lib/form-submissions";
+import { isMockFormSubmission } from "@/lib/mock-data";
 import type { SponsorIntakeData } from "@/lib/sponsor-intake";
 import { listMediaCredentialApplications } from "@/lib/media-credentials-store";
 import { listVolunteerRegistrations } from "@/lib/volunteers-store";
@@ -85,6 +86,38 @@ function intakeFromRecord(record: FormSubmissionRecord): SponsorIntakeData | nul
   return payload as SponsorIntakeData;
 }
 
+type SponsorDeckPayload = {
+  name?: string;
+  email?: string;
+  company?: string;
+  packageId?: string;
+  dealOwner?: string;
+  sentBy?: string;
+};
+
+function dealOwnerLabel(payload: SponsorDeckPayload): string {
+  return payload.dealOwner?.trim() || payload.sentBy?.trim() || "—";
+}
+
+function deckLeadFromRecord(record: FormSubmissionRecord): {
+  name: string;
+  email: string;
+  company: string;
+  packageId?: string;
+} | null {
+  const payload = record.payload as SponsorDeckPayload;
+  const name = payload.name?.trim() || record.contact_name?.trim() || "";
+  const email = payload.email?.trim() || record.contact_email?.trim() || "";
+  const company = payload.company?.trim() || "—";
+  if (!name || !email) return null;
+  return {
+    name,
+    email,
+    company,
+    packageId: payload.packageId?.trim() || undefined,
+  };
+}
+
 function sponsorStatus(record: FormSubmissionRecord): string {
   if (record.form_type === FORM_TYPES.sponsorCheckoutConfirmed) return "Paid";
   if (record.form_type === FORM_TYPES.sponsorDeck) return "Proposal Sent";
@@ -99,6 +132,10 @@ function sponsorPaymentStatus(intake: SponsorIntakeData, record: FormSubmissionR
   return "—";
 }
 
+function realSubmissions(records: FormSubmissionRecord[]): FormSubmissionRecord[] {
+  return records.filter((record) => !isMockFormSubmission(record));
+}
+
 export async function getHQSponsorPipeline(): Promise<SponsorLead[]> {
   const [intakes, confirmed, decks] = await Promise.all([
     listFormSubmissions(FORM_TYPES.sponsorIntake),
@@ -109,22 +146,51 @@ export async function getHQSponsorPipeline(): Promise<SponsorLead[]> {
   const seen = new Set<string>();
   const leads: SponsorLead[] = [];
 
-  for (const record of [...confirmed, ...decks, ...intakes]) {
+  for (const record of realSubmissions([...confirmed, ...decks, ...intakes])) {
     const intake = intakeFromRecord(record);
-    if (!intake) continue;
-    const key = `${intake.email}:${intake.companyName}`;
+    if (intake) {
+      const key = `${intake.email}:${intake.companyName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      leads.push({
+        id: record.external_id ?? record.id,
+        company: intake.companyName,
+        contact: intake.contactName,
+        email: intake.email,
+        packageId: intake.packageId,
+        packageName: packageLabel(intake.packageId),
+        dealOwner: "—",
+        status: sponsorStatus(record),
+        paymentStatus: sponsorPaymentStatus(intake, record),
+        notes: intake.meetingNotes || intake.companyDescription || "—",
+        nextAction:
+          record.form_type === FORM_TYPES.sponsorCheckoutConfirmed
+            ? "Activate recognition"
+            : "Follow up",
+      });
+      continue;
+    }
+
+    const deckLead = deckLeadFromRecord(record);
+    if (!deckLead) continue;
+    const key = `${deckLead.email}:${deckLead.company}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const payload = record.payload as SponsorDeckPayload;
 
     leads.push({
       id: record.external_id ?? record.id,
-      company: intake.companyName,
-      contact: intake.contactName,
-      packageName: packageLabel(intake.packageId),
+      company: deckLead.company,
+      contact: deckLead.name,
+      email: deckLead.email,
+      packageId: deckLead.packageId,
+      packageName: deckLead.packageId ? packageLabel(deckLead.packageId) : "—",
+      dealOwner: dealOwnerLabel(payload),
       status: sponsorStatus(record),
-      paymentStatus: sponsorPaymentStatus(intake, record),
-      notes: intake.meetingNotes || intake.companyDescription || "—",
-      nextAction: record.form_type === FORM_TYPES.sponsorCheckoutConfirmed ? "Activate recognition" : "Follow up",
+      paymentStatus: "—",
+      notes: record.status === "hq_sent" ? "Packages link sent from HQ" : "Packages link requested",
+      nextAction: "Follow up",
     });
   }
 
@@ -384,8 +450,10 @@ export async function getHQNominees(): Promise<NomineeRecord[]> {
 }
 
 export async function getHQPaymentsSummary(): Promise<HQPaymentsSummary> {
-  const confirmed = await listFormSubmissions(FORM_TYPES.sponsorCheckoutConfirmed);
-  const intakes = await listFormSubmissions(FORM_TYPES.sponsorIntake);
+  const confirmed = realSubmissions(
+    await listFormSubmissions(FORM_TYPES.sponsorCheckoutConfirmed),
+  );
+  const intakes = realSubmissions(await listFormSubmissions(FORM_TYPES.sponsorIntake));
 
   const recentPayments = confirmed
     .map((record) => {
@@ -476,6 +544,7 @@ export async function getHQActivityFeed(): Promise<ActivityItem[]> {
   ]);
 
   return [...media, ...volunteers, ...ambassadors, ...sponsors, ...confirmed, ...decks, ...hqTeam]
+    .filter((record) => !isMockFormSubmission(record))
     .map(activityFromSubmission)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
@@ -489,13 +558,18 @@ export async function getHQAnalytics(): Promise<HQAnalytics> {
     getTicketPartnerAnalyticsData(),
   ]);
 
+  const realSponsors = realSubmissions(sponsors);
+  const realMedia = realSubmissions(media);
+  const realVolunteers = realSubmissions(volunteers);
+  const realAmbassadors = realSubmissions(ambassadors);
+
   return {
     ...EMPTY_ANALYTICS,
     applications: {
-      sponsorInquiries: sponsors.length,
-      mediaApplications: media.length,
-      volunteerRegistrations: volunteers.length,
-      ambassadorRegistrations: ambassadors.length,
+      sponsorInquiries: realSponsors.length,
+      mediaApplications: realMedia.length,
+      volunteerRegistrations: realVolunteers.length,
+      ambassadorRegistrations: realAmbassadors.length,
       contactMessages: 0,
     },
     ticketPartners: {

@@ -181,6 +181,28 @@ export async function deleteFormSubmission(
   return true;
 }
 
+export async function deleteFormSubmissionById(id: string): Promise<boolean> {
+  const client = supabaseAdmin();
+  if (!client) return false;
+
+  const { error } = await client.from("form_submissions").delete().eq("id", id);
+  if (error) throw error;
+  return true;
+}
+
+export async function listAllFormSubmissions(): Promise<FormSubmissionRecord[]> {
+  const client = supabaseAdmin();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from("form_submissions")
+    .select("*")
+    .order("submitted_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as FormSubmissionRecord[];
+}
+
 export async function upsertFormSubmissionByExternalId(
   input: CreateFormSubmissionInput & { externalId: string },
 ): Promise<FormSubmissionRecord | null> {

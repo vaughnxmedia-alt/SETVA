@@ -137,7 +137,6 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       intakeToken,
       offline: true,
       method: offlineMethod,
-      demo: !process.env.RESEND_API_KEY?.trim(),
     });
   }
 
@@ -152,12 +151,14 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   if (!isSquareConfigured()) {
-    return NextResponse.json({
-      success: true,
-      url: `${base}/sponsors/checkout/complete?demo=1`,
-      intakeToken,
-      demo: true,
-    });
+    return handleApiFailure(new Error("Square checkout is not configured"), {
+      workflow: "Sponsor Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Square",
+      contactEmail: intake.email,
+      companyName: intake.companyName,
+      metadata: { packageId: intake.packageId },
+    }, { status: 503, notifyTeam: false });
   }
 
   try {
@@ -173,7 +174,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       redirectUrl: `${base}/sponsors/checkout/complete`,
     });
 
-    return NextResponse.json({ success: true, url, intakeToken, demo: false });
+    return NextResponse.json({ success: true, url, intakeToken });
   } catch (error) {
     return handleApiFailure(error, {
       workflow: "Sponsor Checkout",

@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PublicErrorAlert } from "@/components/PublicErrorAlert";
-import { sponsorDeck } from "@/lib/sponsor-deck";
 
 type FormState = "idle" | "loading" | "success" | "error";
 
 export function SponsorDeckForm() {
   const [state, setState] = useState<FormState>("idle");
-  const [deckViewUrl, setDeckViewUrl] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const [packagesUrl, setPackagesUrl] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,19 +31,18 @@ export function SponsorDeckForm() {
       const data = await res.json();
       if (!res.ok || data.success === false) {
         if (process.env.NODE_ENV === "development") {
-          console.error("Sponsor deck API failure:", data);
+          console.error("Sponsor link API failure:", data);
         }
         setState("error");
         return;
       }
 
-      setDeckViewUrl(data.deckViewUrl ?? null);
-      setDemoMode(Boolean(data.demo));
+      setPackagesUrl(data.packagesUrl ?? "/sponsors");
       setState("success");
       form.reset();
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Sponsor deck client error:", error);
+        console.error("Sponsor link client error:", error);
       }
       setState("error");
     }
@@ -55,31 +53,21 @@ export function SponsorDeckForm() {
       <div className="rounded-2xl border border-gold/30 bg-gold/10 p-8 text-center">
         <p className="font-display text-2xl text-cream">Check your inbox</p>
         <p className="mt-3 text-sm text-cream/75">
-          We sent the <strong>{sponsorDeck.title}</strong> presentation to your
-          email. Look for the message with the button{" "}
-          <strong className="text-gold">View Sponsorship Deck</strong>.
+          We emailed you a link to the SETVA sponsor packages page. Look for the
+          message with the button{" "}
+          <strong className="text-gold">View sponsor packages</strong>.
         </p>
-        {demoMode && (
-          <p className="mt-3 text-sm text-gold">
-            Your private deck link is also available below.
-          </p>
-        )}
-        {deckViewUrl && (
-          <a
-            href={deckViewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-ruby px-8 py-3 text-sm font-semibold text-white transition hover:bg-ruby-light"
-          >
-            View Sponsorship Deck
-          </a>
-        )}
+        <Link
+          href={packagesUrl ?? "/sponsors"}
+          className="mt-6 inline-flex items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light"
+        >
+          View sponsor packages
+        </Link>
         <button
           type="button"
           onClick={() => {
             setState("idle");
-            setDeckViewUrl(null);
-            setDemoMode(false);
+            setPackagesUrl(null);
           }}
           className="mt-4 block w-full text-sm text-cream/60 underline-offset-2 hover:text-gold hover:underline"
         >
@@ -92,15 +80,15 @@ export function SponsorDeckForm() {
   return (
     <form onSubmit={handleSubmit} className="card-glow rounded-2xl bg-ink-deep/60 p-8">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-gold">
-        Free sponsorship deck
+        Sponsor packages
       </p>
       <h3 className="mt-2 font-display text-2xl text-cream">
-        Get the free sponsor package deck
+        Get the sponsor packages link
       </h3>
       <p className="mt-3 text-sm text-cream/70">
-        Enter your details and we&apos;ll email you a private link to the full
-        Torch of Excellence presentation — every package tier, benefits, and
-        partnership option for SETVA 2026.
+        Enter your details and we&apos;ll email you a link to the full sponsor
+        packages page — every tier, benefits, and partnership option for SETVA
+        2026.
       </p>
 
       <div className="mt-6 space-y-4">
@@ -147,7 +135,7 @@ export function SponsorDeckForm() {
         disabled={state === "loading"}
         className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
-        {state === "loading" ? "Sending…" : "Get Free Sponsor Package Deck"}
+        {state === "loading" ? "Sending…" : "Email sponsor packages link"}
       </button>
 
       {state === "error" && <PublicErrorAlert className="mt-3" />}

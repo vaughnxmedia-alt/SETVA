@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { usingPlaceholderData } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Thank You",
@@ -20,7 +19,6 @@ type Props = {
 export default async function ThankYouPage({ searchParams }: Props) {
   const params = await searchParams;
   const isDemo = params.demo === "1";
-  const itemId = params.item ?? params.itemId;
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4 py-16 sm:px-6">
@@ -32,16 +30,8 @@ export default async function ThankYouPage({ searchParams }: Props) {
         <p className="mt-4 text-cream/70">
           {isDemo ? (
             <>
-              No payment was processed — you&apos;re running locally in preview
-              mode. When Square is connected, buyers return here after payment on
-              Square&apos;s secure checkout page.
-              {usingPlaceholderData && (
-                <>
-                  {" "}
-                  Sample item: {params.type} / {itemId}
-                  {params.amount ? ` ($${params.amount})` : ""}.
-                </>
-              )}
+              No payment was processed — checkout is not fully configured yet.
+              Connect Square to accept live payments.
             </>
           ) : (
             <>

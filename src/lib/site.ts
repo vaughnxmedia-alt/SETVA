@@ -1,6 +1,3 @@
-/** Set to false once real pricing, venue, and lineup are confirmed. */
-export const usingPlaceholderData = false;
-
 export const site = {
   name: "SETVA",
   fullName: "Southeast Texas Visionary Awards",
@@ -31,7 +28,8 @@ export const site = {
       "Bridge City",
       "Vidor",
     ],
-    sponsorshipDeadline: "July 15, 2026",
+    sponsorshipDeadline: "July 20, 2026",
+    sponsorshipPaymentDue: "July 20, 2026",
   },
   contact: {
     email: "contactus@setvawards.com",
@@ -830,34 +828,6 @@ export const ticketPartnerInfo = {
     "Receive your commission payout within 30 days after the event.",
   ],
 };
-
-export type TicketPartnerEarningsExample = {
-  tickets: number;
-  tier: string;
-  earnings: number;
-};
-
-/** Illustrative partner earnings based on current ticket tiers and commission rate. */
-export function getTicketPartnerEarningsExamples(
-  now = new Date(),
-): TicketPartnerEarningsExample[] {
-  const ticketCounts: Record<string, number> = {
-    preferred: 20,
-    vip: 15,
-  };
-
-  return getTicketTiers(now).map((tier) => {
-    const tickets = ticketCounts[tier.id] ?? 10;
-    const earnings = Math.round(
-      (tickets * tier.price * ticketPartnerInfo.commissionPercent) / 100,
-    );
-    return {
-      tickets,
-      tier: `${tier.name} ($${tier.price})`,
-      earnings,
-    };
-  });
-}
 
 export type SocialHubLink = {
   label: string;

@@ -22,7 +22,7 @@ import {
 export const metadata: Metadata = {
   title: "Sponsor Packages",
   description:
-    "SETVA 2026 sponsor packages — view every tier and get the free Torch of Excellence sponsorship deck emailed to you.",
+    "SETVA 2026 sponsor packages — view every tier and get a link to the sponsorship packages page emailed to you.",
 };
 
 export default function SponsorsPage() {
@@ -46,7 +46,7 @@ export default function SponsorsPage() {
         <SectionHeading
           eyebrow="Partner with us"
           title="Sponsor Packages"
-          subtitle={`${site.event.theme} View every tier below, then get the free sponsorship deck sent to your email.`}
+          subtitle={`${site.event.theme} View every tier below, or enter your email to get a link to the sponsor packages page.`}
         />
 
         <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-ruby/20 bg-ruby/5 p-6 text-center sm:p-8">
@@ -55,6 +55,9 @@ export default function SponsorsPage() {
           </p>
           <p className="mt-3 text-lg text-cream/90">
             {site.event.dateLabel} · {site.event.venue}, {site.event.location}
+          </p>
+          <p className="mt-2 text-sm text-cream/60">
+            All payments must be paid in full by {site.event.sponsorshipPaymentDue}.
           </p>
           <p className="mt-4 text-sm leading-relaxed text-cream/70">
             A regional celebration of excellence across music, film, fashion,
@@ -76,7 +79,7 @@ export default function SponsorsPage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-12 max-w-xl" id="get-deck">
+        <div className="mx-auto mt-12 max-w-xl" id="get-sponsor-link">
           <SponsorDeckForm />
         </div>
 
@@ -198,10 +201,10 @@ export default function SponsorsPage() {
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
-              href="#get-deck"
+              href="#get-sponsor-link"
               className="inline-flex rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light"
             >
-              Get Free Sponsor Package Deck
+              Get sponsor packages link
             </a>
             <Link
               href={`mailto:${site.contact.email}?subject=${encodeURIComponent("SETVA 2026 Sponsorship")}`}

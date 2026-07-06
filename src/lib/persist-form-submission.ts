@@ -1,6 +1,7 @@
 import {
   createFormSubmission,
   type CreateFormSubmissionInput,
+  type FormSubmissionRecord,
 } from "@/lib/form-submissions";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 

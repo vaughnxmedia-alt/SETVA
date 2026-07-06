@@ -229,7 +229,7 @@ function ClosingSlide({
             href="/sponsors"
             className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink transition hover:bg-gold-light"
           >
-            View all packages
+            Browse packages &amp; buy
           </Link>
           <Link
             href={`mailto:${site.contact.email}?subject=${encodeURIComponent("SETVA 2026 Sponsorship")}`}

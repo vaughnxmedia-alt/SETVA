@@ -29,14 +29,14 @@ export function SponsorshipDeckAccessView({ access }: { access: string }) {
         />
         <h1 className="mt-8 font-display text-3xl text-ink">Link unavailable</h1>
         <p className="mt-4 max-w-md text-sm text-ink/70">
-          This sponsorship deck link is invalid or has expired. Request a fresh copy
-          from the sponsor packages page.
+          This sponsor link is invalid or has expired. Request a fresh copy from the
+          sponsor packages page.
         </p>
         <Link
-          href="/sponsors#get-deck"
+          href="/sponsors#get-sponsor-link"
           className="mt-8 rounded-full bg-ruby px-8 py-3 text-sm font-semibold text-white transition hover:bg-ruby-light"
         >
-          Get the sponsor deck
+          Get sponsor packages link
         </Link>
       </div>
     );

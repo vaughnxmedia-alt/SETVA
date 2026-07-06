@@ -14,19 +14,13 @@ Built with [Next.js](https://nextjs.org), TypeScript, and Tailwind CSS. Payments
 ```bash
 npm install
 cp .env.example .env.local
-# Add your Square credentials to .env.local (or skip for demo mode)
+# Add your Square and Resend credentials to .env.local
 npm run dev
 ```
 
-Open **[http://localhost:3000](http://localhost:3000)** — no domain required.
+Open **[http://localhost:3000](http://localhost:3000)**.
 
-### Preview mode (default)
-
-- All prices, venue, schedule, and nominees are **sample data** in `src/lib/site.ts`.
-- Without Square credentials, checkout buttons run a **demo flow** and land on `/thank-you?demo=1`.
-- A yellow banner reminds visitors that numbers aren’t final yet.
-
-Set `usingPlaceholderData = false` in `site.ts` when you go live with real info.
+HQ dashboards and pipelines show **only real submissions**. Empty states appear when there is no data yet. Do not add mock or sample records to production UI.
 
 ## Square setup
 

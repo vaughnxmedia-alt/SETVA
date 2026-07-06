@@ -1,4 +1,3 @@
-import { nominationCategories } from "@/lib/nominations";
 import {
   FORM_TYPES,
   formStorageMode,
@@ -10,20 +9,6 @@ import { type NomineeCategory } from "@/lib/nominees";
 
 const CATEGORIES_CONFIG_ID = "setva-nominee-categories";
 
-function seedCategories(): NomineeCategory[] {
-  return nominationCategories.map((category, index) => ({
-    id: category.id,
-    title: category.title,
-    description: "",
-    sortOrder: index,
-    status: "Draft",
-    videoMediaId: "",
-    videoUrl: category.videoSrc,
-    publishVideo: false,
-    active: true,
-  }));
-}
-
 function categoriesFromRecord(record: FormSubmissionRecord): NomineeCategory[] {
   const payload = record.payload;
   if (!Array.isArray(payload.categories)) return [];
@@ -31,16 +16,15 @@ function categoriesFromRecord(record: FormSubmissionRecord): NomineeCategory[] {
 }
 
 export async function listNomineeCategories(): Promise<NomineeCategory[]> {
-  if (formStorageMode() !== "supabase") return seedCategories();
+  if (formStorageMode() !== "supabase") return [];
 
   const record = await getFormSubmissionByExternalId(
     CATEGORIES_CONFIG_ID,
     FORM_TYPES.nomineeCategories,
   );
 
-  if (!record) return seedCategories();
-  const stored = categoriesFromRecord(record);
-  return stored.length ? stored : seedCategories();
+  if (!record) return [];
+  return categoriesFromRecord(record);
 }
 
 function categoryIsComplete(category: NomineeCategory): boolean {

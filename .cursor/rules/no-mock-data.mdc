@@ -1,0 +1,13 @@
+---
+description: Never add mock, sample, or placeholder data that appears in HQ or public UI
+alwaysApply: true
+---
+
+# No mock data
+
+- Do **not** add mock, sample, fake, demo, or placeholder records to HQ dashboards, pipelines, or public pages.
+- When there is no real data, show **empty states** (`[]`, zero counts, helpful copy) — never invent rows, nominees, sponsors, or earnings.
+- Do **not** add hardcoded fallback arrays that look like live submissions.
+- Demo/dev modes must **not** pretend success: no fake “email sent”, no preview checkouts saved to the database, no inline links that mimic production behavior.
+- Real user form submissions and HQ-entered production data must be preserved.
+- Scripts that seed content are for one-time imports only; never auto-run seeds in app code paths.

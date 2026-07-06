@@ -6,7 +6,6 @@ import {
 } from "@/lib/errors";
 import { FORM_TYPES } from "@/lib/form-submissions";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
-import { sponsorDeckViewUrl, siteUrl } from "@/lib/sponsor-deck";
 
 type SponsorDeckBody = {
   name?: string;
@@ -57,8 +56,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   const lead = { name, email, company: company || undefined };
-  const base = siteUrl();
-  let deckViewUrl: string;
+  let packagesUrl: string;
 
   try {
     await persistFormSubmission({
@@ -69,17 +67,11 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       payload: lead,
     });
   } catch (error) {
-    return handleApiFailure(error, {
-      workflow: "Sponsor Deck Request",
-      route: req.nextUrl.pathname,
-      provider: "Database",
-      contactEmail: email,
-      companyName: company || undefined,
-    });
+    console.error("[sponsor-deck] Lead not persisted; continuing to email:", error);
   }
 
   try {
-    deckViewUrl = await sendSponsorDeckEmail(lead);
+    packagesUrl = await sendSponsorDeckEmail(lead);
   } catch (error) {
     return handleApiFailure(error, {
       workflow: "Sponsor Deck Request",
@@ -90,13 +82,8 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
     });
   }
 
-  if (!process.env.RESEND_API_KEY?.trim()) {
-    deckViewUrl = sponsorDeckViewUrl(base, lead);
-  }
-
   return NextResponse.json({
     success: true,
-    deckViewUrl,
-    demo: !process.env.RESEND_API_KEY?.trim(),
+    packagesUrl,
   });
 }, { workflow: "Sponsor Deck Request" });

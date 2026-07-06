@@ -123,13 +123,13 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="Partner with us"
             title="Become a SETVA sponsor"
-            subtitle="Put your brand at the heart of Southeast Texas's biggest night of recognition. View every package tier and get the free Torch of Excellence sponsorship deck sent to your inbox."
+            subtitle="Put your brand at the heart of Southeast Texas's biggest night of recognition. View every package tier or get a link to the sponsor packages page emailed to you."
           />
           <Link
-            href="/sponsors#get-deck"
+            href="/sponsors#get-sponsor-link"
             className="mt-10 inline-flex rounded-full bg-gold px-8 py-4 text-base font-semibold text-black shadow-lg transition hover:bg-gold-light"
           >
-            Get Free Sponsor Package Deck
+            Get sponsor packages link
           </Link>
         </div>
       </section>

@@ -36,7 +36,10 @@ export type SponsorLead = {
   id: string;
   company: string;
   contact: string;
+  email: string;
+  packageId?: string;
   packageName: string;
+  dealOwner: string;
   status: string;
   paymentStatus: string;
   notes: string;

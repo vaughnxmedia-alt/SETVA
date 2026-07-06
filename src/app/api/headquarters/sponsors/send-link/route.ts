@@ -1,0 +1,119 @@
+import { NextRequest, NextResponse } from "next/server";
+import { sendSponsorDeckEmail } from "@/lib/email";
+import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { FORM_TYPES } from "@/lib/form-submissions";
+import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
+import { persistFormSubmission } from "@/lib/persist-form-submission";
+import {
+  buildSponsorOutreachEmailHtml,
+  sponsorOutreachEmailSubject,
+  sponsorOutreachLinkUrl,
+} from "@/lib/sponsor-outreach-email";
+import { sponsorsCheckoutUrl, siteUrl } from "@/lib/sponsor-deck";
+import { getSponsorPackage } from "@/lib/sponsor-intake";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeText(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function parseBody(body: Record<string, unknown>) {
+  const name = normalizeText(body.name, 120);
+  const email = normalizeText(body.email, 254).toLowerCase();
+  const company = normalizeText(body.company, 160);
+  const packageId = normalizeText(body.packageId, 80);
+  const teamMember = normalizeText(body.teamMember, 120);
+  const emailCopy = normalizeText(body.emailCopy, 1200);
+
+  return { name, email, company, packageId, teamMember, emailCopy };
+}
+
+export const POST = safeApiHandler(async (req: NextRequest) => {
+  const user = await getHQSessionUserFromRequest(req);
+  if (!user) return publicErrorResponse(401);
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 400 });
+  }
+
+  const { name, email, company, packageId, teamMember, emailCopy } = parseBody(body);
+
+  if (!name) {
+    return NextResponse.json({ success: false, error: "Name is required." }, { status: 400 });
+  }
+
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    return NextResponse.json({ success: false, error: "A valid email is required." }, { status: 400 });
+  }
+
+  if (packageId && !getSponsorPackage(packageId)) {
+    return NextResponse.json({ success: false, error: "Invalid package." }, { status: 400 });
+  }
+
+  const lead = { name, email, company: company || undefined };
+  const base = siteUrl();
+  const outreachInput = {
+    lead,
+    packageId: packageId || undefined,
+    emailCopy: emailCopy || undefined,
+    teamMember: teamMember || undefined,
+    baseUrl: base,
+  };
+
+  if (body.preview === true) {
+    const linkUrl = sponsorOutreachLinkUrl(outreachInput);
+    return NextResponse.json({
+      success: true,
+      preview: true,
+      subject: sponsorOutreachEmailSubject(lead),
+      html: buildSponsorOutreachEmailHtml(outreachInput),
+      linkUrl,
+    });
+  }
+
+  try {
+    await persistFormSubmission({
+      formType: FORM_TYPES.sponsorDeck,
+      status: "hq_sent",
+      contactEmail: email,
+      contactName: name,
+      payload: {
+        ...lead,
+        packageId: packageId || undefined,
+        dealOwner: teamMember || user.name || user.email,
+        emailCopy: emailCopy || undefined,
+        sentBy: user.email,
+      },
+    });
+  } catch (error) {
+    console.error("[hq-sponsor-link] Lead not persisted; continuing to email:", error);
+  }
+
+  try {
+    const packagesUrl = await sendSponsorDeckEmail(lead, {
+      packageId: packageId || undefined,
+      emailCopy: emailCopy || undefined,
+      teamMember: teamMember || undefined,
+    });
+
+    return NextResponse.json({
+      success: true,
+      packagesUrl,
+      checkoutUrl: packageId ? sponsorsCheckoutUrl(packageId, base) : null,
+    });
+  } catch (error) {
+    return handleApiFailure(error, {
+      workflow: "HQ Sponsor Outreach",
+      route: req.nextUrl.pathname,
+      provider: "Resend",
+      contactEmail: email,
+      companyName: company || undefined,
+      metadata: { sentBy: user.email, dealOwner: teamMember || undefined },
+    });
+  }
+}, { workflow: "HQ Sponsor Outreach" });

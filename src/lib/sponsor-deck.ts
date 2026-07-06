@@ -37,3 +37,16 @@ export function sponsorDeckLogoUrl(baseUrl: string): string {
   const base = baseUrl.replace(/\/$/, "");
   return `${base}/setva-logo-white-transparent.png`;
 }
+
+export function sponsorsPageUrl(baseUrl?: string): string {
+  const base = (baseUrl ?? siteUrl()).replace(/\/$/, "");
+  return `${base}/sponsors`;
+}
+
+export function sponsorsGetDeckUrl(baseUrl?: string): string {
+  return `${sponsorsPageUrl(baseUrl)}#get-sponsor-link`;
+}
+
+export function sponsorsCheckoutUrl(packageId: string, baseUrl?: string): string {
+  return `${sponsorsPageUrl(baseUrl)}/checkout?package=${encodeURIComponent(packageId)}`;
+}
