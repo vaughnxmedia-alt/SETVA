@@ -3,9 +3,9 @@ import {
   sponsorDeckLogoUrl,
   sponsorsCheckoutUrl,
   sponsorsPageUrl,
-  siteUrl,
 } from "@/lib/sponsor-deck";
 import { site } from "@/lib/site";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export type SponsorOutreachLead = {
   name: string;
@@ -24,10 +24,23 @@ export type SponsorOutreachEmailInput = {
 export const DEFAULT_SPONSOR_OUTREACH_COPY =
   "Thank you for your interest in partnering with SETVA 2026. Review the packages below and click Buy when you're ready to secure your sponsorship.";
 
+export function isCustomOutreachCopy(copy?: string): boolean {
+  const trimmed = copy?.trim();
+  return Boolean(trimmed && trimmed !== DEFAULT_SPONSOR_OUTREACH_COPY);
+}
+
+export function sponsorOutreachBaseUrl(): string {
+  return getPublicSiteUrl();
+}
+
+export function sponsorOutreachEmailLogoUrl(): string {
+  return sponsorDeckLogoUrl(sponsorOutreachBaseUrl());
+}
+
 export function sponsorOutreachLinkUrl(
   input: Pick<SponsorOutreachEmailInput, "packageId" | "baseUrl">,
 ): string {
-  const base = input.baseUrl ?? siteUrl();
+  const base = input.baseUrl ?? sponsorOutreachBaseUrl();
   return input.packageId
     ? sponsorsCheckoutUrl(input.packageId, base)
     : sponsorsPageUrl(base);
@@ -64,6 +77,10 @@ function linkifyLine(line: string): string {
     /(www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
     '<a href="https://$1" style="color:#bf0000;text-decoration:none;font-weight:600;">$1</a>',
   );
+  html = html.replace(
+    /(?<!href="https?:\/\/)(?<![/@])setvawards\.com/g,
+    '<a href="https://www.setvawards.com" style="color:#bf0000;text-decoration:none;font-weight:600;">setvawards.com</a>',
+  );
   return html;
 }
 
@@ -80,19 +97,24 @@ function bodyCopyParagraphs(copy: string): string {
 }
 
 export function buildSponsorOutreachEmailHtml(input: SponsorOutreachEmailInput): string {
-  const base = input.baseUrl ?? siteUrl();
+  const base = input.baseUrl ?? sponsorOutreachBaseUrl();
   const linkUrl = sponsorOutreachLinkUrl(input);
-  const logoUrl = sponsorDeckLogoUrl(base);
+  const logoUrl = sponsorOutreachEmailLogoUrl();
   const buttonLabel = escapeHtml(sponsorOutreachButtonLabel(input.packageId));
   const greeting = escapeHtml(input.lead.name.trim());
   const copy = input.emailCopy?.trim() || DEFAULT_SPONSOR_OUTREACH_COPY;
+  const customCopy = isCustomOutreachCopy(input.emailCopy);
   const teamMember = input.teamMember?.trim();
+  const greetingBlock = customCopy
+    ? ""
+    : `<p style="margin:0 0 12px;color:#000000;font-size:22px;line-height:1.3;font-weight:700;">Hi ${greeting},</p>`;
   const companyLine = input.lead.company?.trim()
     ? `<p style="margin:0 0 16px;color:#555555;font-size:14px;line-height:1.6;">Prepared for <strong style="color:#000000;">${escapeHtml(input.lead.company.trim())}</strong></p>`
     : "";
-  const contactLine = teamMember
-    ? `<p style="margin:0;color:#333333;font-size:14px;line-height:1.6;">Your SETVA contact: <strong>${escapeHtml(teamMember)}</strong></p>`
-    : `<p style="margin:0;color:#333333;font-size:14px;line-height:1.6;">Questions? <a href="mailto:${site.contact.email}" style="color:#bf0000;text-decoration:none;font-weight:600;">${site.contact.email}</a></p>`;
+  const contactLine =
+    customCopy || !teamMember
+      ? ""
+      : `<p style="margin:0;color:#333333;font-size:14px;line-height:1.6;">Your SETVA contact: <strong>${escapeHtml(teamMember)}</strong></p>`;
 
   return `
 <!DOCTYPE html>
@@ -109,14 +131,15 @@ export function buildSponsorOutreachEmailHtml(input: SponsorOutreachEmailInput):
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
           <tr>
             <td style="background:linear-gradient(135deg,#000000 0%,#bf0000 100%);padding:24px 28px;text-align:center;">
-              <img src="${logoUrl}" alt="${escapeHtml(site.fullName)}" width="200" style="display:block;margin:0 auto;max-width:200px;height:auto;" />
+              <img src="${logoUrl}" alt="${escapeHtml(site.fullName)}" width="220" height="auto" style="display:block;margin:0 auto;max-width:220px;height:auto;border:0;outline:none;text-decoration:none;" />
+              <p style="margin:14px 0 0;color:#facd68;font-size:10px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
+                Southeast Texas Visionary Awards
+              </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px 28px 8px;">
-              <p style="margin:0 0 12px;color:#000000;font-size:22px;line-height:1.3;font-weight:700;">
-                Hi ${greeting},
-              </p>
+              ${greetingBlock}
               ${bodyCopyParagraphs(copy)}
               ${companyLine}
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px auto 20px;">
@@ -138,7 +161,10 @@ export function buildSponsorOutreachEmailHtml(input: SponsorOutreachEmailInput):
           </tr>
           <tr>
             <td style="padding:0 28px 28px;">
-              ${contactLine}
+              ${
+                contactLine ||
+                `<p style="margin:0;color:#333333;font-size:14px;line-height:1.6;">Questions? <a href="mailto:${site.contact.email}" style="color:#bf0000;text-decoration:none;font-weight:600;">${site.contact.email}</a></p>`
+              }
             </td>
           </tr>
           <tr>

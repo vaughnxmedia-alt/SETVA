@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendSponsorDeckEmail } from "@/lib/email";
+import { compileSponsorOutreachEmail, sendCompiledSponsorOutreachEmail } from "@/lib/email";
 import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
 import { FORM_TYPES } from "@/lib/form-submissions";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
-import {
-  buildSponsorOutreachEmailHtml,
-  sponsorOutreachEmailSubject,
-  sponsorOutreachLinkUrl,
-} from "@/lib/sponsor-outreach-email";
-import { sponsorsCheckoutUrl, siteUrl } from "@/lib/sponsor-deck";
+import { sponsorsCheckoutUrl } from "@/lib/sponsor-deck";
+import { sponsorOutreachBaseUrl } from "@/lib/sponsor-outreach-email";
 import { getSponsorPackage } from "@/lib/sponsor-intake";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_COPY_LENGTH = 16000;
 
 function normalizeText(value: unknown, maxLength: number): string {
   if (typeof value !== "string") return "";
@@ -25,7 +22,7 @@ function parseBody(body: Record<string, unknown>) {
   const company = normalizeText(body.company, 160);
   const packageId = normalizeText(body.packageId, 80);
   const teamMember = normalizeText(body.teamMember, 120);
-  const emailCopy = normalizeText(body.emailCopy, 1200);
+  const emailCopy = normalizeText(body.emailCopy, MAX_EMAIL_COPY_LENGTH);
 
   return { name, email, company, packageId, teamMember, emailCopy };
 }
@@ -56,23 +53,19 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   const lead = { name, email, company: company || undefined };
-  const base = siteUrl();
-  const outreachInput = {
-    lead,
+  const compiled = compileSponsorOutreachEmail(lead, {
     packageId: packageId || undefined,
     emailCopy: emailCopy || undefined,
     teamMember: teamMember || undefined,
-    baseUrl: base,
-  };
+  });
 
   if (body.preview === true) {
-    const linkUrl = sponsorOutreachLinkUrl(outreachInput);
     return NextResponse.json({
       success: true,
       preview: true,
-      subject: sponsorOutreachEmailSubject(lead),
-      html: buildSponsorOutreachEmailHtml(outreachInput),
-      linkUrl,
+      subject: compiled.subject,
+      html: compiled.html,
+      linkUrl: compiled.linkUrl,
     });
   }
 
@@ -95,11 +88,8 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   try {
-    const packagesUrl = await sendSponsorDeckEmail(lead, {
-      packageId: packageId || undefined,
-      emailCopy: emailCopy || undefined,
-      teamMember: teamMember || undefined,
-    });
+    const packagesUrl = await sendCompiledSponsorOutreachEmail(email, compiled);
+    const base = sponsorOutreachBaseUrl();
 
     return NextResponse.json({
       success: true,
