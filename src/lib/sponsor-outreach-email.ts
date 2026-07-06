@@ -67,21 +67,33 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+function stripInvisibleChars(value: string): string {
+  return value.replace(/[\u200B-\u200D\uFEFF]/g, "");
+}
+
+const LINK_STYLE = "color:#bf0000;text-decoration:none;font-weight:600;";
+
 function linkifyLine(line: string): string {
-  let html = escapeHtml(line);
-  html = html.replace(
-    /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-    '<a href="mailto:$1" style="color:#bf0000;text-decoration:none;font-weight:600;">$1</a>',
+  const escaped = escapeHtml(stripInvisibleChars(line));
+
+  return escaped.replace(
+    /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|(?<![\w@/])(setvawards\.com(?:\/[^\s]*)?)/g,
+    (full, http, www, email, bare) => {
+      if (http) {
+        return `<a href="${http}" style="${LINK_STYLE}">${http}</a>`;
+      }
+      if (www) {
+        return `<a href="https://${www}" style="${LINK_STYLE}">${www}</a>`;
+      }
+      if (email) {
+        return `<a href="mailto:${email}" style="${LINK_STYLE}">${email}</a>`;
+      }
+      if (bare) {
+        return `<a href="https://www.${bare}" style="${LINK_STYLE}">${bare}</a>`;
+      }
+      return full;
+    },
   );
-  html = html.replace(
-    /(www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-    '<a href="https://$1" style="color:#bf0000;text-decoration:none;font-weight:600;">$1</a>',
-  );
-  html = html.replace(
-    /(?<!href="https?:\/\/)(?<![/@])setvawards\.com/g,
-    '<a href="https://www.setvawards.com" style="color:#bf0000;text-decoration:none;font-weight:600;">setvawards.com</a>',
-  );
-  return html;
 }
 
 function bodyCopyParagraphs(copy: string): string {
