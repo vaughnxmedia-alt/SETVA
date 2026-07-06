@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { SponsorPackage } from "@/lib/site";
-import { site } from "@/lib/site";
 import {
   isPackageSoldOut,
   packageAvailabilityLabel,
@@ -127,18 +126,6 @@ export function SponsorPackageCard({
           </Link>
         )}
       </div>
-
-      {canBuyOnline && (
-        <p className="mt-3 text-center text-xs text-cream/45">
-          Secure checkout via Square · Questions?{" "}
-          <a
-            href={`mailto:${site.contact.email}`}
-            className="text-gold hover:underline"
-          >
-            {site.contact.email}
-          </a>
-        </p>
-      )}
     </article>
   );
 }

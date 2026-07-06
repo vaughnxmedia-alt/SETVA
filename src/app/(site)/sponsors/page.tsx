@@ -11,9 +11,10 @@ import {
 import {
   site,
   sponsorMainPackages,
+  sponsorMediaPackages,
+  sponsorNonMediaSignaturePackages,
   sortSponsorPackagesByPrice,
   sponsorPackages,
-  sponsorSignaturePackages,
   sponsorSupporterPackages,
   vipAccessSummary,
 } from "@/lib/site";
@@ -98,13 +99,27 @@ export default function SponsorsPage() {
 
         <section className="mt-16">
           <SectionHeading
-            eyebrow="Signature opportunities"
-            title="Own a moment inside the event"
-            subtitle="Targeted sponsorships tied to red carpet, awards, Mont City Network livestream, youth, and more."
+            eyebrow="Media & broadcast"
+            title="Mont City Network sponsorships"
+            subtitle="Live stream, media partner, and broadcast-aligned packages — grouped for easy comparison."
             align="left"
           />
           <div className="mt-8 grid gap-8 md:grid-cols-2">
-            {sponsorSignaturePackages.map((pkg) => (
+            {sponsorMediaPackages.map((pkg) => (
+              <SponsorPackageCard key={pkg.id} pkg={pkg} />
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-16">
+          <SectionHeading
+            eyebrow="Signature opportunities"
+            title="Own a moment inside the event"
+            subtitle="Targeted sponsorships tied to red carpet, awards, youth, magazine, and more."
+            align="left"
+          />
+          <div className="mt-8 grid gap-8 md:grid-cols-2">
+            {sponsorNonMediaSignaturePackages.map((pkg) => (
               <SponsorPackageCard key={pkg.id} pkg={pkg} />
             ))}
           </div>

@@ -390,7 +390,7 @@ export const sponsorPackages: SponsorPackage[] = [
       "Brand mention in red carpet interviews",
       "Social tags on red carpet recap posts (3 posts)",
       "Branded signage option near the carpet",
-      montCityProductionBenefit(50),
+      montCityProductionBenefit(25),
     ],
     montCityMedia: true,
     featured: true,
@@ -412,7 +412,7 @@ export const sponsorPackages: SponsorPackage[] = [
       "Logo on event screens during the showcase",
       "Social media feature (2 posts + 1 reel)",
       "Product or brand placement opportunity (subject to approval)",
-      montCityProductionBenefit(50),
+      montCityProductionBenefit(25),
     ],
     montCityMedia: true,
   },
@@ -457,7 +457,7 @@ export const sponsorPackages: SponsorPackage[] = [
       "Host mention during the live stream",
       "Logo on Mont City Network stream landing page",
       "15-second sponsor commercial spot option",
-      montCityProductionBenefit(75),
+      montCityProductionBenefit(25),
     ],
     featured: true,
   },
@@ -583,7 +583,7 @@ export const sponsorPackages: SponsorPackage[] = [
       "Cross-promotion on SETVA channels (2 posts)",
       "Program listing as official media partner",
       "Red carpet and recap content tags",
-      montCityProductionBenefit(65),
+      montCityProductionBenefit(25),
     ],
   },
   {
@@ -653,6 +653,14 @@ export function sortSponsorPackagesByPrice(packages: SponsorPackage[]): SponsorP
 
 export const sponsorMainPackages = sortSponsorPackagesByPrice(
   sponsorPackages.filter((pkg) => pkg.group === "main"),
+);
+
+export const sponsorMediaPackages = sortSponsorPackagesByPrice(
+  sponsorPackages.filter((pkg) => pkg.group === "signature" && pkg.montCityMedia),
+);
+
+export const sponsorNonMediaSignaturePackages = sortSponsorPackagesByPrice(
+  sponsorPackages.filter((pkg) => pkg.group === "signature" && !pkg.montCityMedia),
 );
 
 export const sponsorSignaturePackages = sortSponsorPackagesByPrice(
