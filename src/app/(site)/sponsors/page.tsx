@@ -16,6 +16,7 @@ import {
   sortSponsorPackagesByPrice,
   sponsorPackages,
   sponsorSupporterPackages,
+  sponsorTitlePackage,
   vipAccessSummary,
 } from "@/lib/site";
 
@@ -85,9 +86,21 @@ export default function SponsorsPage() {
 
         <section className="mt-16">
           <SectionHeading
+            eyebrow="Presenting partner"
+            title="Title Sponsor"
+            subtitle="Our flagship partnership — the presenting brand behind SETVA 2026 across stage, press, and every touchpoint."
+            align="left"
+          />
+          <div className="mt-8 mx-auto max-w-2xl">
+            <SponsorPackageCard pkg={sponsorTitlePackage} priorityVisual />
+          </div>
+        </section>
+
+        <section className="mt-16">
+          <SectionHeading
             eyebrow="Main packages"
             title="Torch of Excellence sponsorship tiers"
-            subtitle="Full-event visibility from community supporter to presenting title partner."
+            subtitle="Full-event visibility from legacy sponsor through community tiers."
             align="left"
           />
           <p className="mt-4 max-w-3xl text-sm text-cream/60">

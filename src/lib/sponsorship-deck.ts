@@ -2,6 +2,7 @@ import {
   sponsorMainPackages,
   sponsorSignaturePackages,
   sponsorSupporterPackages,
+  sponsorTitlePackage,
   type SponsorPackage,
 } from "@/lib/site";
 
@@ -51,6 +52,13 @@ export function buildSponsorshipDeckSlides(): SponsorshipDeckSlide[] {
       title: "Torch of Excellence",
       subtitle: "Southeast Texas Visionary Awards 2026 sponsorship packages",
     },
+    {
+      kind: "section",
+      id: "section-title",
+      title: "Presenting Partner",
+      subtitle: "Title Sponsor — maximum visibility across SETVA 2026",
+    },
+    ...packageSlides([sponsorTitlePackage]),
     {
       kind: "section",
       id: "section-main",

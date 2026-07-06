@@ -649,8 +649,16 @@ export function sortSponsorPackagesByPrice(packages: SponsorPackage[]): SponsorP
   });
 }
 
+export const SPONSOR_TITLE_PACKAGE_ID = "title-sponsor";
+
+export const sponsorTitlePackage = sponsorPackages.find(
+  (pkg) => pkg.id === SPONSOR_TITLE_PACKAGE_ID,
+)!;
+
 export const sponsorMainPackages = sortSponsorPackagesByPrice(
-  sponsorPackages.filter((pkg) => pkg.group === "main"),
+  sponsorPackages.filter(
+    (pkg) => pkg.group === "main" && pkg.id !== SPONSOR_TITLE_PACKAGE_ID,
+  ),
 );
 
 export const sponsorMediaPackages = sortSponsorPackagesByPrice(
