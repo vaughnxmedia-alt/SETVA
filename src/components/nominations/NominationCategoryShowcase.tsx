@@ -2,15 +2,18 @@
 
 import Image from "next/image";
 import type { PublicNomineePageCategory } from "@/lib/nominees";
+import { VOTING_STARTS_MESSAGE } from "@/lib/voting";
 
 type NominationCategoryShowcaseProps = {
   category: PublicNomineePageCategory;
   index: number;
+  votingOpen: boolean;
 };
 
 export function NominationCategoryShowcase({
   category,
   index,
+  votingOpen,
 }: NominationCategoryShowcaseProps) {
   return (
     <section
@@ -48,6 +51,7 @@ export function NominationCategoryShowcase({
               nominee={nominee}
               categoryTitle={category.title}
               priority={index === 0 && nomineeIndex === 0}
+              votingOpen={votingOpen}
             />
           ))}
         </div>
@@ -60,19 +64,31 @@ function NomineeCard({
   nominee,
   categoryTitle,
   priority,
+  votingOpen,
 }: {
   nominee: PublicNomineePageCategory["nominees"][number];
   categoryTitle: string;
   priority: boolean;
+  votingOpen: boolean;
 }) {
+  const votingLocked = !votingOpen;
+
   return (
-    <figure className="group overflow-hidden rounded-2xl border border-gold/20 bg-black/70 transition hover:border-gold/45">
+    <figure
+      className={`group overflow-hidden rounded-2xl border bg-black/70 transition ${
+        votingLocked ? "border-white/10" : "border-gold/20 hover:border-gold/45"
+      }`}
+    >
       <a
         href={nominee.ticketHref}
         target="_blank"
         rel="noopener noreferrer"
         className="block"
-        aria-label={`Support and vote for ${nominee.nomineeName}`}
+        aria-label={
+          votingLocked
+            ? `${nominee.nomineeName} — ${VOTING_STARTS_MESSAGE}`
+            : `Support and vote for ${nominee.nomineeName}`
+        }
       >
         <div className="relative aspect-[4/5] w-full">
           <Image
@@ -87,7 +103,9 @@ function NomineeCard({
         <figcaption className="border-t border-white/10 bg-black/80 px-4 py-3">
           <p className="font-display text-lg text-white">{nominee.nomineeName}</p>
           <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gold/80">{categoryTitle}</p>
-          <p className="mt-2 text-xs text-white/55">Support &amp; vote →</p>
+          <p className="mt-2 text-xs text-white/55">
+            {votingLocked ? VOTING_STARTS_MESSAGE : "Support & vote →"}
+          </p>
         </figcaption>
       </a>
     </figure>

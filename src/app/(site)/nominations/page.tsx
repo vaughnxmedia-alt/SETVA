@@ -3,6 +3,7 @@ import { NominationsBrowse } from "@/components/nominations/NominationsBrowse";
 import { NominationsHeroIntro } from "@/components/nominations/NominationsHeroIntro";
 import { NominationsPageShell } from "@/components/nominations/NominationsPageShell";
 import { listPublishedNomineePageCategories } from "@/lib/nominee-workflows-store";
+import { isPublicVotingOpen } from "@/lib/voting";
 
 export const metadata: Metadata = {
   title: "Nominations",
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NominationsPage() {
   const categories = await listPublishedNomineePageCategories();
+  const votingOpen = isPublicVotingOpen();
 
   return (
     <NominationsPageShell>
@@ -26,7 +28,7 @@ export default async function NominationsPage() {
             Nominees will appear here when SETVA publishes them.
           </div>
         ) : (
-          <NominationsBrowse categories={categories} />
+          <NominationsBrowse categories={categories} votingOpen={votingOpen} />
         )}
       </div>
     </NominationsPageShell>

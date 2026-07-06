@@ -2,11 +2,16 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { TicketPartnerGateForm } from "@/components/tickets/TicketPartnerGateForm";
 import { NomineeVoteSection } from "@/components/tickets/NomineeVoteSection";
+import { VotingStartsNotice } from "@/components/VotingStartsNotice";
 import { recordTicketLinkEvent } from "@/lib/ticket-link-events-store";
 import { createPageMetadata } from "@/lib/metadata";
 import { listNomineeVoteTargets, resolveTicketPartnerBySlug } from "@/lib/ticket-partner/resolve";
 import { getVoterDailyStatus } from "@/lib/votes-store";
-import { DAILY_VOTE_LIMIT, isVotingOpen, VOTER_COOKIE } from "@/lib/voting";
+import {
+  DAILY_VOTE_LIMIT,
+  listCurrentlyOpenVotingSetups,
+  VOTER_COOKIE,
+} from "@/lib/voting";
 
 // Voting availability and published categories must reflect live data.
 export const dynamic = "force-dynamic";
@@ -41,24 +46,30 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
     eventType: "click",
   });
 
-  const votingOpen = isVotingOpen();
   const isNominee = partner.sourceType === "nominee";
 
-  const voterKey = (await cookies()).get(VOTER_COOKIE)?.value?.trim() ?? "";
-  const [voteTargets, dailyStatus] = await Promise.all([
+  const [openSetups, voteTargets] = await Promise.all([
+    listCurrentlyOpenVotingSetups(),
     isNominee ? listNomineeVoteTargets(partner.sourceName) : Promise.resolve([]),
-    votingOpen && voterKey
-      ? getVoterDailyStatus(voterKey)
-      : Promise.resolve({ votesToday: 0, votesRemaining: DAILY_VOTE_LIMIT, votedCategoryIds: [] }),
   ]);
+  const openCategoryIds = new Set(openSetups.map((setup) => setup.categoryId));
+  const votingOpen = openCategoryIds.size > 0;
+
+  const voterKey = (await cookies()).get(VOTER_COOKIE)?.value?.trim() ?? "";
+  const dailyStatus =
+    votingOpen && voterKey
+      ? await getVoterDailyStatus(voterKey)
+      : { votesToday: 0, votesRemaining: DAILY_VOTE_LIMIT, votedCategoryIds: [] };
 
   return (
     <div className="px-4 py-12 sm:px-6 sm:py-16">
+      <VotingStartsNotice className="mx-auto mb-6 max-w-lg" />
       <TicketPartnerGateForm partner={partner} />
       <NomineeVoteSection
         nomineeName={partner.sourceName}
         targets={voteTargets}
         votingOpen={votingOpen}
+        openCategoryIds={[...openCategoryIds]}
         votesRemaining={dailyStatus.votesRemaining}
         votedCategoryIds={dailyStatus.votedCategoryIds}
       />

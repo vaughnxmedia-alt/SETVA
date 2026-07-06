@@ -71,7 +71,7 @@ export function DonateForm() {
           type="donation"
           itemId="donation"
           amount={amount}
-          label={amount >= 1 ? `Preview donate $${amount}` : "Enter an amount"}
+          label={amount >= 1 ? `Donate $${amount}` : "Enter an amount"}
           variant="secondary"
           className="w-full"
         />

@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleApiFailure, safeApiHandler } from "@/lib/errors";
 import { createVoterKey, recordNomineeVote } from "@/lib/votes-store";
-import { isVotingOpen, VOTER_COOKIE, VOTER_COOKIE_MAX_AGE } from "@/lib/voting";
+import { canRecordVote, VOTER_COOKIE, VOTER_COOKIE_MAX_AGE, VOTING_STARTS_MESSAGE, isPublicVotingOpen } from "@/lib/voting";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
-  if (!isVotingOpen()) {
-    return NextResponse.json(
-      { success: false, error: "Voting is not open yet." },
-      { status: 403 },
-    );
-  }
-
   try {
     let body: Record<string, unknown>;
     try {
@@ -27,6 +20,20 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       return NextResponse.json(
         { success: false, error: "Nominee, page entry, and category are required." },
         { status: 400 },
+      );
+    }
+
+    if (!isPublicVotingOpen()) {
+      return NextResponse.json(
+        { success: false, error: VOTING_STARTS_MESSAGE },
+        { status: 403 },
+      );
+    }
+
+    if (!(await canRecordVote({ categoryId, nomineeId }))) {
+      return NextResponse.json(
+        { success: false, error: "Voting is not open for this category yet." },
+        { status: 403 },
       );
     }
 

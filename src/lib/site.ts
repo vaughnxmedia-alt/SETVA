@@ -1,5 +1,5 @@
 /** Set to false once real pricing, venue, and lineup are confirmed. */
-export const usingPlaceholderData = true;
+export const usingPlaceholderData = false;
 
 export const site = {
   name: "SETVA",
@@ -704,51 +704,8 @@ export type Nominee = {
   bio: string;
 };
 
-/** Placeholder honorees — swap for real nominees when announced. */
-export const nominees: Nominee[] = [
-  {
-    id: "1",
-    name: "Marcus J. Williams",
-    category: "Music & Arts",
-    city: "Beaumont",
-    bio: "Sample bio — community performer uplifting youth through workshops.",
-  },
-  {
-    id: "2",
-    name: "Dr. Aisha Coleman",
-    category: "Healthcare & Service",
-    city: "Port Arthur",
-    bio: "Sample bio — clinic founder expanding access in underserved neighborhoods.",
-  },
-  {
-    id: "3",
-    name: "The Rivera Collective",
-    category: "Community Leadership",
-    city: "Orange",
-    bio: "Sample bio — grassroots organizers behind neighborhood restoration projects.",
-  },
-  {
-    id: "4",
-    name: 'James "JT" Thompson',
-    category: "Education & Youth",
-    city: "Beaumont",
-    bio: "Sample bio — mentor and coach known for 409 youth empowerment programs.",
-  },
-  {
-    id: "5",
-    name: "Elena Vasquez",
-    category: "Entrepreneurship",
-    city: "Nederland",
-    bio: "Sample bio — small-business advocate creating jobs across Southeast Texas.",
-  },
-  {
-    id: "6",
-    name: "Pastor D. Mitchell",
-    category: "Faith & Healing",
-    city: "Beaumont",
-    bio: "Sample bio — spiritual leader bridging faith communities and recovery support.",
-  },
-];
+/** Static honoree list — nominations on the live site come from Headquarters. */
+export const nominees: Nominee[] = [];
 
 export type VendorPackage = {
   id: string;
@@ -780,7 +737,7 @@ export const vendorSlotOptions = [
   },
 ] as const;
 
-/** Sample vendor booth pricing. */
+/** Vendor booth pricing for online checkout. */
 export const vendorPackages: VendorPackage[] = [
   {
     id: "standard",
@@ -829,7 +786,7 @@ export const faqItems = [
   },
   {
     q: "How does the Ticket Partner program work?",
-    a: "Partners earn 10% commission on tickets sold through their custom link. Contact us to get your partner code (sample policy).",
+    a: "Partners earn 10% commission on tickets sold through their custom link. Contact us to get your partner code.",
   },
   {
     q: "What sponsorship packages are available?",
@@ -849,7 +806,7 @@ export const faqItems = [
   },
   {
     q: "Are donations tax-deductible?",
-    a: "Placeholder — confirm nonprofit status with your tax advisor before claiming deductions.",
+    a: "Donations support SETVA programming. Confirm tax-deductibility with your tax advisor before claiming deductions.",
   },
 ] as const;
 
@@ -862,14 +819,37 @@ export const ticketPartnerInfo = {
     "Request your custom ticket link or promo code from the SETVA team.",
     "Share with your network — family, church, business, social media.",
     "Every sale through your link is tracked to your account.",
-    "Receive your commission payout after the event (sample timeline: within 30 days).",
-  ],
-  sampleEarnings: [
-    { tickets: 20, tier: "Preferred Seating ($25 pre-sale)", earnings: 50 },
-    { tickets: 15, tier: "VIP ($40 pre-sale)", earnings: 60 },
-    { tickets: 10, tier: "VIP ($50 regular)", earnings: 50 },
+    "Receive your commission payout within 30 days after the event.",
   ],
 };
+
+export type TicketPartnerEarningsExample = {
+  tickets: number;
+  tier: string;
+  earnings: number;
+};
+
+/** Illustrative partner earnings based on current ticket tiers and commission rate. */
+export function getTicketPartnerEarningsExamples(
+  now = new Date(),
+): TicketPartnerEarningsExample[] {
+  const ticketCounts: Record<string, number> = {
+    preferred: 20,
+    vip: 15,
+  };
+
+  return getTicketTiers(now).map((tier) => {
+    const tickets = ticketCounts[tier.id] ?? 10;
+    const earnings = Math.round(
+      (tickets * tier.price * ticketPartnerInfo.commissionPercent) / 100,
+    );
+    return {
+      tickets,
+      tier: `${tier.name} ($${tier.price})`,
+      earnings,
+    };
+  });
+}
 
 export type SocialHubLink = {
   label: string;

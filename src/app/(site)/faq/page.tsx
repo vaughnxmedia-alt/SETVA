@@ -14,7 +14,7 @@ export default function FAQPage() {
         <SectionHeading
           eyebrow="Help"
           title="Frequently asked questions"
-          subtitle="Answers for preview mode and SETVA 2026 planning."
+          subtitle="Answers about SETVA 2026 tickets, sponsors, and the event."
         />
         <dl className="mt-12 space-y-6">
           {faqItems.map((item) => (

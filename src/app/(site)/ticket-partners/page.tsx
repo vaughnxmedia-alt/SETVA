@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionHeading } from "@/components/SectionHeading";
 import { isAmbassadorRegistrationOpen } from "@/lib/ambassadors";
-import { ticketPartnerInfo } from "@/lib/site";
+import { getTicketPartnerEarningsExamples, ticketPartnerInfo } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 
 export default function TicketPartnersPage() {
   const registrationOpen = isAmbassadorRegistrationOpen();
+  const earningsExamples = getTicketPartnerEarningsExamples();
 
   return (
     <div className="px-4 py-12 sm:px-6 sm:py-16">
@@ -40,12 +41,12 @@ export default function TicketPartnersPage() {
           </ol>
         </div>
         <div className="card-glow mt-10 rounded-2xl bg-ink-deep/60 p-8">
-          <h3 className="font-display text-lg text-gold">Sample earnings</h3>
+          <h3 className="font-display text-lg text-gold">Example earnings</h3>
           <p className="mt-2 text-sm text-cream/50">
-            At {ticketPartnerInfo.commissionPercent}% commission (illustrative)
+            At {ticketPartnerInfo.commissionPercent}% commission on current ticket prices
           </p>
           <ul className="mt-6 space-y-4">
-            {ticketPartnerInfo.sampleEarnings.map((row) => (
+            {earningsExamples.map((row) => (
               <li
                 key={row.tier}
                 className="flex items-center justify-between border-b border-gold/10 pb-3 text-sm last:border-0"

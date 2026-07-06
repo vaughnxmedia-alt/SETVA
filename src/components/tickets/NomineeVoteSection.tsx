@@ -2,12 +2,13 @@
 
 import { useCallback, useState } from "react";
 import type { NomineeVoteTarget } from "@/lib/ticket-partner/resolve";
-import { DAILY_VOTE_LIMIT, VOTING_OPENS_LABEL } from "@/lib/voting";
+import { DAILY_VOTE_LIMIT, VOTING_STARTS_MESSAGE } from "@/lib/voting";
 
 type NomineeVoteSectionProps = {
   nomineeName: string;
   targets: NomineeVoteTarget[];
   votingOpen: boolean;
+  openCategoryIds: string[];
   votesRemaining: number;
   votedCategoryIds: string[];
 };
@@ -16,6 +17,7 @@ export function NomineeVoteSection({
   nomineeName,
   targets,
   votingOpen,
+  openCategoryIds,
   votesRemaining,
   votedCategoryIds,
 }: NomineeVoteSectionProps) {
@@ -23,6 +25,7 @@ export function NomineeVoteSection({
     () => new Set(votedCategoryIds),
   );
   const [remaining, setRemaining] = useState(votesRemaining);
+  const openCategorySet = new Set(openCategoryIds);
 
   const handleVoted = useCallback((categoryId: string, votesRemainingAfter: number) => {
     setVotedCategories((prev) => {
@@ -44,7 +47,7 @@ export function NomineeVoteSection({
         <h2 className="mt-3 font-display text-2xl text-cream">Vote for {nomineeName}</h2>
         <p className="mt-3 text-sm text-cream/70">
           {!votingOpen ? (
-            <>Voting opens {VOTING_OPENS_LABEL}. Check back then to vote in each category below.</>
+            <>{VOTING_STARTS_MESSAGE}</>
           ) : limitReached ? (
             <>You&apos;ve used all {DAILY_VOTE_LIMIT} of your votes for today. Come back tomorrow to vote again.</>
           ) : (
@@ -61,7 +64,7 @@ export function NomineeVoteSection({
           <VoteRow
             key={target.pageEntryId}
             target={target}
-            votingOpen={votingOpen}
+            categoryVotingOpen={openCategorySet.has(target.categoryId)}
             alreadyVoted={votedCategories.has(target.categoryId)}
             limitReached={limitReached}
             onVoted={handleVoted}
@@ -74,13 +77,13 @@ export function NomineeVoteSection({
 
 function VoteRow({
   target,
-  votingOpen,
+  categoryVotingOpen,
   alreadyVoted,
   limitReached,
   onVoted,
 }: {
   target: NomineeVoteTarget;
-  votingOpen: boolean;
+  categoryVotingOpen: boolean;
   alreadyVoted: boolean;
   limitReached: boolean;
   onVoted: (categoryId: string, votesRemainingAfter: number) => void;
@@ -89,7 +92,7 @@ function VoteRow({
   const [error, setError] = useState("");
 
   async function handleVote() {
-    if (!votingOpen || voting || alreadyVoted || limitReached) return;
+    if (!categoryVotingOpen || voting || alreadyVoted || limitReached) return;
     setVoting(true);
     setError("");
     try {
@@ -122,7 +125,7 @@ function VoteRow({
     }
   }
 
-  const disabled = !votingOpen || alreadyVoted || (limitReached && !alreadyVoted);
+  const disabled = !categoryVotingOpen || alreadyVoted || (limitReached && !alreadyVoted);
 
   return (
     <li className="flex items-center justify-between gap-4 rounded-xl border border-gold/15 bg-black/30 px-4 py-3">
@@ -131,15 +134,15 @@ function VoteRow({
         {error ? <p className="mt-0.5 text-xs text-red-300">{error}</p> : null}
       </div>
 
-      {!votingOpen ? (
+      {!categoryVotingOpen ? (
         <button
           type="button"
           disabled
           aria-disabled="true"
-          title={`Voting opens ${VOTING_OPENS_LABEL}`}
+          title={VOTING_STARTS_MESSAGE}
           className="shrink-0 cursor-not-allowed rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/40"
         >
-          Opens {VOTING_OPENS_LABEL}
+          Opens 9pm CT
         </button>
       ) : alreadyVoted ? (
         <span className="shrink-0 rounded-full border border-emerald/40 bg-emerald/15 px-4 py-2 text-sm font-semibold text-emerald-light">

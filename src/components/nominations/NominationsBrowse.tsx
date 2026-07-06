@@ -6,9 +6,10 @@ import { NominationCategoryShowcase } from "@/components/nominations/NominationC
 
 type NominationsBrowseProps = {
   categories: PublicNomineePageCategory[];
+  votingOpen: boolean;
 };
 
-export function NominationsBrowse({ categories }: NominationsBrowseProps) {
+export function NominationsBrowse({ categories, votingOpen }: NominationsBrowseProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
 
   const visibleCategories = useMemo(() => {
@@ -45,6 +46,7 @@ export function NominationsBrowse({ categories }: NominationsBrowseProps) {
             key={category.id}
             category={category}
             index={categories.findIndex((item) => item.id === category.id) ?? index}
+            votingOpen={votingOpen}
           />
         ))}
       </div>

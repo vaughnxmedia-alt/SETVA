@@ -9,6 +9,7 @@ import {
 } from "@/components/HomeHeroVideo";
 import { site } from "@/lib/site";
 import { TicketPurchaseLink } from "@/components/TicketPurchaseLink";
+import { VotingStartsNotice } from "@/components/VotingStartsNotice";
 
 export function HomeHeroCopy() {
   const [hidden, setHidden] = useState(false);
@@ -83,12 +84,13 @@ export function HomeHeroCopy() {
               Become a Sponsor
             </Link>
             <Link
-              href="/donate"
+              href="/nominations"
               className="inline-flex shrink-0 items-center justify-center rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-black shadow-lg transition hover:bg-gold-light"
             >
               Vote
             </Link>
           </div>
+          <VotingStartsNotice className="text-xs sm:text-sm" />
         </div>
       </div>
     </div>

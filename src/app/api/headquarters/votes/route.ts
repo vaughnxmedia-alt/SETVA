@@ -5,7 +5,7 @@ import { listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
 import { listNomineePageEntries } from "@/lib/nominee-workflows-store";
 import { getNomineeVoteTallies, type HQVotingCategorySection, type HQVotingNomineeRow } from "@/lib/votes-store";
-import { isVotingOpen, votingOpensAtIso, VOTING_OPENS_LABEL } from "@/lib/voting";
+import { getVotingOpensLabel, isVotingOpen } from "@/lib/voting";
 
 export type { HQVotingCategorySection, HQVotingNomineeRow };
 
@@ -87,12 +87,12 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
     const grandTotal = Object.values(voteTallies).reduce((sum, count) => sum + count, 0);
     const nomineesWithVotes = Object.keys(voteTallies).length;
+    const [votingOpen, opensLabel] = await Promise.all([isVotingOpen(), getVotingOpensLabel()]);
 
     return NextResponse.json({
       success: true,
-      votingOpen: isVotingOpen(),
-      opensAt: votingOpensAtIso(),
-      opensLabel: VOTING_OPENS_LABEL,
+      votingOpen,
+      opensLabel,
       grandTotal,
       nomineesWithVotes,
       categorySections,

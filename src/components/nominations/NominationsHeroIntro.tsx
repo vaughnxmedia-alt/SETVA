@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { VotingStartsNotice } from "@/components/VotingStartsNotice";
 import { site } from "@/lib/site";
 
 export function NominationsHeroIntro() {
@@ -20,6 +21,7 @@ export function NominationsHeroIntro() {
       <p className="mt-4 font-display text-lg italic leading-relaxed text-white/90 sm:text-xl">
         Celebrating visionary talent across the 409 — choose a category to browse nominees.
       </p>
+      <VotingStartsNotice className="mt-6" />
     </header>
   );
 }
