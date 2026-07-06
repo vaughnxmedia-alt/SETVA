@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
+import { SponsorsSubnav } from "@/components/headquarters/SponsorsSubnav";
 import { SponsorOutreachEmailPreview } from "@/components/headquarters/SponsorOutreachEmailPreview";
 import {
   HQBadge,
@@ -157,10 +158,15 @@ export function SponsorsView({
 
   return (
     <HQShell title="Sponsors">
+      <SponsorsSubnav />
+
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <p className="text-sm text-cream/50">
-          Sponsor pipeline and partnership progress. Send prospects a link to the sponsor packages page.
-        </p>
+        <div>
+          <h1 className="font-display text-2xl text-cream">Outreach</h1>
+          <p className="mt-2 text-sm text-cream/50">
+            Sponsor pipeline and partnership progress. Send prospects a link to the sponsor packages page.
+          </p>
+        </div>
         <HQButton onClick={openNewModal}>Send sponsor link</HQButton>
       </div>
 

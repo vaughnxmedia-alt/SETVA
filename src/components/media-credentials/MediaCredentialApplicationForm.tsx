@@ -10,13 +10,15 @@ import {
   mediaCredentialSuccessMessage,
   type CoverageType,
   type MediaCredentialApplicationData,
+  type MediaTeamMemberRosterEntry,
 } from "@/lib/media-credentials";
 
 const fieldClass =
   "mt-1 w-full rounded-xl border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none transition focus:border-gold/50";
 
-type FormState = Omit<MediaCredentialApplicationData, "rulesAgreed"> & {
+type FormState = Omit<MediaCredentialApplicationData, "rulesAgreed" | "teamMemberRoster"> & {
   rulesAgreed: boolean;
+  teamMemberRoster: MediaTeamMemberRosterEntry[];
 };
 
 function emptyForm(): FormState {
@@ -34,6 +36,7 @@ function emptyForm(): FormState {
     totalFollowers: "",
     averageReach: "",
     teamMembers: "",
+    teamMemberRoster: [],
     equipment: "",
     portfolioLink: "",
     previousCoverageLink: "",
@@ -80,7 +83,12 @@ export function MediaCredentialApplicationForm() {
     if (!form.email.trim()) return "Email address is required";
     if (!form.cityState.trim()) return "City and state are required";
     if (!form.mediaOutlet.trim()) return "Media outlet or creator name is required";
-    if (!form.teamMembers.trim()) return "Number of team members attending is required";
+    if (form.teamMemberRoster.length === 0 && !form.teamMembers.trim()) {
+      return "Add team members or enter the number attending";
+    }
+    if (form.teamMemberRoster.some((member) => !member.name.trim())) {
+      return "Each team member needs a name";
+    }
     if (!form.equipment.trim()) return "Equipment being brought is required";
     if (!form.emergencyContactName.trim()) return "Emergency contact name is required";
     if (!form.emergencyContactPhone.trim()) {
@@ -105,11 +113,21 @@ export function MediaCredentialApplicationForm() {
     }
 
     setLoading(true);
+    const roster = form.teamMemberRoster
+      .map((member) => ({ name: member.name.trim() }))
+      .filter((member) => member.name);
+    const payload = {
+      ...form,
+      teamMemberRoster: roster,
+      teamMembers:
+        roster.length > 0 ? String(1 + roster.length) : form.teamMembers.trim(),
+    };
+
     try {
       const res = await fetch("/api/media-credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok || data.success === false) {
@@ -268,14 +286,72 @@ export function MediaCredentialApplicationForm() {
 
       <section className="card-glow rounded-2xl bg-ink-deep/70 p-6 sm:p-8">
         <h3 className="font-display text-xl text-cream">Team &amp; equipment</h3>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <Field label="Number of team members attending">
-            <input
-              className={fieldClass}
-              value={form.teamMembers}
-              onChange={(event) => update("teamMembers", event.target.value)}
-            />
-          </Field>
+        <p className="mt-2 text-sm text-cream/60">
+          List each additional crew member who will be on site with you. After approval, each
+          person must complete the team registration form sent in your confirmation email.
+        </p>
+        <div className="mt-6 space-y-3">
+          {form.teamMemberRoster.map((member, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                className={fieldClass}
+                value={member.name}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    teamMemberRoster: current.teamMemberRoster.map((entry, entryIndex) =>
+                      entryIndex === index ? { name: event.target.value } : entry,
+                    ),
+                  }))
+                }
+                placeholder="Team member full name"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    teamMemberRoster: current.teamMemberRoster.filter((_, entryIndex) => entryIndex !== index),
+                  }))
+                }
+                className="shrink-0 rounded-xl border border-gold/20 px-3 text-sm text-cream/60 transition hover:border-gold/40 hover:text-cream"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setForm((current) => ({
+                ...current,
+                teamMemberRoster: [...current.teamMemberRoster, { name: "" }],
+              }))
+            }
+            className="rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition hover:bg-gold/20"
+          >
+            + Add team member
+          </button>
+        </div>
+        {form.teamMemberRoster.length === 0 ? (
+          <div className="mt-5">
+            <Field label="Number of team members attending (including you)">
+              <input
+                className={fieldClass}
+                value={form.teamMembers}
+                onChange={(event) => update("teamMembers", event.target.value)}
+                placeholder="e.g. 2"
+              />
+            </Field>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-cream/55">
+            Total attending: <strong className="text-cream">{1 + form.teamMemberRoster.length}</strong>{" "}
+            (you + {form.teamMemberRoster.length} team member
+            {form.teamMemberRoster.length === 1 ? "" : "s"})
+          </p>
+        )}
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
           <Field label="Portfolio or previous work link">
             <input
               className={fieldClass}

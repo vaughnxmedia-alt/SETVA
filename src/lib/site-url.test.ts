@@ -23,4 +23,11 @@ describe("site url", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://www.setvawards.com");
     expect(getPublicSiteUrl()).toBe("https://www.setvawards.com");
   });
+
+  it("defaults to the canonical domain in local development", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("VERCEL", "");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
+    expect(getPublicSiteUrl()).toBe("https://www.setvawards.com");
+  });
 });

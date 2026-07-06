@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
+import { MediaCredentialApprovalEmailPreview } from "@/components/headquarters/MediaCredentialApprovalEmailPreview";
 import {
   HQBadge,
   HQButton,
@@ -11,10 +12,14 @@ import {
   hqInputClass,
   hqPanelClass,
 } from "@/components/headquarters/ui";
+import { DEFAULT_MEDIA_CHECK_IN_TIME } from "@/lib/media-credential-approval-email";
 import { applicationStatusOptions, type MediaCredentialApplication } from "@/lib/media-credentials";
+import type { MediaCredentialTeamMemberRecord } from "@/lib/media-credential-team";
+import { formatMediaTeamMemberAddress } from "@/lib/media-credential-team";
 
 type MediaViewProps = {
   applications: MediaCredentialApplication[];
+  teamMemberSubmissions: MediaCredentialTeamMemberRecord[];
 };
 
 type ModalMode =
@@ -34,7 +39,10 @@ function formatWhen(value: string | null): string {
   return new Date(value).toLocaleString();
 }
 
-export function MediaView({ applications: initialApplications }: MediaViewProps) {
+export function MediaView({
+  applications: initialApplications,
+  teamMemberSubmissions,
+}: MediaViewProps) {
   const [applications, setApplications] = useState(initialApplications);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -46,7 +54,27 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
   // Approve modal fields.
   const [checkInTime, setCheckInTime] = useState("");
   const [checkInLocation, setCheckInLocation] = useState("");
-  const [sendApprovalEmail, setSendApprovalEmail] = useState(true);
+
+  const approvePreviewApplication = useMemo(() => {
+    if (modal?.kind !== "approve") return null;
+    return {
+      id: modal.application.id,
+      fullName: modal.application.fullName,
+      email: modal.application.email,
+      mediaOutlet: modal.application.mediaOutlet,
+      teamMemberRoster: modal.application.teamMemberRoster ?? [],
+    };
+  }, [modal]);
+
+  const submissionsByApplication = useMemo(() => {
+    const map = new Map<string, MediaCredentialTeamMemberRecord[]>();
+    for (const submission of teamMemberSubmissions) {
+      const current = map.get(submission.applicationId) ?? [];
+      current.push(submission);
+      map.set(submission.applicationId, current);
+    }
+    return map;
+  }, [teamMemberSubmissions]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -62,9 +90,8 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
   const pendingCount = applications.filter((app) => app.status === "Pending Review").length;
 
   function openApprove(application: MediaCredentialApplication) {
-    setCheckInTime(application.arrivalTime ?? "");
+    setCheckInTime(application.arrivalTime ?? DEFAULT_MEDIA_CHECK_IN_TIME);
     setCheckInLocation(application.pickupLocation ?? "");
-    setSendApprovalEmail(true);
     setError(null);
     setModal({ kind: "approve", application });
   }
@@ -114,7 +141,7 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
   async function confirmApprove() {
     if (modal?.kind !== "approve") return;
     const ok = await patchStatus(modal.application, "Approved", {
-      sendEmail: sendApprovalEmail,
+      sendEmail: true,
       checkInTime,
       checkInLocation,
     });
@@ -185,6 +212,8 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
         <div className="grid gap-4 lg:grid-cols-2">
           {filtered.map((app) => {
             const approved = app.status === "Approved" || app.status === "Approved with Restrictions";
+            const roster = app.teamMemberRoster ?? [];
+            const submissions = submissionsByApplication.get(app.id) ?? [];
             return (
               <div
                 key={app.id}
@@ -228,6 +257,31 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
                     <dt className="text-cream/35">Team size</dt>
                     <dd className="text-cream/75">{app.teamMembers || "—"}</dd>
                   </div>
+                  {roster.length > 0 ? (
+                    <div className="col-span-2">
+                      <dt className="text-cream/35">Named team members</dt>
+                      <dd className="text-cream/75">{roster.map((member) => member.name).join(", ")}</dd>
+                    </div>
+                  ) : null}
+                  {submissions.length > 0 ? (
+                    <div className="col-span-2">
+                      <dt className="text-cream/35">Registered crew</dt>
+                      <dd className="space-y-2 text-cream/75">
+                        {submissions.map((member) => (
+                          <div
+                            key={member.id}
+                            className="rounded-lg border border-gold/10 bg-black/20 px-3 py-2 text-xs"
+                          >
+                            <p className="font-medium text-cream">{member.fullName}</p>
+                            <p>{member.email} · {member.phone}</p>
+                            <p className="mt-1 whitespace-pre-line text-cream/55">
+                              {formatMediaTeamMemberAddress(member)}
+                            </p>
+                          </div>
+                        ))}
+                      </dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt className="text-cream/35">Confirmation email</dt>
                     <dd className="text-cream/75">{formatWhen(app.lastStatusEmailAt)}</dd>
@@ -267,10 +321,21 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className={`${hqPanelClass} max-h-[90vh] w-full max-w-lg overflow-y-auto`}>
+          <div
+            className={`${hqPanelClass} max-h-[92vh] w-full overflow-y-auto ${
+              modal.kind === "approve" ? "max-w-5xl" : "max-w-lg"
+            }`}
+          >
             <HQCardHeader
-              title={modal.kind === "approve" ? "Approve media credential" : "Delete application"}
-              subtitle={modal.application.fullName}
+              title={
+                modal.kind === "approve"
+                  ? modal.application.status === "Approved" ||
+                    modal.application.status === "Approved with Restrictions"
+                    ? "Re-send approval email"
+                    : "Approve media credential"
+                  : "Delete application"
+              }
+              subtitle={`${modal.application.fullName} · ${modal.application.mediaOutlet}`}
               action={
                 <HQButton variant="ghost" onClick={() => setModal(null)} disabled={busyId !== null}>
                   Close
@@ -278,43 +343,46 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
               }
             />
 
-            <div className="space-y-4 p-5">
+            <div className={modal.kind === "approve" ? "grid gap-6 p-5 lg:grid-cols-2" : "p-5"}>
               {modal.kind === "approve" ? (
                 <>
-                  <p className="text-sm text-cream/70">
-                    Approving sends the official SETVA media sign-in confirmation to{" "}
-                    <strong className="text-cream">{modal.application.email}</strong>. Add the check-in
-                    time and location to include in the email.
-                  </p>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-cream/50">Media check-in time</span>
-                    <input
-                      type="text"
-                      value={checkInTime}
-                      onChange={(e) => setCheckInTime(e.target.value)}
-                      placeholder="e.g. 3:00 PM"
-                      className={`${hqInputClass} w-full`}
+                  <div className="space-y-4">
+                    <p className="text-sm text-cream/70">
+                      Review the automatic approval email below. Update check-in details if
+                      needed, then confirm to approve and send to{" "}
+                      <strong className="text-cream">{modal.application.email}</strong>.
+                    </p>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-cream/50">Media check-in time</span>
+                      <input
+                        type="text"
+                        value={checkInTime}
+                        onChange={(e) => setCheckInTime(e.target.value)}
+                        placeholder={DEFAULT_MEDIA_CHECK_IN_TIME}
+                        className={`${hqInputClass} w-full`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-cream/50">
+                        Media check-in location
+                      </span>
+                      <input
+                        type="text"
+                        value={checkInLocation}
+                        onChange={(e) => setCheckInLocation(e.target.value)}
+                        placeholder="e.g. Jefferson Theatre — Media Check-In (front entrance)"
+                        className={`${hqInputClass} w-full`}
+                      />
+                    </label>
+                  </div>
+
+                  {approvePreviewApplication ? (
+                    <MediaCredentialApprovalEmailPreview
+                      application={approvePreviewApplication}
+                      checkInTime={checkInTime}
+                      checkInLocation={checkInLocation}
                     />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-cream/50">Media check-in location</span>
-                    <input
-                      type="text"
-                      value={checkInLocation}
-                      onChange={(e) => setCheckInLocation(e.target.value)}
-                      placeholder="e.g. Jefferson Theatre — Media Check-In (front entrance)"
-                      className={`${hqInputClass} w-full`}
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-cream/70">
-                    <input
-                      type="checkbox"
-                      checked={sendApprovalEmail}
-                      onChange={(e) => setSendApprovalEmail(e.target.checked)}
-                      className="h-4 w-4 accent-gold"
-                    />
-                    Email the sign-in confirmation now
-                  </label>
+                  ) : null}
                 </>
               ) : (
                 <p className="text-sm text-cream/80">
@@ -331,7 +399,7 @@ export function MediaView({ applications: initialApplications }: MediaViewProps)
               </HQButton>
               {modal.kind === "approve" ? (
                 <HQButton onClick={() => void confirmApprove()} disabled={busyId !== null}>
-                  {busyId !== null ? "Saving…" : sendApprovalEmail ? "Approve & send email" : "Approve"}
+                  {busyId !== null ? "Sending…" : "Confirm & send"}
                 </HQButton>
               ) : (
                 <button

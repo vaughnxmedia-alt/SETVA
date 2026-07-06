@@ -24,6 +24,20 @@ export type SponsorOutreachEmailInput = {
 export const DEFAULT_SPONSOR_OUTREACH_COPY =
   "Thank you for your interest in partnering with SETVA 2026. Review the packages below and click Buy when you're ready to secure your sponsorship.";
 
+/** Website form + HQ "All packages" with default copy — identical outreach email. */
+export function automatedPublicSponsorOutreachInput(
+  lead: SponsorOutreachLead,
+  baseUrl?: string,
+): SponsorOutreachEmailInput {
+  return {
+    lead,
+    baseUrl: baseUrl ?? sponsorOutreachBaseUrl(),
+    packageId: undefined,
+    emailCopy: DEFAULT_SPONSOR_OUTREACH_COPY,
+    teamMember: undefined,
+  };
+}
+
 export function isCustomOutreachCopy(copy?: string): boolean {
   const trimmed = copy?.trim();
   return Boolean(trimmed && trimmed !== DEFAULT_SPONSOR_OUTREACH_COPY);

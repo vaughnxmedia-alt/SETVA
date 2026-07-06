@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendSponsorDeckEmail } from "@/lib/email";
+import { sendPublicSponsorPackagesEmail } from "@/lib/email";
 import {
   handleApiFailure,
   safeApiHandler,
 } from "@/lib/errors";
 import { FORM_TYPES } from "@/lib/form-submissions";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
+import { DEFAULT_SPONSOR_OUTREACH_COPY } from "@/lib/sponsor-outreach-email";
 
 type SponsorDeckBody = {
   name?: string;
@@ -61,17 +62,21 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   try {
     await persistFormSubmission({
       formType: FORM_TYPES.sponsorDeck,
-      status: "received",
+      status: "auto_sent",
       contactEmail: email,
       contactName: name,
-      payload: lead,
+      payload: {
+        ...lead,
+        source: "website_form",
+        emailCopy: DEFAULT_SPONSOR_OUTREACH_COPY,
+      },
     });
   } catch (error) {
     console.error("[sponsor-deck] Lead not persisted; continuing to email:", error);
   }
 
   try {
-    packagesUrl = await sendSponsorDeckEmail(lead);
+    packagesUrl = await sendPublicSponsorPackagesEmail(lead);
   } catch (error) {
     return handleApiFailure(error, {
       workflow: "Sponsor Deck Request",

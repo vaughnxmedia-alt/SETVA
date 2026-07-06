@@ -6,5 +6,5 @@ export default async function CommunicationsWorkflowPage({
   params: Promise<{ slug: string }>;
 }) {
   await params;
-  redirect("/headquarters/sponsors");
+  redirect("/headquarters/sponsors/outreach");
 }

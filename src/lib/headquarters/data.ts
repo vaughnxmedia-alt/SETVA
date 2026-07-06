@@ -6,7 +6,13 @@ import { listVolunteerRegistrations } from "@/lib/volunteers-store";
 import { listAmbassadorRegistrations } from "@/lib/ambassadors-store";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNomineesWithTicketPartnerSlugs } from "@/lib/nominees-store";
-import { sponsorPackages } from "@/lib/site";
+import { sponsorPackages, sortSponsorPackagesByPrice } from "@/lib/site";
+import {
+  buildSponsorFulfillmentEmail,
+  getPackageAssetsNeeded,
+} from "@/lib/sponsor-fulfillment";
+import { getPackageSoldCount } from "@/lib/sponsor-inventory";
+import { listSponsorBuyerRecords } from "@/lib/sponsor-package-sales";
 import {
   ambassadorTicketPartnerLink,
   buildTicketPartnerAnalytics,
@@ -26,6 +32,7 @@ import type {
   MediaApplication,
   NomineeRecord,
   SponsorLead,
+  SponsorPackageInventoryRow,
   VolunteerRecord,
   AmbassadorRecord,
   NomineeTicketPartnerRecord,
@@ -189,12 +196,69 @@ export async function getHQSponsorPipeline(): Promise<SponsorLead[]> {
       dealOwner: dealOwnerLabel(payload),
       status: sponsorStatus(record),
       paymentStatus: "—",
-      notes: record.status === "hq_sent" ? "Packages link sent from HQ" : "Packages link requested",
+      notes:
+        record.status === "hq_sent"
+          ? "Packages link sent from HQ"
+          : record.status === "auto_sent"
+            ? "Packages link emailed from website form"
+            : "Packages link requested",
       nextAction: "Follow up",
     });
   }
 
   return leads;
+}
+
+export async function getHQSponsorPackageInventory(): Promise<SponsorPackageInventoryRow[]> {
+  const buyers = await listSponsorBuyerRecords();
+
+  return sortSponsorPackagesByPrice(
+    sponsorPackages.filter((pkg) => pkg.price > 0 && !pkg.contactOnly),
+  ).map((pkg) => {
+    const packageBuyers = buyers.filter((buyer) => buyer.packageId === pkg.id);
+    const paidBuyers = packageBuyers.filter((buyer) => buyer.paymentStatus === "Paid in full");
+    const pendingBuyers = packageBuyers.filter((buyer) => buyer.paymentStatus !== "Paid in full");
+    const soldCount = Math.max(paidBuyers.length, getPackageSoldCount(pkg.id));
+    const maxAvailable = pkg.maxAvailable ?? null;
+    const remaining = maxAvailable != null ? Math.max(0, maxAvailable - soldCount) : null;
+
+    let availabilityLabel = "Unlimited slots";
+    if (maxAvailable != null) {
+      if (remaining === 0) availabilityLabel = "Sold out";
+      else if (remaining === 1) availabilityLabel = "1 slot left";
+      else availabilityLabel = `${remaining} slots left`;
+    }
+
+    const fulfillment = buildSponsorFulfillmentEmail(pkg);
+
+    return {
+      packageId: pkg.id,
+      packageName: pkg.name,
+      group: pkg.group,
+      price: pkg.price,
+      maxAvailable,
+      soldCount,
+      pendingCount: pendingBuyers.length,
+      remaining,
+      availabilityLabel,
+      buyers: packageBuyers.map((buyer) => ({
+        id: buyer.id,
+        companyName: buyer.companyName,
+        contactName: buyer.contactName,
+        email: buyer.email,
+        phone: buyer.phone,
+        jobTitle: buyer.jobTitle,
+        paymentStatus: buyer.paymentStatus,
+        fulfillmentStatus: buyer.fulfillmentStatus,
+        preferredPayment: buyer.preferredPayment,
+        submittedAt: buyer.submittedAt,
+        source: buyer.source,
+      })),
+      assetsNeeded: getPackageAssetsNeeded(pkg),
+      fulfillmentEmailSubject: fulfillment.subject,
+      fulfillmentEmailBody: fulfillment.body,
+    };
+  });
 }
 
 export async function getHQMediaApplications(): Promise<MediaApplication[]> {
@@ -633,7 +697,7 @@ export async function getHQNotifications(): Promise<HQNotification[]> {
       id: "sponsors-new",
       text: `${newSponsors} new sponsor inquir${newSponsors === 1 ? "y" : "ies"}`,
       time: "Now",
-      href: "/headquarters/sponsors",
+      href: "/headquarters/sponsors/outreach",
     });
   }
 

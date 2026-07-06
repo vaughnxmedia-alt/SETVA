@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { site } from "@/lib/site";
 import { teamNotifyEmails } from "@/lib/team-notify";
 import {
+  automatedPublicSponsorOutreachInput,
   buildSponsorOutreachEmailHtml,
   buildSponsorOutreachTeamNotificationHtml,
   sponsorOutreachBaseUrl,
@@ -68,6 +69,19 @@ export function compileSponsorOutreachEmail(
   };
 }
 
+/** Public sponsors page form — same email as HQ with all packages + default copy. */
+export function compilePublicSponsorPackagesEmail(
+  lead: SponsorOutreachLead,
+): CompiledSponsorOutreachEmail {
+  const input = automatedPublicSponsorOutreachInput(lead);
+  return {
+    input,
+    subject: sponsorOutreachEmailSubject(lead),
+    html: buildSponsorOutreachEmailHtml(input),
+    linkUrl: sponsorOutreachLinkUrl(input),
+  };
+}
+
 export async function sendCompiledSponsorOutreachEmail(
   to: string,
   compiled: CompiledSponsorOutreachEmail,
@@ -103,10 +117,21 @@ export async function sendCompiledSponsorOutreachEmail(
   return compiled.linkUrl;
 }
 
+export async function sendPublicSponsorPackagesEmail(
+  lead: SponsorOutreachLead,
+): Promise<string> {
+  const compiled = compilePublicSponsorPackagesEmail(lead);
+  return sendCompiledSponsorOutreachEmail(lead.email, compiled);
+}
+
 export async function sendSponsorDeckEmail(
   lead: SponsorOutreachLead,
   options?: SponsorDeckEmailOptions,
 ): Promise<string> {
+  if (!options?.packageId && !options?.teamMember && !options?.emailCopy) {
+    return sendPublicSponsorPackagesEmail(lead);
+  }
+
   const compiled = compileSponsorOutreachEmail(lead, options);
   return sendCompiledSponsorOutreachEmail(lead.email, compiled);
 }

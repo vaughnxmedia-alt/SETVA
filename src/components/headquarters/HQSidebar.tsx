@@ -12,6 +12,13 @@ type HQSidebarProps = {
   onClose: () => void;
 };
 
+function isNavItemActive(pathname: string, href: string, children?: { href: string }[]): boolean {
+  if (children?.length) {
+    return pathname.startsWith(href);
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function HQSidebar({ open, onClose }: HQSidebarProps) {
   const pathname = usePathname();
 
@@ -47,11 +54,11 @@ export function HQSidebar({ open, onClose }: HQSidebarProps) {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-0.5">
             {hqNav.map((item) => {
-              const active = pathname.startsWith(item.href);
+              const active = isNavItemActive(pathname, item.href, item.children);
               return (
                 <li key={item.href}>
                   <Link
-                    href={item.href}
+                    href={item.children?.[0]?.href ?? item.href}
                     onClick={onClose}
                     className={`block rounded-lg px-3 py-2.5 text-sm transition ${
                       active
@@ -61,6 +68,28 @@ export function HQSidebar({ open, onClose }: HQSidebarProps) {
                   >
                     {item.label}
                   </Link>
+                  {item.children?.length ? (
+                    <ul className="mb-1 ml-3 mt-0.5 space-y-0.5 border-l border-gold/10 pl-2">
+                      {item.children.map((child) => {
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={onClose}
+                              className={`block rounded-lg px-3 py-2 text-xs transition ${
+                                childActive
+                                  ? "bg-gold/10 text-gold"
+                                  : "text-cream/50 hover:bg-gold/5 hover:text-cream/80"
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </li>
               );
             })}

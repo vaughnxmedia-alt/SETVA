@@ -1,4 +1,7 @@
 import { montCityNetwork } from "@/lib/site";
+import { parseMediaTeamMemberRoster, type MediaTeamMemberRosterEntry } from "@/lib/media-credential-team";
+
+export type { MediaTeamMemberRosterEntry } from "@/lib/media-credential-team";
 
 export const coverageTypeOptions = [
   "Photography",
@@ -44,6 +47,7 @@ export type MediaCredentialApplicationData = {
   totalFollowers: string;
   averageReach: string;
   teamMembers: string;
+  teamMemberRoster: MediaTeamMemberRosterEntry[];
   equipment: string;
   portfolioLink: string;
   previousCoverageLink: string;
@@ -148,7 +152,11 @@ export function parseMediaCredentialBody(
   const facebook = normalizeText(body.facebook, 200);
   const totalFollowers = normalizeText(body.totalFollowers, 80);
   const averageReach = normalizeText(body.averageReach, 120);
-  const teamMembers = normalizeText(body.teamMembers, 40);
+  const teamMemberRoster = parseMediaTeamMemberRoster(body.teamMemberRoster);
+  const teamMembers =
+    teamMemberRoster.length > 0
+      ? String(1 + teamMemberRoster.length)
+      : normalizeText(body.teamMembers, 40);
   const equipment = normalizeText(body.equipment, 1000);
   const portfolioLink = normalizeText(body.portfolioLink, 500);
   const previousCoverageLink = normalizeText(body.previousCoverageLink, 500);
@@ -198,6 +206,7 @@ export function parseMediaCredentialBody(
       totalFollowers,
       averageReach,
       teamMembers,
+      teamMemberRoster,
       equipment,
       portfolioLink,
       previousCoverageLink,

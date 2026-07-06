@@ -20,6 +20,7 @@ import {
   type MediaCredentialApplicationData,
   type MediaCredentialPostEvent,
 } from "@/lib/media-credentials";
+import type { MediaTeamMemberRosterEntry } from "@/lib/media-credential-team";
 
 const DATA_DIR = path.join(process.cwd(), "data", "media-credentials", "applications");
 
@@ -32,7 +33,9 @@ function slugifyStatus(status: string): string {
 }
 
 function applicationFromRecord(record: FormSubmissionRecord): MediaCredentialApplication {
-  const payload = record.payload as MediaCredentialApplicationData;
+  const payload = record.payload as MediaCredentialApplicationData & {
+    teamMemberRoster?: MediaTeamMemberRosterEntry[];
+  };
   const admin = {
     ...defaultAdminFields(),
     ...(record.admin_data as Partial<MediaCredentialAdminFields>),
@@ -44,6 +47,7 @@ function applicationFromRecord(record: FormSubmissionRecord): MediaCredentialApp
 
   return {
     ...payload,
+    teamMemberRoster: payload.teamMemberRoster ?? [],
     ...admin,
     ...postEvent,
     id: record.external_id ?? record.id,
@@ -112,6 +116,15 @@ async function saveLocalApplication(
   );
 }
 
+function normalizeApplication(
+  application: MediaCredentialApplication,
+): MediaCredentialApplication {
+  return {
+    ...application,
+    teamMemberRoster: application.teamMemberRoster ?? [],
+  };
+}
+
 async function listLocalApplications(): Promise<MediaCredentialApplication[]> {
   await ensureDataDir();
 
@@ -131,7 +144,9 @@ async function listLocalApplications(): Promise<MediaCredentialApplication[]> {
       }),
   );
 
-  return applications.sort(
+  return applications
+    .map(normalizeApplication)
+    .sort(
     (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt),
   );
 }
@@ -143,7 +158,7 @@ async function getLocalApplication(
 
   try {
     const raw = await readFile(applicationPath(id), "utf8");
-    return JSON.parse(raw) as MediaCredentialApplication;
+    return normalizeApplication(JSON.parse(raw) as MediaCredentialApplication);
   } catch {
     return null;
   }
@@ -163,6 +178,7 @@ export async function saveMediaCredentialApplication(
 
   const application: MediaCredentialApplication = {
     ...data,
+    teamMemberRoster: data.teamMemberRoster ?? [],
     ...adminDefaults,
     ...defaultPostEventFields(),
     id,

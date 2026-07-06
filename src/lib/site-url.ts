@@ -18,5 +18,5 @@ export function getPublicSiteUrl(): string {
   if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
     return CANONICAL_SITE_URL;
   }
-  return configured || "http://localhost:3000";
+  return configured || CANONICAL_SITE_URL;
 }

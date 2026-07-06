@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase/server";
 
 export const FORM_TYPES = {
   mediaCredentials: "media_credentials",
+  mediaCredentialTeamMembers: "media_credential_team_members",
   volunteers: "volunteers",
   ambassadors: "ambassadors",
   nominees: "nominees",

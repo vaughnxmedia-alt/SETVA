@@ -46,6 +46,36 @@ export type SponsorLead = {
   nextAction: string;
 };
 
+export type SponsorPackageBuyer = {
+  id: string;
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  preferredPayment: string;
+  submittedAt: string;
+  source: "confirmed" | "intake";
+};
+
+export type SponsorPackageInventoryRow = {
+  packageId: string;
+  packageName: string;
+  group: string;
+  price: number;
+  maxAvailable: number | null;
+  soldCount: number;
+  pendingCount: number;
+  remaining: number | null;
+  availabilityLabel: string;
+  buyers: SponsorPackageBuyer[];
+  assetsNeeded: string[];
+  fulfillmentEmailSubject: string;
+  fulfillmentEmailBody: string;
+};
+
 export type MediaApplication = {
   id: string;
   outlet: string;
