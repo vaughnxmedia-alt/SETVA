@@ -9,7 +9,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import { sendHQWelcomeEmail } from "../src/lib/hq-team/email";
 import { hashPassword } from "../src/lib/hq-team/password";
-import { getHQTeamMemberByEmail, registerHQTeamMember } from "../src/lib/hq-team/store";
+import { getHQTeamMemberByEmail, registerHQTeamMember, updateHQTeamMemberPassword } from "../src/lib/hq-team/store";
 
 function loadEnvFile() {
   const envPath = resolve(process.cwd(), ".env.local");
@@ -61,12 +61,14 @@ async function main() {
   }
 
   const passwordHash = await hashPassword(password);
-  const member = await registerHQTeamMember({
-    name,
-    email,
-    phone: phone || undefined,
-    passwordHash,
-  });
+  const member = existing?.status === "active"
+    ? await updateHQTeamMemberPassword({ email, passwordHash })
+    : await registerHQTeamMember({
+        name,
+        email,
+        phone: phone || undefined,
+        passwordHash,
+      });
 
   console.log(`${existing ? "Updated" : "Registered"} ${member.setvaId} — ${member.name} <${member.email}>`);
   console.log(`Temporary password: ${password}`);

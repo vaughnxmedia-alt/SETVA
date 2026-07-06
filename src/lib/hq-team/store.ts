@@ -135,6 +135,27 @@ export async function registerHQTeamMember(input: {
   );
 }
 
+export async function updateHQTeamMemberPassword(input: {
+  email: string;
+  passwordHash: string;
+}): Promise<HQTeamMember> {
+  const member = await getHQTeamMemberByEmail(input.email);
+  if (!member || member.status !== "active") {
+    throw new Error("User not found.");
+  }
+
+  const now = new Date().toISOString();
+  return saveMember(
+    {
+      ...member,
+      passwordHash: input.passwordHash,
+      sessionVersion: member.sessionVersion + 1,
+      updatedAt: now,
+    },
+    "active",
+  );
+}
+
 export async function updateHQTeamMemberAccess(input: {
   email: string;
   status: HQTeamMemberStatus;
