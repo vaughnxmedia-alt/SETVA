@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useMemo, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -40,7 +41,7 @@ export function NomineeCategoriesView({
       formData.append("existingUrl", category.videoUrl);
     }
 
-    const res = await fetch("/api/headquarters/nominee-categories/media", {
+    const res = await hqFetch("/api/headquarters/nominee-categories/media", {
       method: "POST",
       body: formData,
     });
@@ -81,7 +82,7 @@ export function NomineeCategoriesView({
         });
       }
 
-      const res = await fetch("/api/headquarters/nominee-categories", {
+      const res = await hqFetch("/api/headquarters/nominee-categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories: normalized }),
@@ -139,7 +140,7 @@ export function NomineeCategoriesView({
           } as NomineeCategory;
         });
 
-      const res = await fetch("/api/headquarters/nominee-categories", {
+      const res = await hqFetch("/api/headquarters/nominee-categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories: normalized }),
@@ -193,7 +194,7 @@ export function NomineeCategoriesView({
           } as NomineeCategory;
         });
 
-      const res = await fetch("/api/headquarters/nominee-categories", {
+      const res = await hqFetch("/api/headquarters/nominee-categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories: normalized }),
@@ -261,7 +262,7 @@ export function NomineeCategoriesView({
         };
       });
 
-      const res = await fetch("/api/headquarters/nominee-categories", {
+      const res = await hqFetch("/api/headquarters/nominee-categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories: normalized }),
@@ -303,7 +304,7 @@ export function NomineeCategoriesView({
   }
 
   async function refreshCategories() {
-    const res = await fetch("/api/headquarters/nominee-categories");
+    const res = await hqFetch("/api/headquarters/nominee-categories");
     if (!res.ok) return;
     const data = (await res.json()) as { categories?: NomineeCategory[] };
     setCategories(data.categories ?? []);
@@ -319,7 +320,7 @@ export function NomineeCategoriesView({
         return;
       }
 
-      const res = await fetch("/api/headquarters/nominee-categories", {
+      const res = await hqFetch("/api/headquarters/nominee-categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories: parsed.categories }),
@@ -336,7 +337,7 @@ export function NomineeCategoriesView({
           "This spreadsheet also has nominees. Do you want to add those nominees now?",
         );
         if (addNominees) {
-          const nomineeRes = await fetch("/api/headquarters/nominees/import", {
+          const nomineeRes = await hqFetch("/api/headquarters/nominees/import", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ csv }),

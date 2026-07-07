@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import { SponsorsSubnav } from "@/components/headquarters/SponsorsSubnav";
@@ -125,7 +126,7 @@ export function SponsorsView({
     setMessage(null);
 
     try {
-      const res = await fetch("/api/headquarters/sponsors/send-link", {
+      const res = await hqFetch("/api/headquarters/sponsors/send-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

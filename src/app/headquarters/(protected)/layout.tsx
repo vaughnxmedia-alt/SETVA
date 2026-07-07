@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { HQProtectedClient } from "@/components/headquarters/HQProtectedClient";
 import { getHQSessionUser } from "@/lib/headquarters/auth-server";
 
 export default async function ProtectedHeadquartersLayout({
@@ -8,5 +9,5 @@ export default async function ProtectedHeadquartersLayout({
 }) {
   const user = await getHQSessionUser();
   if (!user) redirect("/headquarters/login");
-  return children;
+  return <HQProtectedClient>{children}</HQProtectedClient>;
 }

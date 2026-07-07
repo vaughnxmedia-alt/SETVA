@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useEffect, useState } from "react";
 import { MEDIA_CREDENTIAL_APPROVAL_EMAIL_SUBJECT } from "@/lib/media-credential-approval-email";
 import type { MediaCredentialApplication } from "@/lib/media-credentials";
@@ -35,7 +36,7 @@ export function MediaCredentialApprovalEmailPreview({
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/headquarters/media/preview-approval-email", {
+        const res = await hqFetch("/api/headquarters/media/preview-approval-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,

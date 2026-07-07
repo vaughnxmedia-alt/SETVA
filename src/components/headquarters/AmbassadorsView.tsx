@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { Fragment, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -81,7 +82,7 @@ export function AmbassadorsView({
     setBusyId(id);
     setError(null);
     try {
-      const res = await fetch("/api/headquarters/ambassadors", {
+      const res = await hqFetch("/api/headquarters/ambassadors", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: nextStatus }),

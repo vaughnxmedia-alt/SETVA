@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listHQTeamMembers, updateHQTeamMemberAccess } from "@/lib/hq-team/store";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 
 function publicUser(member: Awaited<ReturnType<typeof listHQTeamMembers>>[number]) {
@@ -15,9 +16,7 @@ function publicUser(member: Awaited<ReturnType<typeof listHQTeamMembers>>[number
 
 export async function GET(req: NextRequest) {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  if (!user) return hqUnauthorizedResponse();
 
   const members = await listHQTeamMembers();
   return NextResponse.json({ users: members.map(publicUser) });
@@ -25,9 +24,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  if (!user) return hqUnauthorizedResponse();
 
   let body: { email?: string; status?: "active" | "revoked" };
   try {

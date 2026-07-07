@@ -3,7 +3,9 @@ import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { parseNomineeAdminUpdate } from "@/lib/nominees";
 import { deleteNominee, getNominee, updateNominee } from "@/lib/nominees-store";
+import { deleteNomineePageEntry, listNomineePageEntries } from "@/lib/nominee-workflows-store";
 import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 
 function nomineeIdFromPath(pathname: string): string {
   return pathname.split("/").pop() ?? "";
@@ -11,7 +13,7 @@ function nomineeIdFromPath(pathname: string): string {
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);
 
@@ -38,7 +40,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const PATCH = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);
 
@@ -55,6 +57,11 @@ export const PATCH = safeApiHandler(async (req: NextRequest) => {
 
     const nominee = await updateNominee(id, { data, admin });
     if (!nominee) return publicErrorResponse(404);
+
+    if (data?.categoryId) {
+      const { syncNomineePageEntryCategory } = await import("@/lib/nominee-consistency-store");
+      await syncNomineePageEntryCategory(id, data.categoryId);
+    }
 
     const categories = await listNomineeCategories();
     return NextResponse.json({
@@ -75,11 +82,16 @@ export const PATCH = safeApiHandler(async (req: NextRequest) => {
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   const id = nomineeIdFromPath(req.nextUrl.pathname);
 
   try {
+    const pageEntries = await listNomineePageEntries();
+    for (const entry of pageEntries.filter((item) => item.nomineeId === id)) {
+      await deleteNomineePageEntry(entry.id);
+    }
+
     const deleted = await deleteNominee(id);
     if (!deleted) return publicErrorResponse(404);
     return NextResponse.json({ success: true });

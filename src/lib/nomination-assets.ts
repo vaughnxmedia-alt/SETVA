@@ -107,6 +107,27 @@ async function removeMatchingFiles(categoryDir: string, matcher: (filename: stri
   );
 }
 
+function graphicFilenameFromExistingUrl(
+  existingUrl: string,
+  categoryId: string,
+  nomineeId: string,
+): string | null {
+  const trimmed = existingUrl.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith(`/nominations/${categoryId}/`)) {
+    const basename = path.basename(trimmed);
+    return basename.startsWith(nomineeId) ? basename : null;
+  }
+
+  try {
+    const basename = path.basename(new URL(trimmed).pathname);
+    return basename.startsWith(nomineeId) ? basename : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function writeNomineeGraphicFile(input: {
   categoryId: string;
   nomineeId: string;
@@ -126,9 +147,13 @@ export async function writeNomineeGraphicFile(input: {
   }
 
   let filename = `${nomineeId}${ext}`;
-  const existingPath = input.existingUrl?.trim() ?? "";
-  if (existingPath.startsWith(`/nominations/${categoryId}/`)) {
-    filename = path.basename(existingPath);
+  const existingFilename = graphicFilenameFromExistingUrl(
+    input.existingUrl?.trim() ?? "",
+    categoryId,
+    nomineeId,
+  );
+  if (existingFilename) {
+    filename = existingFilename;
   }
 
   if (isSupabaseConfigured()) {

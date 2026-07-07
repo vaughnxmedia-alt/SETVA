@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
@@ -29,8 +30,13 @@ import {
   type MagazineArticleFormState,
 } from "@/components/headquarters/MagazineArticleFields";
 import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
+import { categoryAllowsNomineeGraphic } from "@/lib/nominee-category-groups";
 
 type SimpleStatus = "Missing" | "Draft" | "Ready" | "Published";
+type ConsistencyReport = {
+  orphanPublishedCount: number;
+  orphans: { nomineeId: string; recoveredName: string | null; categoryId: string }[];
+};
 type ModalMode = "nominee" | "graphic" | "article" | "voting" | "publish" | "delete" | null;
 type NomineeRow = NomineeRecordFull & { categoryTitle: string };
 type NomineeFormState = ReturnType<typeof blankNominee>;
@@ -117,6 +123,8 @@ export function NomineesView({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [consistency, setConsistency] = useState<ConsistencyReport | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
 
   const activeCategories = useMemo(
     () => categories.filter((category) => category.active).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -159,13 +167,13 @@ export function NomineesView({
         .map((nominee, index) => ({ nominee, index }))
         .sort((a, b) => {
           const rankGap =
-            nomineeMissingGraphicRank(a.nominee, pageEntries) -
-            nomineeMissingGraphicRank(b.nominee, pageEntries);
+            nomineeMissingGraphicRank(a.nominee, pageEntries, categories) -
+            nomineeMissingGraphicRank(b.nominee, pageEntries, categories);
           if (rankGap !== 0) return rankGap;
           return a.index - b.index;
         })
         .map((entry) => entry.nominee),
-    [pageEntries],
+    [pageEntries, categories],
   );
 
   const nomineesByCategory = useMemo(() => {
@@ -180,7 +188,8 @@ export function NomineesView({
       .map((section, index) => ({ ...section, index }))
       .sort((a, b) => {
         const missingGap =
-          countMissingGraphics(b.rows, pageEntries) - countMissingGraphics(a.rows, pageEntries);
+          countMissingGraphics(b.rows, pageEntries, categories) -
+          countMissingGraphics(a.rows, pageEntries, categories);
         if (missingGap !== 0) return missingGap;
         return a.index - b.index;
       });
@@ -194,7 +203,7 @@ export function NomineesView({
     if (unassigned.length) sections.push(["unassigned", sortByNomineeCompletion(unassigned)]);
 
     return sections;
-  }, [activeCategories, filteredNominees, sortByNomineeCompletion, pageEntries, activeCategoryIds]);
+  }, [activeCategories, filteredNominees, sortByNomineeCompletion, pageEntries, activeCategoryIds, categories]);
 
   const activeNominee = nominees.find((nominee) => nominee.id === activeNomineeId) ?? null;
 
@@ -219,9 +228,10 @@ export function NomineesView({
   const autoExpandCategories = search.trim().length > 0 || categoryFilter !== "all";
 
   const refresh = useCallback(async () => {
-    const [directoryRes, workflowsRes] = await Promise.all([
-      fetch("/api/headquarters/nominees"),
-      fetch("/api/headquarters/nominees/workflows"),
+    const [directoryRes, workflowsRes, consistencyRes] = await Promise.all([
+      hqFetch("/api/headquarters/nominees"),
+      hqFetch("/api/headquarters/nominees/workflows"),
+      hqFetch("/api/headquarters/nominees/sync"),
     ]);
     if (directoryRes.status === 401 || workflowsRes.status === 401) {
       throw new Error("Session expired. Log in again.");
@@ -237,6 +247,10 @@ export function NomineesView({
       publishQueue: PublishQueueItem[];
       voteTallies?: Record<string, number>;
     };
+    if (consistencyRes.ok) {
+      const consistencyJson = (await consistencyRes.json()) as { report?: ConsistencyReport };
+      setConsistency(consistencyJson.report ?? null);
+    }
     setNominees(directory.nominees);
     setCategories(directory.categories);
     setPageEntries(workflows.nomineePageEntries);
@@ -262,6 +276,30 @@ export function NomineesView({
       active = false;
     };
   }, [initialNominees.length, refresh]);
+
+  async function restoreMissingNominees() {
+    setSyncBusy(true);
+    setError(null);
+    try {
+      const res = await hqFetch("/api/headquarters/nominees/sync", { method: "POST" });
+      if (!res.ok) throw new Error(await readApiError(res, "Could not restore missing nominees."));
+      const data = (await res.json()) as {
+        result?: { restored: number; details?: string[] };
+        report?: ConsistencyReport;
+      };
+      setConsistency(data.report ?? null);
+      setMessage(
+        data.result?.restored
+          ? `Restored ${data.result.restored} nominee${data.result.restored === 1 ? "" : "s"} to HQ.`
+          : "HQ and the live site are already in sync.",
+      );
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore missing nominees.");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
 
   function openNominee(nominee?: NomineeRow) {
     setActiveNomineeId(nominee?.id ?? null);
@@ -289,8 +327,14 @@ export function NomineesView({
     setError(null);
   }
 
+  function openPublish(nominee: NomineeRow) {
+    setActiveNomineeId(nominee.id);
+    setModal("publish");
+    setError(null);
+  }
+
   function openGraphic(nominee: NomineeRow) {
-    const entry = pageEntryFor(nominee.id, pageEntries);
+    const entry = pageEntryFor(nominee.id, pageEntries, nominee.categoryId);
     setActiveNomineeId(nominee.id);
     setGraphicUrl(entry?.nomineeGraphicUrl ?? "");
     setGraphicPreviewUrl(entry?.nomineeGraphicUrl ?? "");
@@ -330,25 +374,27 @@ export function NomineesView({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(activeNomineeId ? `/api/headquarters/nominees/${activeNomineeId}` : "/api/headquarters/nominees", {
-        method: activeNomineeId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nomineeForm),
-      });
-      if (!res.ok) throw new Error("Save failed");
+      const res = await hqFetch(
+        activeNomineeId ? `/api/headquarters/nominees/${activeNomineeId}` : "/api/headquarters/nominees",
+        {
+          method: activeNomineeId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nomineeForm),
+        },
+      );
+      if (!res.ok) throw new Error(await readApiError(res, "Could not save nominee."));
       setMessage(activeNomineeId ? "Nominee updated." : "Nominee added.");
       setModal(null);
       await refresh();
-    } catch {
-      setError("Could not save nominee.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save nominee.");
     } finally {
       setBusy(false);
     }
   }
 
-  // Adds a new nominee to one or more categories at once. Each category gets its
-  // own nominee record and a category-specific graphic (mirroring how the rest of
-  // the system treats a person across categories by name).
+  // Adds a new nominee to one or more categories at once. Graphics are optional —
+  // published nominees without graphics appear as torch name cards on the live site.
   async function saveNomineeMulti() {
     const entries = categoryEntries.filter((entry) => entry.categoryId);
     if (!nomineeForm.name.trim()) {
@@ -367,36 +413,35 @@ export function NomineesView({
       }
       seen.add(entry.categoryId);
     }
-    if (entries.some((entry) => !entry.file)) {
-      setError("Add a graphic for each category.");
-      return;
-    }
 
     setBusy(true);
     setError(null);
     try {
       for (const entry of entries) {
-        const res = await fetch("/api/headquarters/nominees", {
+        const res = await hqFetch("/api/headquarters/nominees", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...nomineeForm, categoryId: entry.categoryId }),
         });
-        if (!res.ok) throw new Error("Could not save nominee.");
+        if (!res.ok) throw new Error(await readApiError(res, "Could not save nominee."));
         const data = (await res.json()) as { nominee?: { id: string } };
         const newId = data.nominee?.id;
         if (!newId) throw new Error("Could not save nominee.");
 
-        const formData = new FormData();
-        formData.append("file", entry.file as File);
-        formData.append("nomineeId", newId);
-        formData.append("categoryId", entry.categoryId);
-        const graphicRes = await fetch("/api/headquarters/nominees/graphics", {
-          method: "POST",
-          body: formData,
-        });
-        if (!graphicRes.ok) throw new Error("Could not upload graphic.");
-        const graphicData = (await graphicRes.json()) as { url?: string };
-        const url = graphicData.url ?? "";
+        let url = "";
+        if (entry.file && categoryAllowsNomineeGraphic(categories.find((c) => c.id === entry.categoryId))) {
+          const formData = new FormData();
+          formData.append("file", entry.file);
+          formData.append("nomineeId", newId);
+          formData.append("categoryId", entry.categoryId);
+          const graphicRes = await hqFetch("/api/headquarters/nominees/graphics", {
+            method: "POST",
+            body: formData,
+          });
+          if (!graphicRes.ok) throw new Error(await readApiError(graphicRes, "Could not upload graphic."));
+          const graphicData = (await graphicRes.json()) as { url?: string };
+          url = graphicData.url ?? "";
+        }
 
         await saveWorkflow("nomineePage", {
           payload: {
@@ -432,6 +477,10 @@ export function NomineesView({
       if (graphicUrl.startsWith("blob:")) {
         throw new Error("Choose an image file before saving. Browser preview URLs cannot be saved.");
       }
+      // Never reuse React graphicUrl state when publishing or saving without a new
+      // file — it may still hold another nominee's URL from a prior graphic modal.
+      const existing = pageEntryFor(activeNominee.id, pageEntries, activeNominee.categoryId);
+      if (existing?.nomineeGraphicUrl) return existing.nomineeGraphicUrl;
       return graphicUrl;
     }
 
@@ -441,22 +490,60 @@ export function NomineesView({
     formData.append("categoryId", activeNominee.categoryId);
     if (graphicUrl) formData.append("existingUrl", graphicUrl);
 
-    const res = await fetch("/api/headquarters/nominees/graphics", {
+    const res = await hqFetch("/api/headquarters/nominees/graphics", {
       method: "POST",
       body: formData,
     });
-    if (!res.ok) throw new Error("Could not save graphic file.");
+    if (!res.ok) throw new Error(await readApiError(res, "Could not save graphic file."));
     const data = (await res.json()) as { url?: string };
     if (!data.url) throw new Error("Could not save graphic file.");
     return data.url;
   }
 
-  async function saveGraphic(publish = false) {
+  async function publishNomineePage() {
     if (!activeNominee) return;
+
     setBusy(true);
     setError(null);
     try {
-      const existing = pageEntryFor(activeNominee.id, pageEntries);
+      const existing = pageEntryFor(activeNominee.id, pageEntries, activeNominee.categoryId);
+
+      await saveWorkflow("nomineePage", {
+        id: existing?.id,
+        payload: {
+          nomineeId: activeNominee.id,
+          categoryId: activeNominee.categoryId,
+          nomineeGraphicMediaId: existing?.nomineeGraphicMediaId ?? "",
+          nomineeGraphicUrl: existing?.nomineeGraphicUrl ?? "",
+          displayOrder: existing?.displayOrder ?? pageEntries.length,
+          publishToNomineePage: true,
+          status: "Published",
+        },
+      });
+      setMessage(
+        existing?.nomineeGraphicUrl
+          ? "Published to nominee page."
+          : "Published as a name card on the nominee page (torch icon until a graphic is added).",
+      );
+      setModal(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish to nominee page.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveGraphic(publish = false) {
+    if (!activeNominee) return;
+    if (!categoryAllowsNomineeGraphic(categories.find((c) => c.id === activeNominee.categoryId))) {
+      setError("Graphics are only used for Special award categories.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const existing = pageEntryFor(activeNominee.id, pageEntries, activeNominee.categoryId);
       const savedGraphicUrl = await persistGraphicUrl();
       const wasPublished = Boolean(
         existing?.publishToNomineePage && existing.status === "Published",
@@ -538,13 +625,13 @@ export function NomineesView({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      const res = await hqFetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await readApiError(res, "Could not delete nominee."));
       setMessage(`${nominee.name} deleted.`);
       setModal(null);
       await refresh();
-    } catch {
-      setError("Could not delete nominee.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete nominee.");
     } finally {
       setBusy(false);
     }
@@ -564,7 +651,7 @@ export function NomineesView({
     setError(null);
     try {
       for (const nominee of rows) {
-        const res = await fetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
+        const res = await hqFetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
         if (!res.ok) throw new Error(`Could not delete ${nominee.name}.`);
       }
       setMessage(`Deleted ${rows.length} unassigned nominee${rows.length === 1 ? "" : "s"}.`);
@@ -608,11 +695,28 @@ export function NomineesView({
   return (
     <HQShell title="Nominees">
       <p className="mb-5 text-sm text-cream/50">
-        Add nominees, upload graphics, write articles, and publish to the live site when you are ready.
+        Add nominees and publish to the live site. Music, Film / Media, Creative, and Business categories use torch
+        name cards only. Special award categories may include a graphic.
       </p>
 
       {message ? <Notice tone="success">{message}</Notice> : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
+
+      {consistency && consistency.orphanPublishedCount > 0 ? (
+        <div className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-cream/85">
+          <p className="font-medium text-amber-200">
+            {consistency.orphanPublishedCount} nominee{consistency.orphanPublishedCount === 1 ? "" : "s"} on the live
+            site {consistency.orphanPublishedCount === 1 ? "is" : "are"} missing from HQ.
+          </p>
+          <p className="mt-1 text-cream/65">
+            This usually happens after a nominee was deleted in HQ but left published on the site. Restore them to keep
+            HQ and nominations in sync.
+          </p>
+          <HQButton className="mt-3" onClick={() => void restoreMissingNominees()} disabled={syncBusy || busy}>
+            {syncBusy ? "Restoring…" : "Restore missing nominees"}
+          </HQButton>
+        </div>
+      ) : null}
 
       <NominationMediaImport onComplete={refresh} />
 
@@ -649,7 +753,8 @@ export function NomineesView({
         <div className="space-y-3">
           {nomineesByCategory.map(([categoryId, rows]) => {
             const categoryExpanded = autoExpandCategories || expandedCategoryIds.has(categoryId);
-            const missingGraphics = countMissingGraphics(rows, pageEntries);
+            const missingGraphics = countMissingGraphics(rows, pageEntries, categories);
+            const specialCategory = categoryAllowsNomineeGraphic(categories.find((c) => c.id === categoryId));
             return (
             <section key={categoryId} className="rounded-xl border border-gold/15 bg-black/20">
               <button
@@ -667,12 +772,16 @@ export function NomineesView({
                       ? "Unassigned"
                       : categoryTitle(categoryId)}
                   </h2>
-                  {missingGraphics > 0 ? (
-                    <p className="mt-1 text-sm text-amber-300/90">
-                      {missingGraphics} missing graphic{missingGraphics === 1 ? "" : "s"}
-                    </p>
+                  {specialCategory ? (
+                    missingGraphics > 0 ? (
+                      <p className="mt-1 text-sm text-cream/50">
+                        {missingGraphics} without graphic{missingGraphics === 1 ? "" : "s"}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-emerald-light/80">All Special awardees have graphics</p>
+                    )
                   ) : (
-                    <p className="mt-1 text-sm text-emerald-light/80">All nominees have graphics</p>
+                    <p className="mt-1 text-sm text-cream/50">Torch name cards — no nominee graphics for this category</p>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
@@ -745,10 +854,13 @@ export function NomineesView({
               <div className="border-t border-gold/10 p-4 pt-0">
               <div className="grid gap-4 xl:grid-cols-2">
                 {rows.map((nominee) => {
-                  const status = hubStatus(nominee, pageEntries, articles, votingSetups);
+                  const allowsGraphic = categoryAllowsNomineeGraphic(
+                    categories.find((c) => c.id === nominee.categoryId),
+                  );
+                  const status = hubStatus(nominee, pageEntries, articles, votingSetups, categories);
                   const expanded = expandedNomineeIds.has(nominee.id);
-                  const pageEntry = pageEntryFor(nominee.id, pageEntries);
-                  const graphicUrl = pageEntry?.nomineeGraphicUrl ?? "";
+                  const pageEntry = pageEntryFor(nominee.id, pageEntries, nominee.categoryId);
+                  const graphicUrl = allowsGraphic ? (pageEntry?.nomineeGraphicUrl ?? "") : "";
                   const voteCount = voteTallies[nominee.id] ?? 0;
                   return (
                     <HQCard key={nominee.id} className="p-5">
@@ -780,6 +892,7 @@ export function NomineesView({
                         </span>
                       </button>
 
+                      {allowsGraphic ? (
                       <div className="mt-3 flex flex-col items-center">
                         {graphicUrl ? (
                           <div className="relative aspect-square w-full max-w-[16rem] overflow-hidden rounded-lg border border-gold/20 bg-black/40">
@@ -795,7 +908,7 @@ export function NomineesView({
                           <div className="flex aspect-square w-full max-w-[16rem] flex-col items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-3 text-center text-xs text-cream/40">
                             <span>No graphic yet</span>
                             <span className="mt-2 text-[10px] leading-snug text-cream/30">
-                              Each nominee needs their own reel or PNG — the category video only covers one person.
+                              Special awards may include a graphic on the live site.
                             </span>
                           </div>
                         )}
@@ -820,9 +933,17 @@ export function NomineesView({
                           </a>
                         ) : null}
                       </div>
+                      ) : (
+                      <div className="mt-3 flex aspect-square w-full max-w-[16rem] flex-col items-center justify-center rounded-lg border border-gold/15 bg-black/20 px-3 text-center text-xs text-cream/45">
+                        <span className="text-gold/80">Torch name card</span>
+                        <span className="mt-2 text-[10px] leading-snug text-cream/35">
+                          This category does not use nominee graphics on the live site.
+                        </span>
+                      </div>
+                      )}
 
-                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                        <Status label="Graphic" value={status.graphic} />
+                      <div className={`mt-4 grid grid-cols-2 gap-2 text-xs ${allowsGraphic ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+                        {allowsGraphic ? <Status label="Graphic" value={status.graphic} /> : null}
                         <Status label="Article" value={status.article} />
                         <Status label="Voting" value={status.voting} />
                         <Status label="Nominee Page" value={status.page} />
@@ -832,17 +953,19 @@ export function NomineesView({
                         <>
                           <div className="mt-5 grid gap-2 text-sm text-cream/70 sm:grid-cols-2">
                             <Checklist done label="Nominee Added" />
-                            <Checklist done={status.graphic !== "Missing"} label="Graphic Uploaded" />
+                            {allowsGraphic ? (
+                              <Checklist optional done={status.graphic !== "Missing"} label="Graphic Uploaded" />
+                            ) : null}
                             <Checklist done={status.page === "Published"} label="Published to Nominee Page" />
                             <Checklist optional done={status.article === "Published"} label="Magazine Article" />
-                            <Checklist optional done={status.voting === "Published" || status.voting === "Ready"} label="Added to Voting" />
+                            <Checklist optional done={status.voting === "Published"} label="Live for voting" />
                           </div>
 
                           <div className="mt-5 flex flex-wrap gap-2">
                             <HQButton variant="outline" onClick={() => openNominee(nominee)}>Edit Nominee</HQButton>
                             <HQButton variant="outline" onClick={() => openArticle(nominee)}>Write Article</HQButton>
                             <HQButton variant="outline" onClick={() => openVoting(nominee)}>Add to Voting</HQButton>
-                            <HQButton onClick={() => { setActiveNomineeId(nominee.id); setModal("publish"); }}>Publish</HQButton>
+                            <HQButton onClick={() => openPublish(nominee)}>Publish</HQButton>
                             <button
                               type="button"
                               onClick={() => openDelete(nominee)}
@@ -934,7 +1057,8 @@ export function NomineesView({
 
               {modal === "publish" ? (
                 <p className="text-sm text-cream/70">
-                  This publishes the nominee graphic to the public nominations page. Saving a graphic alone does not publish it.
+                  This publishes the nominee to the public nominations page. Non-Special categories always show a
+                  torch name card. Special awards may include a graphic.
                 </p>
               ) : null}
 
@@ -971,7 +1095,11 @@ export function NomineesView({
                 </>
               ) : null}
               {modal === "voting" ? <HQButton onClick={saveVoting} disabled={busy}>Add to Voting</HQButton> : null}
-              {modal === "publish" ? <HQButton onClick={() => saveGraphic(true)} disabled={busy || !pageEntryFor(activeNomineeId ?? "", pageEntries)?.nomineeGraphicUrl}>Publish to Nominee Page</HQButton> : null}
+              {modal === "publish" ? (
+                <HQButton onClick={() => void publishNomineePage()} disabled={busy}>
+                  Publish to Nominee Page
+                </HQButton>
+              ) : null}
               {modal === "delete" ? (
                 <button
                   type="button"
@@ -1098,13 +1226,13 @@ function NomineeMultiCategoryFields({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-cream/90">Categories &amp; graphics</p>
+          <p className="text-sm font-medium text-cream/90">Categories</p>
           <span className="text-xs text-cream/45">
             {entries.length} categor{entries.length === 1 ? "y" : "ies"}
           </span>
         </div>
         <p className="mb-3 text-xs text-cream/45">
-          Add this nominee to each category they belong to. Every category needs its own graphic.
+          Add each category this nominee belongs to. Only Special award categories accept a graphic upload.
         </p>
 
         <div className="space-y-4">
@@ -1145,8 +1273,9 @@ function NomineeMultiCategoryFields({
                 </select>
               </label>
 
+              {categoryAllowsNomineeGraphic(categories.find((category) => category.id === entry.categoryId)) ? (
               <label className="mt-3 block">
-                <span className="mb-1 block text-xs text-cream/50">Graphic for this category *</span>
+                <span className="mb-1 block text-xs text-cream/50">Graphic for this Special award (optional)</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -1160,15 +1289,18 @@ function NomineeMultiCategoryFields({
                   className={`${hqInputClass} w-full`}
                 />
               </label>
+              ) : (
+              <p className="mt-3 text-xs text-cream/40">Torch name card — no graphic for this category.</p>
+              )}
               {entry.previewUrl ? (
                 <img
                   src={entry.previewUrl}
                   alt="Graphic preview"
                   className="mt-3 max-h-48 rounded-lg border border-gold/20 object-contain"
                 />
-              ) : (
-                <p className="mt-2 text-xs text-amber-300/80">No graphic chosen yet for this category.</p>
-              )}
+              ) : categoryAllowsNomineeGraphic(categories.find((category) => category.id === entry.categoryId)) ? (
+                <p className="mt-2 text-xs text-cream/40">Skip to publish without a graphic.</p>
+              ) : null}
             </div>
           ))}
         </div>
@@ -1293,39 +1425,80 @@ function hubStatus(
   pageEntries: NomineePageEntry[],
   articles: NomineeMagazineArticle[],
   votingSetups: NomineeVotingSetup[],
+  categories: NomineeCategory[],
 ): { graphic: SimpleStatus; article: SimpleStatus; voting: SimpleStatus; page: SimpleStatus } {
-  const pageEntry = pageEntryFor(nominee.id, pageEntries);
+  const pageEntry = pageEntryFor(nominee.id, pageEntries, nominee.categoryId);
   const article = articleFor(nominee.id, articles);
   const voting = votingFor(nominee.id, votingSetups);
+  const allowsGraphic = categoryAllowsNomineeGraphic(
+    categories.find((category) => category.id === nominee.categoryId),
+  );
   const hasGraphic = Boolean(pageEntry?.nomineeGraphicUrl || pageEntry?.nomineeGraphicMediaId);
+  const isPublishedOnSite = Boolean(
+    pageEntry?.publishToNomineePage && pageEntry.status === "Published",
+  );
 
   return {
-    graphic: hasGraphic ? pageEntry?.status ?? "Ready" : "Missing",
+    graphic: !allowsGraphic ? "Ready" : hasGraphic ? pageEntry?.status ?? "Ready" : "Draft",
     article: article?.articleStatus ?? "Missing",
-    voting: voting?.votingStatus ?? "Missing",
-    page: pageEntry?.publishToNomineePage ? pageEntry.status : hasGraphic ? pageEntry?.status ?? "Ready" : "Missing",
+    voting: isPublishedOnSite
+      ? "Published"
+      : voting?.votingStatus === "Published"
+        ? "Published"
+        : voting?.votingStatus ?? "Draft",
+    page:
+      pageEntry?.publishToNomineePage && pageEntry.status === "Published"
+        ? "Published"
+        : pageEntry
+          ? pageEntry.status ?? "Draft"
+          : "Missing",
   };
 }
 
-function pageEntryFor(nomineeId: string, entries: NomineePageEntry[]): NomineePageEntry | undefined {
-  return entries.find((entry) => entry.nomineeId === nomineeId);
+function pageEntryFor(
+  nomineeId: string,
+  entries: NomineePageEntry[],
+  categoryId?: string,
+): NomineePageEntry | undefined {
+  return entries.find(
+    (entry) =>
+      entry.nomineeId === nomineeId && (!categoryId || entry.categoryId === categoryId),
+  );
 }
 
-function nomineeHasGraphic(nomineeId: string, entries: NomineePageEntry[]): boolean {
-  const pageEntry = pageEntryFor(nomineeId, entries);
+function nomineeHasGraphic(
+  nominee: NomineeRow,
+  entries: NomineePageEntry[],
+  categories: NomineeCategory[],
+): boolean {
+  if (!categoryAllowsNomineeGraphic(categories.find((category) => category.id === nominee.categoryId))) {
+    return true;
+  }
+  const pageEntry = pageEntryFor(nominee.id, entries, nominee.categoryId);
   return Boolean(pageEntry?.nomineeGraphicUrl || pageEntry?.nomineeGraphicMediaId);
 }
 
-function countMissingGraphics(rows: NomineeRow[], entries: NomineePageEntry[]): number {
-  return rows.filter((nominee) => !nomineeHasGraphic(nominee.id, entries)).length;
+function countMissingGraphics(
+  rows: NomineeRow[],
+  entries: NomineePageEntry[],
+  categories: NomineeCategory[],
+): number {
+  return rows.filter((nominee) => !nomineeHasGraphic(nominee, entries, categories)).length;
 }
 
 /**
- * Lower rank sorts higher. Nominees without a graphic come first.
+ * Lower rank sorts higher. Special-award nominees without a graphic come first.
  */
-function nomineeMissingGraphicRank(nominee: NomineeRow, entries: NomineePageEntry[]): number {
-  if (!nomineeHasGraphic(nominee.id, entries)) return 0;
-  const pageEntry = pageEntryFor(nominee.id, entries);
+function nomineeMissingGraphicRank(
+  nominee: NomineeRow,
+  entries: NomineePageEntry[],
+  categories: NomineeCategory[],
+): number {
+  if (!categoryAllowsNomineeGraphic(categories.find((category) => category.id === nominee.categoryId))) {
+    return 2;
+  }
+  if (!nomineeHasGraphic(nominee, entries, categories)) return 0;
+  const pageEntry = pageEntryFor(nominee.id, entries, nominee.categoryId);
   const isLive = Boolean(pageEntry?.publishToNomineePage && pageEntry.status === "Published");
   if (isLive) return 2;
   return 1;
@@ -1364,16 +1537,21 @@ function modalTitle(modal: Exclude<ModalMode, null>, editing = false): string {
   return "Publish";
 }
 
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+  return data.error ?? data.message ?? fallback;
+}
+
 async function saveWorkflow(
   kind: "nomineePage" | "magazineArticle" | "votingSetup",
   body: { id?: string; payload: Record<string, unknown> },
 ) {
-  const res = await fetch("/api/headquarters/nominees/workflows", {
+  const res = await hqFetch("/api/headquarters/nominees/workflows", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kind, ...body }),
   });
-  if (!res.ok) throw new Error("Workflow save failed");
+  if (!res.ok) throw new Error(await readApiError(res, "Workflow save failed"));
 }
 
 function slugify(value: string): string {

@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import { MediaCredentialApprovalEmailPreview } from "@/components/headquarters/MediaCredentialApprovalEmailPreview";
@@ -109,7 +110,7 @@ export function MediaView({
     setBusyId(application.id);
     setError(null);
     try {
-      const res = await fetch(`/api/headquarters/media/${application.id}`, {
+      const res = await hqFetch(`/api/headquarters/media/${application.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, ...opts }),
@@ -154,7 +155,7 @@ export function MediaView({
     setBusyId(application.id);
     setError(null);
     try {
-      const res = await fetch(`/api/headquarters/media/${application.id}`, { method: "DELETE" });
+      const res = await hqFetch(`/api/headquarters/media/${application.id}`, { method: "DELETE" });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !data.success) {
         setError(data.error ?? "Could not delete application.");

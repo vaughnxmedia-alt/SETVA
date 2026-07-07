@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useEffect, useState } from "react";
 import {
   sponsorOutreachEmailSubject,
@@ -39,7 +40,7 @@ export function SponsorOutreachEmailPreview({
     async function loadPreview() {
       setLoading(true);
       try {
-        const res = await fetch("/api/headquarters/sponsors/send-link", {
+        const res = await hqFetch("/api/headquarters/sponsors/send-link", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,

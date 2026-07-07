@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { ambassadorStatusOptions } from "@/lib/ambassadors";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { getHQAmbassadors } from "@/lib/headquarters/data";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { updateAmbassadorRegistration } from "@/lib/ambassadors-store";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const ambassadors = await getHQAmbassadors();
@@ -24,7 +25,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 export const PATCH = safeApiHandler(async (req: NextRequest) => {
   // Any authenticated Headquarters user can review ambassador applications.
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as {

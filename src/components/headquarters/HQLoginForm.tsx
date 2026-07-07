@@ -9,11 +9,13 @@ import {
   hqAuthInputClass,
   hqAuthLabelClass,
 } from "@/components/headquarters/HQAuthCard";
+import { HQ_SESSION_EXPIRED_MESSAGE } from "@/lib/headquarters/api-auth.constants";
 
 export function HQLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/headquarters";
+  const sessionExpired = searchParams.get("expired") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,6 +63,11 @@ export function HQLoginForm() {
       }
     >
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
+        {sessionExpired ? (
+          <p className="rounded-xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-cream/90">
+            {HQ_SESSION_EXPIRED_MESSAGE}
+          </p>
+        ) : null}
         <div>
           <label htmlFor="hq-email" className={hqAuthLabelClass}>
             Email

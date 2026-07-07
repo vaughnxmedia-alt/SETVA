@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <HQCard className="overflow-hidden">
-          <HQCardHeader title="Account" subtitle="Your SETVA Headquarters profile" />
+          <HQCardHeader title="Account" subtitle="Every active team member has the same full access" />
           <dl className="space-y-4 px-5 py-5 text-sm">
             <div>
               <dt className="text-[10px] uppercase tracking-wider text-cream/35">Name</dt>
@@ -46,6 +46,12 @@ export default async function SettingsPage() {
             <div>
               <dt className="text-[10px] uppercase tracking-wider text-cream/35">Password</dt>
               <dd className="mt-1 text-cream/50">••••••••</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider text-cream/35">Permissions</dt>
+              <dd className="mt-1 text-cream/80">
+                Full access — nominees, categories, publishing, users, and all HQ tools
+              </dd>
             </div>
             <div>
               <dt className="text-[10px] uppercase tracking-wider text-cream/35">Access</dt>

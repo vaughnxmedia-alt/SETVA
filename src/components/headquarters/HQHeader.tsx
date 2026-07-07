@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { hqQuickActions, hqNav } from "@/lib/headquarters/nav";
@@ -32,7 +33,7 @@ export function HQHeader({ onMenuOpen, title = "Headquarters", user: userProp }:
       setUser(userProp);
       return;
     }
-    void fetch("/api/headquarters/session")
+    void hqFetch("/api/headquarters/session")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { user?: HQUser } | null) => {
         if (data?.user) setUser(data.user);
@@ -43,7 +44,7 @@ export function HQHeader({ onMenuOpen, title = "Headquarters", user: userProp }:
   }, [userProp]);
 
   useEffect(() => {
-    void fetch("/api/headquarters/notifications")
+    void hqFetch("/api/headquarters/notifications")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { notifications?: HQNotification[] } | null) => {
         if (data?.notifications) setNotifications(data.notifications);

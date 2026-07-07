@@ -3,11 +3,12 @@ import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { parseNomineeInput } from "@/lib/nominees";
 import { listNominees, saveNominee } from "@/lib/nominees-store";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const [nominees, categories] = await Promise.all([listNominees(), listNomineeCategories()]);
@@ -30,7 +31,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as Record<string, unknown>;

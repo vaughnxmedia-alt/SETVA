@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
@@ -31,7 +32,7 @@ export function VotingView() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/headquarters/votes");
+    const res = await hqFetch("/api/headquarters/votes");
     if (!res.ok) throw new Error("Could not load voting results.");
     const json = (await res.json()) as VotingResponse;
     setData(json);

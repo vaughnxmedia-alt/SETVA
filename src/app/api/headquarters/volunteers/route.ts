@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { parseVolunteerHQInput } from "@/lib/volunteers";
 import { listVolunteerRegistrations, saveVolunteerRegistration } from "@/lib/volunteers-store";
 
@@ -24,7 +25,7 @@ function volunteerRecordFromRegistration(reg: Awaited<ReturnType<typeof listVolu
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const registrations = await listVolunteerRegistrations();
@@ -43,7 +44,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as Record<string, unknown>;

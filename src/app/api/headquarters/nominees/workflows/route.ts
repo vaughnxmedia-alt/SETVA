@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import {
   parseNomineeMagazineArticleInput,
@@ -28,7 +29,7 @@ type WorkflowKind = "nomineePage" | "magazineArticle" | "votingSetup" | "mediaAs
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const [nomineePageEntries, magazineArticles, votingSetups, mediaAssets, publishQueue, voteTallies] =
@@ -61,7 +62,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as Record<string, unknown>;
@@ -74,6 +75,13 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
     if (kind === "nomineePage") {
       const input = parseNomineePageEntryInput(payload, user);
       if (!input) return invalidWorkflowResponse("Select nominee and category.");
+      try {
+        assertNomineeGraphicUrl(input.nomineeGraphicUrl, input.nomineeId);
+      } catch (error) {
+        return invalidWorkflowResponse(
+          error instanceof Error ? error.message : "Invalid nominee graphic.",
+        );
+      }
       return NextResponse.json({
         success: true,
         record: await saveNomineePageEntry(input, id),
@@ -127,7 +135,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const { searchParams } = req.nextUrl;
@@ -158,4 +166,15 @@ export const DELETE = safeApiHandler(async (req: NextRequest) => {
 
 function invalidWorkflowResponse(error: string): NextResponse {
   return NextResponse.json({ success: false, error }, { status: 400 });
+}
+
+/** Reject Supabase-hosted graphics that belong to a different nominee record. */
+function assertNomineeGraphicUrl(url: string, nomineeId: string): void {
+  const trimmed = url.trim();
+  if (!trimmed || !trimmed.includes("nomination-assets/")) return;
+
+  const filename = trimmed.split("/").pop()?.split("?")[0] ?? "";
+  if (filename && !filename.startsWith(nomineeId)) {
+    throw new Error("Graphic URL does not belong to this nominee.");
+  }
 }

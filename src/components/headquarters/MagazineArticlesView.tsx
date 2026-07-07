@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -51,7 +52,7 @@ export function MagazineArticlesView() {
   }, [articles, search, honoreeNameById]);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/headquarters/magazine");
+    const res = await hqFetch("/api/headquarters/magazine");
     if (!res.ok) throw new Error("Could not load magazine articles.");
     const data = (await res.json()) as {
       articles: NomineeMagazineArticle[];
@@ -109,7 +110,7 @@ export function MagazineArticlesView() {
         existing?.slug ??
         slugify(form.articleTitle || "visionary-magazine-article");
 
-      const res = await fetch("/api/headquarters/magazine", {
+      const res = await hqFetch("/api/headquarters/magazine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -152,7 +153,7 @@ export function MagazineArticlesView() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/headquarters/magazine?id=${encodeURIComponent(selectedId)}`, {
+      const res = await hqFetch(`/api/headquarters/magazine?id=${encodeURIComponent(selectedId)}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");

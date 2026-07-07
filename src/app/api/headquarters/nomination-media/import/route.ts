@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { listNomineeCategories } from "@/lib/nominee-categories-store";
 import {
@@ -12,7 +13,7 @@ import { importNominationMediaPackage } from "@/lib/nomination-media-import-stor
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const formData = await req.formData();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { applicationStatusOptions, type ApplicationStatus } from "@/lib/media-credentials";
 import {
@@ -18,7 +19,7 @@ function idFromPath(pathname: string): string {
 
 export const PATCH = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   const id = idFromPath(req.nextUrl.pathname);
 
@@ -83,7 +84,7 @@ export const PATCH = safeApiHandler(async (req: NextRequest) => {
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   const id = idFromPath(req.nextUrl.pathname);
 

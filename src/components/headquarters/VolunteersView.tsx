@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -64,7 +65,7 @@ export function VolunteersView({ volunteers: initialVolunteers }: { volunteers: 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/headquarters/volunteers", {
+      const res = await hqFetch("/api/headquarters/volunteers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

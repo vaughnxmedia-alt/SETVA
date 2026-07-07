@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useMemo, useState } from "react";
 import {
   HQButton,
@@ -49,7 +50,7 @@ export function NominationMediaImport({ onComplete }: NominationMediaImportProps
     setMessage(null);
     setErrors([]);
     try {
-      const res = await fetch("/api/headquarters/nomination-media/import", {
+      const res = await hqFetch("/api/headquarters/nomination-media/import", {
         method: "POST",
         body: await buildFormData(true),
       });
@@ -87,7 +88,7 @@ export function NominationMediaImport({ onComplete }: NominationMediaImportProps
     setMessage(null);
     setErrors([]);
     try {
-      const res = await fetch("/api/headquarters/nomination-media/import", {
+      const res = await hqFetch("/api/headquarters/nomination-media/import", {
         method: "POST",
         body: await buildFormData(false),
       });

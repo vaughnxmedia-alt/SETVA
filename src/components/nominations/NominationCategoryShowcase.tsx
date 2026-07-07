@@ -16,11 +16,9 @@ export function NominationCategoryShowcase({
   votingOpen,
 }: NominationCategoryShowcaseProps) {
   const firstGraphic = category.nominees.find((nominee) => nominee.hasGraphic);
-  // Only use the full image-card grid when every nominee in the category has a
-  // graphic. If any are missing, present the whole category uniformly as
-  // calling-card name tags (graphics, when present, show as the card avatar).
-  const allHaveGraphics =
-    category.nominees.length > 0 && category.nominees.every((nominee) => nominee.hasGraphic);
+  const graphicNominees = category.nominees.filter((nominee) => nominee.hasGraphic);
+  const nameCardNominees = category.nominees.filter((nominee) => !nominee.hasGraphic);
+  const hasMixedCards = graphicNominees.length > 0 && nameCardNominees.length > 0;
 
   return (
     <section
@@ -51,29 +49,42 @@ export function NominationCategoryShowcase({
           </div>
         ) : null}
 
-        {allHaveGraphics ? (
-          <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {category.nominees.map((nominee, nomineeIndex) => (
-              <NomineeCard
-                key={nominee.id}
-                nominee={nominee}
-                categoryTitle={category.title}
-                priority={index === 0 && nomineeIndex === 0}
-                votingOpen={votingOpen}
-              />
-            ))}
+        {hasMixedCards ? (
+          <div className="mt-5 grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.95fr)]">
+            <div className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              {graphicNominees.map((nominee) => (
+                <NomineeCard
+                  key={nominee.id}
+                  nominee={nominee}
+                  categoryTitle={category.title}
+                  priority={index === 0 && category.nominees[0]?.id === nominee.id}
+                  votingOpen={votingOpen}
+                />
+              ))}
+            </div>
+            <div className="flex min-w-0 flex-col gap-4">
+              {nameCardNominees.map((nominee) => (
+                <NomineeNameCard key={nominee.id} nominee={nominee} votingOpen={votingOpen} />
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {category.nominees.map((nominee) => (
-              <NomineeNameCard
-                key={nominee.id}
-                nominee={nominee}
-                votingOpen={votingOpen}
-              />
-            ))}
+        ) : category.nominees.length > 0 ? (
+          <div className="mt-5 grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {category.nominees.map((nominee, nomineeIndex) =>
+              nominee.hasGraphic ? (
+                <NomineeCard
+                  key={nominee.id}
+                  nominee={nominee}
+                  categoryTitle={category.title}
+                  priority={index === 0 && nomineeIndex === 0}
+                  votingOpen={votingOpen}
+                />
+              ) : (
+                <NomineeNameCard key={nominee.id} nominee={nominee} votingOpen={votingOpen} />
+              ),
+            )}
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   );
@@ -165,12 +176,12 @@ function NomineeCard({
             : `Support and vote for ${nominee.nomineeName}`
         }
       >
-        <div className="relative aspect-[4/5] w-full">
+        <div className="relative aspect-[4/5] w-full bg-gradient-to-b from-black/90 to-black p-3 sm:p-4">
           <Image
             src={nominee.imageSrc}
             alt={`${nominee.nomineeName} — ${categoryTitle}`}
             fill
-            className="object-cover"
+            className="object-contain object-center"
             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
             priority={priority}
           />

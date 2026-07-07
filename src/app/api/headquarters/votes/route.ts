@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
@@ -11,7 +12,7 @@ export type { HQVotingCategorySection, HQVotingNomineeRow };
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const [nominees, categories, pageEntries, voteTallies] = await Promise.all([
@@ -22,10 +23,10 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
     ]);
 
     const categoryTitleById = new Map(categories.map((category) => [category.id, category.title]));
-    const graphicByNomineeId = new Map<string, string>();
+    const graphicByNomineeCategory = new Map<string, string>();
     for (const entry of pageEntries) {
-      if (entry.nomineeGraphicUrl && !graphicByNomineeId.has(entry.nomineeId)) {
-        graphicByNomineeId.set(entry.nomineeId, entry.nomineeGraphicUrl);
+      if (entry.nomineeGraphicUrl) {
+        graphicByNomineeCategory.set(`${entry.nomineeId}:${entry.categoryId}`, entry.nomineeGraphicUrl);
       }
     }
 
@@ -34,7 +35,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
       nomineeName: nominee.name,
       categoryId: nominee.categoryId,
       categoryTitle: categoryTitleById.get(nominee.categoryId) ?? "Unassigned",
-      graphicUrl: graphicByNomineeId.get(nominee.id) ?? "",
+      graphicUrl: graphicByNomineeCategory.get(`${nominee.id}:${nominee.categoryId}`) ?? "",
       voteCount: voteTallies[nominee.id] ?? 0,
       categoryPercent: 0,
     }));

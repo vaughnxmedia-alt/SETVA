@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { parseNomineeMagazineArticleInput } from "@/lib/nominees";
 import { listHonorees } from "@/lib/honorees-store";
@@ -11,7 +12,7 @@ import {
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const [articles, honorees] = await Promise.all([
@@ -41,7 +42,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as Record<string, unknown>;
@@ -76,7 +77,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const id = req.nextUrl.searchParams.get("id") ?? "";

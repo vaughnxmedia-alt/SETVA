@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -74,7 +75,7 @@ export function HonoreesView() {
   }, [honorees, search]);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/headquarters/honorees");
+    const res = await hqFetch("/api/headquarters/honorees");
     if (!res.ok) throw new Error("Could not load honorees.");
     const data = (await res.json()) as { honorees: Honoree[] };
     setHonorees(data.honorees ?? []);
@@ -129,7 +130,7 @@ export function HonoreesView() {
       const body = new FormData();
       body.append("file", file);
       body.append("slug", currentSlug);
-      const res = await fetch("/api/headquarters/honorees/graphic", { method: "POST", body });
+      const res = await hqFetch("/api/headquarters/honorees/graphic", { method: "POST", body });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
         throw new Error(data.error ?? "Upload failed");
@@ -154,7 +155,7 @@ export function HonoreesView() {
     setError(null);
     try {
       const existing = selectedId ? honorees.find((h) => h.id === selectedId) : undefined;
-      const res = await fetch("/api/headquarters/honorees", {
+      const res = await hqFetch("/api/headquarters/honorees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -192,7 +193,7 @@ export function HonoreesView() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/headquarters/honorees", {
+      const res = await hqFetch("/api/headquarters/honorees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -220,7 +221,7 @@ export function HonoreesView() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/headquarters/honorees?id=${encodeURIComponent(selectedId)}`, {
+      const res = await hqFetch(`/api/headquarters/honorees?id=${encodeURIComponent(selectedId)}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");

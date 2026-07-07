@@ -10,7 +10,11 @@ import {
   type FormSubmissionRecord,
   type FormType,
 } from "@/lib/form-submissions";
-import { categoryExpectsVideo } from "@/lib/nominee-category-groups";
+import {
+  categoryAllowsNomineeGraphic,
+  categoryExpectsVideo,
+  nomineePageEntryWithoutDisallowedGraphic,
+} from "@/lib/nominee-category-groups";
 import { categoryById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
 import { ticketPartnerTrackingPath, slugifyTicketPartner } from "@/lib/ticket-partner/links";
@@ -114,13 +118,73 @@ export async function saveNomineePageEntry(
   input: Omit<NomineePageEntry, "id" | "submittedAt" | "updatedAt">,
   id?: string,
 ): Promise<NomineePageEntry> {
+  const categories = await listNomineeCategories();
+  const category = categoryById(categories, input.categoryId);
+  const sanitized = nomineePageEntryWithoutDisallowedGraphic(input, category);
   return saveWorkflow<NomineePageEntry>(
     FORM_TYPES.nomineePageEntries,
     "nom_page",
-    input,
-    input.status.toLowerCase(),
-    id,
+    sanitized,
+    sanitized.status.toLowerCase(),
+    id ?? nomineePageEntryId(sanitized.nomineeId),
   );
+}
+
+export type StripNonSpecialGraphicsResult = {
+  cleared: number;
+  kept: number;
+  unchanged: number;
+};
+
+/** Remove stored graphics from all non-Special nominee page entries. */
+export async function stripNonSpecialNomineeGraphics(): Promise<StripNonSpecialGraphicsResult> {
+  if (formStorageMode() !== "supabase") {
+    return { cleared: 0, kept: 0, unchanged: 0 };
+  }
+
+  const [entries, categories] = await Promise.all([listNomineePageEntries(), listNomineeCategories()]);
+  let cleared = 0;
+  let kept = 0;
+  let unchanged = 0;
+
+  for (const entry of entries) {
+    const category = categoryById(categories, entry.categoryId);
+    const hasGraphic = Boolean(entry.nomineeGraphicUrl || entry.nomineeGraphicMediaId);
+
+    if (categoryAllowsNomineeGraphic(category)) {
+      if (hasGraphic) kept += 1;
+      else unchanged += 1;
+      continue;
+    }
+
+    if (!hasGraphic) {
+      unchanged += 1;
+      continue;
+    }
+
+    await saveNomineePageEntry(
+      {
+        nomineeId: entry.nomineeId,
+        categoryId: entry.categoryId,
+        nomineeGraphicMediaId: "",
+        nomineeGraphicUrl: "",
+        displayOrder: entry.displayOrder,
+        publishToNomineePage: entry.publishToNomineePage,
+        status: entry.status,
+        createdByName: entry.createdByName,
+        createdByEmail: entry.createdByEmail,
+      },
+      entry.id,
+    );
+    cleared += 1;
+  }
+
+  return { cleared, kept, unchanged };
+}
+
+/** Stable page-entry id — one nominee record maps to one page entry per category. */
+export function nomineePageEntryId(nomineeId: string): string {
+  return `page_${nomineeId.trim()}`;
 }
 
 export async function deleteNomineePageEntry(id: string): Promise<boolean> {
@@ -227,30 +291,29 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
       const allEntries = published
         .filter((entry) => entry.categoryId === category.id)
         .map((entry) => {
+          const nomineeRecord = nomineeById.get(entry.nomineeId);
+          if (!nomineeRecord) return null;
           const asset = entry.nomineeGraphicMediaId
             ? mediaById.get(entry.nomineeGraphicMediaId)
             : null;
           const imageSrc = publicHostedMediaUrl(asset?.fileUrl, entry.nomineeGraphicUrl);
-          const nomineeRecord = nomineeById.get(entry.nomineeId);
-          const slug = nomineeRecord
-            ? slugifyTicketPartner(nomineeRecord.name, nomineeRecord.id)
-            : "";
-          const ticketHref = slug ? ticketPartnerTrackingPath(slug) : ticketPurchaseHref();
+          const slug = nomineeRecord.ticketPartnerSlug.trim() ||
+              slugifyTicketPartner(nomineeRecord.name, nomineeRecord.id);
+          const ticketHref = slug ? `${ticketPartnerTrackingPath(slug)}#vote` : ticketPurchaseHref();
           return {
             id: entry.id,
             nomineeId: entry.nomineeId,
             imageSrc,
-            nomineeName: nomineeRecord?.name ?? "Nominee",
+            nomineeName: nomineeRecord.name,
             ticketHref,
             hasGraphic: Boolean(imageSrc),
           };
-        });
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
       const graphicEntries = allEntries.filter((entry) => entry.hasGraphic);
-      // Categories with a video also surface graphic-less nominees as calling-card
-      // name tags so they stay visible and votable until graphics are added in HQ.
-      // Categories without a video remain graphics-only.
-      const nominees = videoSrc ? allEntries : graphicEntries;
+      // Published nominees without graphics appear as torch name cards on the public page.
+      const nominees = allEntries;
 
       return {
         id: category.id,
@@ -263,13 +326,8 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
         nominees,
       };
     })
-    // Show a category if it has at least one graphic nominee, or it has a video
-    // with at least one published nominee (name tags allow voting).
-    .filter(
-      (category) =>
-        category.imageSrcs.length > 0 ||
-        (Boolean(category.videoSrc) && category.nominees.length > 0),
-    );
+    // Show a category when it has at least one published nominee (graphic or name card).
+    .filter((category) => category.nominees.length > 0);
 }
 
 export async function listPublishedNomineeMagazineArticles(): Promise<NomineeMagazineArticle[]> {

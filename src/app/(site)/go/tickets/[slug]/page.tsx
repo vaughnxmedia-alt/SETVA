@@ -58,18 +58,34 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
       ? await getVoterDailyStatus(voterKey)
       : { votesToday: 0, votesRemaining: DAILY_VOTE_LIMIT, votedCategoryIds: [] };
 
+  const showVoteSection = isNominee && voteTargets.length > 0;
+
   return (
     <div className="px-4 py-12 sm:px-6 sm:py-16">
       <VotingStartsNotice className="mx-auto mb-6 max-w-lg" />
-      <TicketPartnerGateForm partner={partner} />
-      <NomineeVoteSection
-        nomineeName={partner.sourceName}
-        targets={voteTargets}
-        votingOpen={votingOpen}
-        openCategoryIds={openCategoryIds}
-        votesRemaining={dailyStatus.votesRemaining}
-        votedCategoryIds={dailyStatus.votedCategoryIds}
-      />
+      <div className="mx-auto flex max-w-lg flex-col gap-6">
+        {showVoteSection && votingOpen ? (
+          <NomineeVoteSection
+            nomineeName={partner.sourceName}
+            targets={voteTargets}
+            votingOpen={votingOpen}
+            openCategoryIds={openCategoryIds}
+            votesRemaining={dailyStatus.votesRemaining}
+            votedCategoryIds={dailyStatus.votedCategoryIds}
+          />
+        ) : null}
+        <TicketPartnerGateForm partner={partner} />
+        {showVoteSection && !votingOpen ? (
+          <NomineeVoteSection
+            nomineeName={partner.sourceName}
+            targets={voteTargets}
+            votingOpen={votingOpen}
+            openCategoryIds={openCategoryIds}
+            votesRemaining={dailyStatus.votesRemaining}
+            votedCategoryIds={dailyStatus.votedCategoryIds}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

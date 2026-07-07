@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -56,7 +57,7 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/headquarters/ticket-sales");
+    const res = await hqFetch("/api/headquarters/ticket-sales");
     if (!res.ok) throw new Error("Could not load ticket sales.");
     const json = (await res.json()) as TicketSalesResponse;
     setData(json.reconciliation ?? EMPTY);
@@ -83,7 +84,7 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
     setNotice(null);
     setError(null);
     try {
-      const res = await fetch("/api/headquarters/ticket-sales", {
+      const res = await hqFetch("/api/headquarters/ticket-sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ csv }),
@@ -112,7 +113,7 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
     setError(null);
     setNotice(null);
     try {
-      const res = await fetch("/api/headquarters/ticket-sales", { method: "DELETE" });
+      const res = await hqFetch("/api/headquarters/ticket-sales", { method: "DELETE" });
       const json = (await res.json()) as TicketSalesResponse;
       if (!res.ok || !json.success) {
         setError(json.error ?? "Could not clear imported data.");

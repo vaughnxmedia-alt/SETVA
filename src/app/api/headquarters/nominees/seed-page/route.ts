@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { seedPublicPageNominees } from "@/lib/nominee-page-seed-store";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const result = await seedPublicPageNominees({ name: user.name, email: user.email });

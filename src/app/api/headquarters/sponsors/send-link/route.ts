@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { compileSponsorOutreachEmail, sendCompiledSponsorOutreachEmail } from "@/lib/email";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { FORM_TYPES } from "@/lib/form-submissions";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
@@ -29,7 +30,7 @@ function parseBody(body: Record<string, unknown>) {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   let body: Record<string, unknown>;
   try {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { getTicketSalesReconciliation } from "@/lib/headquarters/data";
 import {
@@ -11,7 +12,7 @@ import { parseTicketmasterExport } from "@/lib/ticket-partner/reconcile";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const reconciliation = await getTicketSalesReconciliation();
@@ -27,7 +28,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     let body: { csv?: string };
@@ -70,7 +71,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
 
 export const DELETE = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const removed = await clearTicketPurchases();

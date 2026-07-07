@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { compileMediaCredentialApprovalConfirmationEmail } from "@/lib/media-credential-approval-email";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { getMediaCredentialApplication } from "@/lib/media-credentials-store";
 
 export async function POST(req: NextRequest) {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ success: false, error: "Unauthorized." }, { status: 401 });
-  }
+  if (!user) return hqUnauthorizedResponse();
 
   let body: Record<string, unknown>;
   try {

@@ -1,5 +1,6 @@
 "use client";
 
+import { hqFetch } from "@/lib/headquarters/hq-fetch.client";
 import { useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
@@ -52,7 +53,7 @@ export function UsersView({
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/headquarters/users", {
+      const res = await hqFetch("/api/headquarters/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, status }),
@@ -82,7 +83,7 @@ export function UsersView({
       <div className="space-y-6">
         <HQCardHeader
           title="Team users"
-          subtitle="View Headquarters accounts and manage access. All active team members have full admin access."
+          subtitle="Every active team member has the same full access. Revoking access signs that person out on all devices."
         />
 
         <div className={`${hqPanelClass} space-y-4 p-4`}>

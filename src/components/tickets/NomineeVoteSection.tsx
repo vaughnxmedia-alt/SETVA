@@ -41,7 +41,7 @@ export function NomineeVoteSection({
   const limitReached = votingOpen && remaining <= 0;
 
   return (
-    <div className="card-glow mx-auto mt-6 max-w-lg rounded-2xl bg-ink-deep/80 p-8 sm:p-10">
+    <div id="vote" className="card-glow mx-auto max-w-lg scroll-mt-24 rounded-2xl bg-ink-deep/80 p-8 sm:p-10">
       <div className="text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Cast your vote</p>
         <h2 className="mt-3 font-display text-2xl text-cream">Vote for {nomineeName}</h2>

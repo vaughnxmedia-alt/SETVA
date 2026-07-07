@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { listNomineeCategories, saveNomineeCategories } from "@/lib/nominee-categories-store";
 import { parseNomineeCategories } from "@/lib/nominees";
-import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
+import { handleApiFailure, safeApiHandler } from "@/lib/errors";
+import { hqUnauthorizedResponse } from "@/lib/headquarters/api-auth";
 
 export const GET = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const categories = await listNomineeCategories();
@@ -22,7 +23,7 @@ export const GET = safeApiHandler(async (req: NextRequest) => {
 
 export const PUT = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
-  if (!user) return publicErrorResponse(401);
+  if (!user) return hqUnauthorizedResponse();
 
   try {
     const body = (await req.json()) as { categories?: unknown };
