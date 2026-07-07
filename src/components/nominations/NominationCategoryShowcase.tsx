@@ -29,7 +29,7 @@ export function NominationCategoryShowcase({
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,205,104,0.12),transparent_50%)]" />
 
-      <div className="relative">
+      <div className="relative min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gold">
           Category {index + 1}
         </p>
@@ -52,7 +52,7 @@ export function NominationCategoryShowcase({
         ) : null}
 
         {allHaveGraphics ? (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {category.nominees.map((nominee, nomineeIndex) => (
               <NomineeCard
                 key={nominee.id}
@@ -64,12 +64,11 @@ export function NominationCategoryShowcase({
             ))}
           </div>
         ) : (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {category.nominees.map((nominee) => (
               <NomineeNameCard
                 key={nominee.id}
                 nominee={nominee}
-                categoryTitle={category.title}
                 votingOpen={votingOpen}
               />
             ))}
@@ -100,11 +99,9 @@ function TorchIcon({ className }: { className?: string }) {
 
 function NomineeNameCard({
   nominee,
-  categoryTitle,
   votingOpen,
 }: {
   nominee: PublicNomineePageCategory["nominees"][number];
-  categoryTitle: string;
   votingOpen: boolean;
 }) {
   const votingLocked = !votingOpen;
@@ -119,19 +116,16 @@ function NomineeNameCard({
           ? `${nominee.nomineeName} — ${VOTING_STARTS_MESSAGE}`
           : `Support and vote for ${nominee.nomineeName}`
       }
-      className={`group flex items-center gap-4 rounded-2xl border bg-gradient-to-br from-black/80 to-black/50 p-4 transition ${
+      className={`group flex w-full min-w-0 max-w-full items-center gap-3 rounded-2xl border bg-gradient-to-br from-black/80 to-black/50 p-3 transition sm:gap-4 sm:p-4 ${
         votingLocked ? "border-white/10" : "border-gold/25 hover:border-gold/50"
       }`}
     >
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-gold">
-        <TorchIcon className="h-7 w-7" />
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-gold sm:h-14 sm:w-14">
+        <TorchIcon className="h-6 w-6 sm:h-7 sm:w-7" />
       </span>
-      <span className="min-w-0">
-        <span className="block truncate font-display text-lg text-white">
+      <span className="min-w-0 flex-1">
+        <span className="block break-words font-display text-base leading-snug text-white sm:text-lg">
           {nominee.nomineeName}
-        </span>
-        <span className="mt-0.5 block truncate text-xs uppercase tracking-[0.18em] text-gold/80">
-          {categoryTitle}
         </span>
         <span className="mt-1 block text-xs text-white/55">
           {votingLocked ? VOTING_STARTS_MESSAGE : "Vote now →"}

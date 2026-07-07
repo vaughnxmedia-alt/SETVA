@@ -190,6 +190,17 @@ export async function deleteNomineeMediaAsset(id: string): Promise<boolean> {
   return deleteFormSubmission(id, FORM_TYPES.nomineeMediaAssets);
 }
 
+function publicHostedMediaUrl(...candidates: (string | undefined | null)[]): string {
+  for (const raw of candidates) {
+    const url = raw?.trim() ?? "";
+    if (!url) continue;
+    // Never embed data: URIs on the public site — a single base64 graphic can be
+    // several MB and breaks Next.js caching plus mobile page loads.
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  }
+  return "";
+}
+
 export async function listPublishedNomineePageCategories(): Promise<PublicNomineePageCategory[]> {
   const [categories, nominees, entries, media] = await Promise.all([
     listNomineeCategories(),
@@ -219,7 +230,7 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
           const asset = entry.nomineeGraphicMediaId
             ? mediaById.get(entry.nomineeGraphicMediaId)
             : null;
-          const imageSrc = entry.nomineeGraphicUrl || asset?.fileUrl || "";
+          const imageSrc = publicHostedMediaUrl(asset?.fileUrl, entry.nomineeGraphicUrl);
           const nomineeRecord = nomineeById.get(entry.nomineeId);
           const slug = nomineeRecord
             ? slugifyTicketPartner(nomineeRecord.name, nomineeRecord.id)
@@ -246,7 +257,7 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
         title: category.title,
         videoSrc,
         videoPoster: videoSrc
-          ? category.videoPosterUrl || graphicEntries[0]?.imageSrc || ""
+          ? publicHostedMediaUrl(category.videoPosterUrl, graphicEntries[0]?.imageSrc)
           : "",
         imageSrcs: graphicEntries.map((entry) => entry.imageSrc),
         nominees,

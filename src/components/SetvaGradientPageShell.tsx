@@ -23,7 +23,7 @@ export function SetvaGradientPageShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <div className="relative z-10">{children}</div>
+      <div className="relative z-10 min-w-0 overflow-x-hidden">{children}</div>
     </div>
   );
 }

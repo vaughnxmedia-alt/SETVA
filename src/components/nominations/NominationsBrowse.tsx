@@ -21,7 +21,7 @@ export function NominationsBrowse({ categories, votingOpen }: NominationsBrowseP
     <>
       <nav
         aria-label="Nomination categories"
-        className="mt-8 flex flex-wrap justify-center gap-2 sm:mt-10"
+        className="mt-8 flex min-w-0 flex-wrap justify-center gap-2 sm:mt-10"
       >
         <CategoryTab
           active={activeCategoryId === "all"}
@@ -40,7 +40,7 @@ export function NominationsBrowse({ categories, votingOpen }: NominationsBrowseP
         ))}
       </nav>
 
-      <div className="mt-8 flex flex-col gap-6 sm:mt-10 sm:gap-10">
+      <div className="mt-8 flex min-w-0 flex-col gap-6 sm:mt-10 sm:gap-10">
         {visibleCategories.map((category, index) => (
           <NominationCategoryShowcase
             key={category.id}
@@ -67,7 +67,7 @@ function CategoryTab({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+      className={`max-w-full rounded-full border px-3 py-2 text-left text-xs font-semibold transition sm:px-4 sm:text-sm ${
         active
           ? "border-gold bg-gold/15 text-gold"
           : "border-white/15 bg-black/40 text-white/75 hover:border-gold/40 hover:text-gold"
