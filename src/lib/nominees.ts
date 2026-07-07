@@ -166,6 +166,7 @@ export type PublicNomineePageCategory = {
     imageSrc: string;
     nomineeName: string;
     ticketHref: string;
+    hasGraphic: boolean;
   }[];
 };
 

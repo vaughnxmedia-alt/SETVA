@@ -10,6 +10,7 @@ import {
   type FormSubmissionRecord,
   type FormType,
 } from "@/lib/form-submissions";
+import { categoryExpectsVideo } from "@/lib/nominee-category-groups";
 import { categoryById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNominees } from "@/lib/nominees-store";
 import { ticketPartnerTrackingPath, slugifyTicketPartner } from "@/lib/ticket-partner/links";
@@ -208,14 +209,17 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((category) => {
       const videoAsset = category.videoMediaId ? mediaById.get(category.videoMediaId) : null;
-      const categoryEntries = published
+      const videoSrc = category.publishVideo
+        ? category.videoUrl || videoAsset?.fileUrl || ""
+        : "";
+
+      const allEntries = published
         .filter((entry) => entry.categoryId === category.id)
         .map((entry) => {
           const asset = entry.nomineeGraphicMediaId
             ? mediaById.get(entry.nomineeGraphicMediaId)
             : null;
           const imageSrc = entry.nomineeGraphicUrl || asset?.fileUrl || "";
-          if (!imageSrc) return null;
           const nomineeRecord = nomineeById.get(entry.nomineeId);
           const slug = nomineeRecord
             ? slugifyTicketPartner(nomineeRecord.name, nomineeRecord.id)
@@ -227,22 +231,34 @@ export async function listPublishedNomineePageCategories(): Promise<PublicNomine
             imageSrc,
             nomineeName: nomineeRecord?.name ?? "Nominee",
             ticketHref,
+            hasGraphic: Boolean(imageSrc),
           };
-        })
-        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        });
+
+      const graphicEntries = allEntries.filter((entry) => entry.hasGraphic);
+      // Categories with a video also surface graphic-less nominees as calling-card
+      // name tags so they stay visible and votable until graphics are added in HQ.
+      // Categories without a video remain graphics-only.
+      const nominees = videoSrc ? allEntries : graphicEntries;
 
       return {
         id: category.id,
         title: category.title,
-        videoSrc: category.publishVideo
-          ? category.videoUrl || videoAsset?.fileUrl || ""
+        videoSrc,
+        videoPoster: videoSrc
+          ? category.videoPosterUrl || graphicEntries[0]?.imageSrc || ""
           : "",
-        videoPoster: category.publishVideo ? category.videoPosterUrl || "" : "",
-        imageSrcs: categoryEntries.map((entry) => entry.imageSrc),
-        nominees: categoryEntries,
+        imageSrcs: graphicEntries.map((entry) => entry.imageSrc),
+        nominees,
       };
     })
-    .filter((category) => category.imageSrcs.length > 0);
+    // Show a category if it has at least one graphic nominee, or it has a video
+    // with at least one published nominee (name tags allow voting).
+    .filter(
+      (category) =>
+        category.imageSrcs.length > 0 ||
+        (Boolean(category.videoSrc) && category.nominees.length > 0),
+    );
 }
 
 export async function listPublishedNomineeMagazineArticles(): Promise<NomineeMagazineArticle[]> {
@@ -329,7 +345,12 @@ export async function getNomineePublishQueue(): Promise<PublishQueueItem[]> {
   }
 
   for (const category of categories) {
-    if (category.publishVideo && !category.videoUrl && !category.videoMediaId) {
+    if (
+      category.publishVideo &&
+      !category.videoUrl &&
+      !category.videoMediaId &&
+      categoryExpectsVideo(category)
+    ) {
       items.push({
         id: `${category.id}-video`,
         workflow: "Category Video",

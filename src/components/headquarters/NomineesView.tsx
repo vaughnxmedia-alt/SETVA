@@ -97,6 +97,7 @@ export function NomineesView({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [expandedNomineeIds, setExpandedNomineeIds] = useState<Set<string>>(() => new Set());
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
   const [activeNomineeId, setActiveNomineeId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalMode>(null);
   const [nomineeForm, setNomineeForm] = useState(blankNominee(initialCategories[0]?.id ?? ""));
@@ -142,13 +143,24 @@ export function NomineesView({
     });
   }, [nominees, search, categoryFilter]);
 
+  const activeCategoryIds = useMemo(
+    () => new Set(activeCategories.map((category) => category.id)),
+    [activeCategories],
+  );
+
+  const unassignedNominees = useMemo(
+    () => filteredNominees.filter((nominee) => !activeCategoryIds.has(nominee.categoryId)),
+    [filteredNominees, activeCategoryIds],
+  );
+
   const sortByNomineeCompletion = useCallback(
     (rows: NomineeRow[]): NomineeRow[] =>
       rows
         .map((nominee, index) => ({ nominee, index }))
         .sort((a, b) => {
-          const rankGap = nomineeCompletionRank(a.nominee, pageEntries) -
-            nomineeCompletionRank(b.nominee, pageEntries);
+          const rankGap =
+            nomineeMissingGraphicRank(a.nominee, pageEntries) -
+            nomineeMissingGraphicRank(b.nominee, pageEntries);
           if (rankGap !== 0) return rankGap;
           return a.index - b.index;
         })
@@ -157,12 +169,8 @@ export function NomineesView({
   );
 
   const nomineesByCategory = useMemo(() => {
-    const assignedIds = new Set(activeCategories.map((category) => category.id));
+    const assignedIds = activeCategoryIds;
 
-    // Build category sections in their configured order, then float the most
-    // complete categories (live/published nominees with graphics) to the top and
-    // push unfinished categories (no graphics yet) to the bottom. A stable sort
-    // preserves the configured order within each completion bucket.
     const categorySections = activeCategories
       .map((category) => {
         const rows = filteredNominees.filter((nominee) => nominee.categoryId === category.id);
@@ -171,9 +179,9 @@ export function NomineesView({
       .filter((section) => section.rows.length > 0)
       .map((section, index) => ({ ...section, index }))
       .sort((a, b) => {
-        const rankGap =
-          categoryCompletionRank(a.rows, pageEntries) - categoryCompletionRank(b.rows, pageEntries);
-        if (rankGap !== 0) return rankGap;
+        const missingGap =
+          countMissingGraphics(b.rows, pageEntries) - countMissingGraphics(a.rows, pageEntries);
+        if (missingGap !== 0) return missingGap;
         return a.index - b.index;
       });
 
@@ -186,7 +194,7 @@ export function NomineesView({
     if (unassigned.length) sections.push(["unassigned", sortByNomineeCompletion(unassigned)]);
 
     return sections;
-  }, [activeCategories, filteredNominees, sortByNomineeCompletion, pageEntries]);
+  }, [activeCategories, filteredNominees, sortByNomineeCompletion, pageEntries, activeCategoryIds]);
 
   const activeNominee = nominees.find((nominee) => nominee.id === activeNomineeId) ?? null;
 
@@ -198,6 +206,17 @@ export function NomineesView({
       return next;
     });
   }
+
+  function toggleCategoryExpanded(categoryId: string) {
+    setExpandedCategoryIds((current) => {
+      const next = new Set(current);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }
+
+  const autoExpandCategories = search.trim().length > 0 || categoryFilter !== "all";
 
   const refresh = useCallback(async () => {
     const [directoryRes, workflowsRes] = await Promise.all([
@@ -531,6 +550,32 @@ export function NomineesView({
     }
   }
 
+  async function deleteAllUnassigned(rows: NomineeRow[]) {
+    if (rows.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${rows.length} unassigned nominee${rows.length === 1 ? "" : "s"}? They are not linked to a current category.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      for (const nominee of rows) {
+        const res = await fetch(`/api/headquarters/nominees/${nominee.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(`Could not delete ${nominee.name}.`);
+      }
+      setMessage(`Deleted ${rows.length} unassigned nominee${rows.length === 1 ? "" : "s"}.`);
+      await refresh();
+    } catch {
+      setError("Could not delete all unassigned nominees.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveVoting() {
     if (!activeNominee) return;
     setBusy(true);
@@ -601,22 +646,90 @@ export function NomineesView({
       {filteredNominees.length === 0 ? (
         <HQEmptyState title="No nominees yet" description="Add your first nominee to start the content checklist." />
       ) : (
-        <div className="space-y-8">
-          {nomineesByCategory.map(([categoryId, rows]) => (
-            <section key={categoryId}>
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
+        <div className="space-y-3">
+          {nomineesByCategory.map(([categoryId, rows]) => {
+            const categoryExpanded = autoExpandCategories || expandedCategoryIds.has(categoryId);
+            const missingGraphics = countMissingGraphics(rows, pageEntries);
+            return (
+            <section key={categoryId} className="rounded-xl border border-gold/15 bg-black/20">
+              <button
+                type="button"
+                onClick={() => toggleCategoryExpanded(categoryId)}
+                aria-expanded={categoryExpanded}
+                className="flex w-full items-start justify-between gap-3 p-4 text-left transition hover:bg-gold/5 sm:items-center"
+              >
+                <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold/70">
                     Category
                   </p>
-                  <h2 className="font-display text-2xl text-cream">
+                  <h2 className="font-display text-xl text-cream sm:text-2xl">
                     {categoryId === "unassigned"
                       ? "Unassigned"
                       : categoryTitle(categoryId)}
                   </h2>
+                  {missingGraphics > 0 ? (
+                    <p className="mt-1 text-sm text-amber-300/90">
+                      {missingGraphics} missing graphic{missingGraphics === 1 ? "" : "s"}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-emerald-light/80">All nominees have graphics</p>
+                  )}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {categoryVideoUrl(categoryId, categories) ? (
+                <div className="flex shrink-0 items-center gap-3">
+                  <div className="hidden flex-wrap items-center gap-2 sm:flex">
+                    {categoryId === "unassigned" && rows.length > 0 ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void deleteAllUnassigned(rows);
+                        }}
+                        className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        Delete all unassigned
+                      </button>
+                    ) : null}
+                    {categoryId !== "unassigned" && categoryVideoUrl(categoryId, categories) ? (
+                      <a
+                        href={categoryVideoUrl(categoryId, categories)}
+                        download={downloadFileName(categoryTitle(categoryId), "video")}
+                        className={downloadLinkClass}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        Download video
+                      </a>
+                    ) : null}
+                    <p className="text-sm text-cream/45">
+                      {rows.length} nominee{rows.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <span
+                    aria-hidden
+                    className={`text-sm text-gold transition-transform ${
+                      categoryExpanded ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
+                </div>
+              </button>
+
+              {!categoryExpanded ? (
+                <div className="flex items-center justify-between gap-2 border-t border-gold/10 px-4 py-2 sm:hidden">
+                  <p className="text-sm text-cream/45">
+                    {rows.length} nominee{rows.length === 1 ? "" : "s"}
+                  </p>
+                  {categoryId === "unassigned" && rows.length > 0 ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void deleteAllUnassigned(rows)}
+                      className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300"
+                    >
+                      Delete all
+                    </button>
+                  ) : categoryId !== "unassigned" && categoryVideoUrl(categoryId, categories) ? (
                     <a
                       href={categoryVideoUrl(categoryId, categories)}
                       download={downloadFileName(categoryTitle(categoryId), "video")}
@@ -625,12 +738,11 @@ export function NomineesView({
                       Download video
                     </a>
                   ) : null}
-                  <p className="text-sm text-cream/45">
-                    {rows.length} nominee{rows.length === 1 ? "" : "s"}
-                  </p>
                 </div>
-              </div>
+              ) : null}
 
+              {categoryExpanded ? (
+              <div className="border-t border-gold/10 p-4 pt-0">
               <div className="grid gap-4 xl:grid-cols-2">
                 {rows.map((nominee) => {
                   const status = hubStatus(nominee, pageEntries, articles, votingSetups);
@@ -680,8 +792,11 @@ export function NomineesView({
                             />
                           </div>
                         ) : (
-                          <div className="flex aspect-square w-full max-w-[16rem] items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-2 text-center text-xs text-cream/40">
-                            No graphic yet
+                          <div className="flex aspect-square w-full max-w-[16rem] flex-col items-center justify-center rounded-lg border border-dashed border-gold/20 bg-black/20 px-3 text-center text-xs text-cream/40">
+                            <span>No graphic yet</span>
+                            <span className="mt-2 text-[10px] leading-snug text-cream/30">
+                              Each nominee needs their own reel or PNG — the category video only covers one person.
+                            </span>
                           </div>
                         )}
                         <HQButton
@@ -743,8 +858,11 @@ export function NomineesView({
                   );
                 })}
               </div>
+              </div>
+              ) : null}
             </section>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -1193,30 +1311,24 @@ function pageEntryFor(nomineeId: string, entries: NomineePageEntry[]): NomineePa
   return entries.find((entry) => entry.nomineeId === nomineeId);
 }
 
-/**
- * Lower rank sorts higher. Live nominees with a published graphic come first,
- * then nominees that have a graphic (ready but not published), then the rest.
- */
-function nomineeCompletionRank(nominee: NomineeRow, entries: NomineePageEntry[]): number {
-  const pageEntry = pageEntryFor(nominee.id, entries);
-  const hasGraphic = Boolean(pageEntry?.nomineeGraphicUrl || pageEntry?.nomineeGraphicMediaId);
-  const isLive = Boolean(pageEntry?.publishToNomineePage && pageEntry.status === "Published");
+function nomineeHasGraphic(nomineeId: string, entries: NomineePageEntry[]): boolean {
+  const pageEntry = pageEntryFor(nomineeId, entries);
+  return Boolean(pageEntry?.nomineeGraphicUrl || pageEntry?.nomineeGraphicMediaId);
+}
 
-  if (isLive && hasGraphic) return 0;
-  if (hasGraphic) return 1;
-  return 2;
+function countMissingGraphics(rows: NomineeRow[], entries: NomineePageEntry[]): number {
+  return rows.filter((nominee) => !nomineeHasGraphic(nominee.id, entries)).length;
 }
 
 /**
- * Ranks a whole category by its most complete nominee, so categories with live
- * published nominees sort above categories that only have graphics, which in turn
- * sort above categories with nothing uploaded yet.
+ * Lower rank sorts higher. Nominees without a graphic come first.
  */
-function categoryCompletionRank(rows: NomineeRow[], entries: NomineePageEntry[]): number {
-  return rows.reduce(
-    (best, nominee) => Math.min(best, nomineeCompletionRank(nominee, entries)),
-    Number.POSITIVE_INFINITY,
-  );
+function nomineeMissingGraphicRank(nominee: NomineeRow, entries: NomineePageEntry[]): number {
+  if (!nomineeHasGraphic(nominee.id, entries)) return 0;
+  const pageEntry = pageEntryFor(nominee.id, entries);
+  const isLive = Boolean(pageEntry?.publishToNomineePage && pageEntry.status === "Published");
+  if (isLive) return 2;
+  return 1;
 }
 
 function articleFor(nomineeId: string, articles: NomineeMagazineArticle[]): NomineeMagazineArticle | undefined {

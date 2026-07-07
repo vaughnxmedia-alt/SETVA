@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
   HQButton,
   HQCard,
   HQCardHeader,
-  HQBadge,
   hqInputClass,
 } from "@/components/headquarters/ui";
 import type { NomineeCategory } from "@/lib/nominees";
+import { categoryExpectsVideo, categoryIsSpecialAward } from "@/lib/nominee-category-groups";
 import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
 import { generateVideoPoster } from "@/lib/video-thumbnail";
 
@@ -68,13 +68,14 @@ export function NomineeCategoriesView({
         }
 
         const isLive = category.status === "Published";
+        const expectsVideo = categoryExpectsVideo(category);
         normalized.push({
           ...category,
           sortOrder: index,
           videoUrl,
           videoPosterUrl,
           status: isLive ? "Published" : "Draft",
-          publishVideo: isLive && Boolean(videoUrl),
+          publishVideo: isLive && (expectsVideo ? Boolean(videoUrl) : true),
           active: true,
         });
       }
@@ -125,13 +126,14 @@ export function NomineeCategoriesView({
           const nextVideoUrl = isTarget ? videoUrl : item.videoUrl;
           const nextPosterUrl = isTarget ? videoPosterUrl : item.videoPosterUrl ?? "";
           const isLive = isTarget ? true : item.status === "Published";
+          const expectsVideo = categoryExpectsVideo(isTarget ? { ...item, videoUrl: nextVideoUrl } : item);
           return {
             ...item,
             sortOrder: itemIndex,
             videoUrl: nextVideoUrl,
             videoPosterUrl: nextPosterUrl,
             status: isLive ? "Published" : "Draft",
-            publishVideo: isLive && Boolean(nextVideoUrl),
+            publishVideo: isLive && (expectsVideo ? Boolean(nextVideoUrl) : true),
             active: true,
           } as NomineeCategory;
         });
@@ -163,6 +165,113 @@ export function NomineeCategoriesView({
       setMessage(`Published ${category.title} to the nominations page.`);
     } catch {
       setError("Could not publish category.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unpublishCategory(index: number) {
+    const category = categories[index];
+    if (!category?.title.trim()) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const normalized = categories
+        .filter((item) => item.title.trim())
+        .map((item, itemIndex) => {
+          const isTarget = item.id === category.id;
+          const isLive = isTarget ? false : item.status === "Published";
+          const expectsVideo = categoryExpectsVideo(item);
+          return {
+            ...item,
+            sortOrder: itemIndex,
+            status: isLive ? "Published" : "Draft",
+            publishVideo: isLive && (expectsVideo ? Boolean(item.videoUrl) : true),
+            active: true,
+          } as NomineeCategory;
+        });
+
+      const res = await fetch("/api/headquarters/nominee-categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: normalized }),
+      });
+      if (!res.ok) throw new Error("Unpublish failed");
+
+      const data = (await res.json()) as { categories?: NomineeCategory[] };
+      setCategories(data.categories ?? normalized);
+      setMessage(`Unpublished ${category.title} from the nominations page.`);
+    } catch {
+      setError("Could not unpublish category.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteCategory(index: number) {
+    const category = categories[index];
+    const label = category.title.trim() || "this category";
+    if (!window.confirm(`Delete "${label}"? This removes the category from HQ.`)) return;
+
+    const nextCategories = categories.filter((_, itemIndex) => itemIndex !== index);
+    if (nextCategories.every((item) => !item.title.trim())) {
+      setError("At least one category must remain.");
+      return;
+    }
+
+    setPendingVideoFiles((current) => {
+      const next = { ...current };
+      delete next[category.id];
+      return next;
+    });
+    setPendingPosterFiles((current) => {
+      const next = { ...current };
+      delete next[category.id];
+      return next;
+    });
+    setPosterPreviews((current) => {
+      const preview = current[category.id];
+      if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
+      const next = { ...current };
+      delete next[category.id];
+      return next;
+    });
+
+    const savedCategories = nextCategories.filter((item) => item.title.trim());
+    if (savedCategories.length === 0) {
+      setCategories(nextCategories);
+      setMessage("Category removed.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const normalized = savedCategories.map((item, itemIndex) => {
+        const isLive = item.status === "Published";
+        const expectsVideo = categoryExpectsVideo(item);
+        return {
+          ...item,
+          sortOrder: itemIndex,
+          status: isLive ? "Published" : "Draft",
+          publishVideo: isLive && (expectsVideo ? Boolean(item.videoUrl) : true),
+          active: true,
+        };
+      });
+
+      const res = await fetch("/api/headquarters/nominee-categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: normalized }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
+
+      const data = (await res.json()) as { categories?: NomineeCategory[] };
+      setCategories(data.categories ?? normalized);
+      setMessage(`Deleted ${label}.`);
+    } catch {
+      setError("Could not delete category.");
     } finally {
       setBusy(false);
     }
@@ -302,112 +411,367 @@ export function NomineeCategoriesView({
             </div>
           }
         />
-        <div className="space-y-3 p-5">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              className="grid min-h-[8rem] items-center gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
-            >
-              <input
-                value={category.title}
-                onChange={(event) => updateCategory(index, { title: event.target.value })}
-                placeholder="Category name"
-                className={hqInputClass}
-              />
-              <input
-                value={category.description}
-                onChange={(event) => updateCategory(index, { description: event.target.value })}
-                placeholder="Description (optional)"
-                className={hqInputClass}
-              />
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <CategoryVideoPreview
-                    category={category}
-                    pendingFile={pendingVideoFiles[category.id]}
-                    posterOverride={posterPreviews[category.id] || category.videoPosterUrl}
-                  />
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <label className="cursor-pointer rounded-lg border border-gold/20 bg-black/40 px-3 py-1.5 text-center text-xs text-cream/75 transition hover:border-gold/40 hover:text-gold">
-                      {categoryHasVideo(category, pendingVideoFiles[category.id])
-                        ? "Replace video"
-                        : "Upload video (.mp4)"}
-                      <input
-                        type="file"
-                        accept="video/mp4,video/*"
-                        className="hidden"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          event.currentTarget.value = "";
-                          if (!file) return;
-                          setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
-                          updateCategory(index, { videoUrl: URL.createObjectURL(file) });
-                          const poster = await generateVideoPoster(file);
-                          if (poster) {
-                            setPendingPosterFiles((current) => ({ ...current, [category.id]: poster }));
-                            setPosterPreviews((current) => ({
-                              ...current,
-                              [category.id]: URL.createObjectURL(poster),
-                            }));
-                          }
-                        }}
-                      />
-                    </label>
-                    {categoryHasVideo(category, pendingVideoFiles[category.id]) ? (
-                      <label className="cursor-pointer text-center text-[11px] font-medium text-gold/80 transition hover:text-gold">
-                        Replace thumbnail
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.currentTarget.value = "";
-                            if (!file) return;
-                            setPendingPosterFiles((current) => ({ ...current, [category.id]: file }));
-                            setPosterPreviews((current) => ({
-                              ...current,
-                              [category.id]: URL.createObjectURL(file),
-                            }));
-                          }}
-                        />
-                      </label>
-                    ) : null}
-                  </div>
-                </div>
-                <p className="min-h-[1rem] truncate text-[11px] text-cream/45" title={category.videoUrl}>
-                  {pendingVideoFiles[category.id]
-                    ? `${pendingVideoFiles[category.id].name} — save to upload`
-                    : savedVideoLabel(category.videoUrl)
-                      ? `Saved: ${savedVideoLabel(category.videoUrl)}`
-                      : ""}
-                </p>
-              </div>
-              <div className="flex min-w-[7rem] flex-col items-start gap-2">
-                <HQBadge tone={category.status === "Published" ? "green" : "amber"}>
-                  {category.status === "Published" ? "Live" : "Draft"}
-                </HQBadge>
-                {category.status !== "Published" ? (
-                  <HQButton
-                    variant="outline"
-                    className="px-2.5 py-1 text-xs"
-                    disabled={busy || !category.videoUrl}
-                    onClick={() => publishCategory(index)}
-                  >
-                    Publish to site
-                  </HQButton>
-                ) : (
-                  <span className="text-[11px] text-cream/40">Published</span>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="space-y-8 p-5">
+          <CategorySection
+            title="Category videos"
+            description="Business, Creative, Film / Media, and Music awards with a nomination video."
+            categories={categories}
+            pendingVideoFiles={pendingVideoFiles}
+            pendingPosterFiles={pendingPosterFiles}
+            posterPreviews={posterPreviews}
+            busy={busy}
+            expectsVideo
+            filterCategory={categoryExpectsVideo}
+            sortRows={(a, b) => sortVideoCategoryRows(a, b, pendingVideoFiles)}
+            onUpdateCategory={updateCategory}
+            onPublishCategory={publishCategory}
+            onUnpublishCategory={unpublishCategory}
+            onDeleteCategory={deleteCategory}
+            setPendingVideoFiles={setPendingVideoFiles}
+            setPendingPosterFiles={setPendingPosterFiles}
+            setPosterPreviews={setPosterPreviews}
+          />
+
+          <CategorySection
+            title="Special awards"
+            description="Special awards use nominee graphics only — no category video."
+            categories={categories}
+            pendingVideoFiles={pendingVideoFiles}
+            pendingPosterFiles={pendingPosterFiles}
+            posterPreviews={posterPreviews}
+            busy={busy}
+            expectsVideo={false}
+            filterCategory={categoryIsSpecialAward}
+            onUpdateCategory={updateCategory}
+            onPublishCategory={publishCategory}
+            onUnpublishCategory={unpublishCategory}
+            onDeleteCategory={deleteCategory}
+            setPendingVideoFiles={setPendingVideoFiles}
+            setPendingPosterFiles={setPendingPosterFiles}
+            setPosterPreviews={setPosterPreviews}
+          />
+
           <HQButton variant="outline" onClick={addCategory} disabled={busy}>
             Add Category
           </HQButton>
         </div>
       </HQCard>
     </HQShell>
+  );
+}
+
+function sortVideoCategoryRows(
+  a: { category: NomineeCategory; index: number },
+  b: { category: NomineeCategory; index: number },
+  pendingVideoFiles: Record<string, File>,
+): number {
+  const aHasVideo = categoryHasVideo(a.category, pendingVideoFiles[a.category.id]);
+  const bHasVideo = categoryHasVideo(b.category, pendingVideoFiles[b.category.id]);
+  if (aHasVideo !== bHasVideo) return Number(bHasVideo) - Number(aHasVideo);
+  const aLive = a.category.status === "Published";
+  const bLive = b.category.status === "Published";
+  if (aLive !== bLive) return Number(bLive) - Number(aLive);
+  return a.category.sortOrder - b.category.sortOrder;
+}
+
+function CategorySection({
+  title,
+  description,
+  categories,
+  pendingVideoFiles,
+  pendingPosterFiles,
+  posterPreviews,
+  busy,
+  expectsVideo,
+  filterCategory,
+  sortRows,
+  onUpdateCategory,
+  onPublishCategory,
+  onUnpublishCategory,
+  onDeleteCategory,
+  setPendingVideoFiles,
+  setPendingPosterFiles,
+  setPosterPreviews,
+}: {
+  title: string;
+  description: string;
+  categories: NomineeCategory[];
+  pendingVideoFiles: Record<string, File>;
+  pendingPosterFiles: Record<string, File>;
+  posterPreviews: Record<string, string>;
+  busy: boolean;
+  expectsVideo: boolean;
+  filterCategory: (category: NomineeCategory) => boolean;
+  sortRows?: (
+    a: { category: NomineeCategory; index: number },
+    b: { category: NomineeCategory; index: number },
+  ) => number;
+  onUpdateCategory: (index: number, patch: Partial<NomineeCategory>) => void;
+  onPublishCategory: (index: number) => void;
+  onUnpublishCategory: (index: number) => void;
+  onDeleteCategory: (index: number) => void;
+  setPendingVideoFiles: Dispatch<SetStateAction<Record<string, File>>>;
+  setPendingPosterFiles: Dispatch<SetStateAction<Record<string, File>>>;
+  setPosterPreviews: Dispatch<SetStateAction<Record<string, string>>>;
+}) {
+  const rows = useMemo(() => {
+    const filtered = categories
+      .map((category, index) => ({ category, index }))
+      .filter(({ category }) => filterCategory(category));
+    if (sortRows) return [...filtered].sort(sortRows);
+    return filtered;
+  }, [categories, filterCategory, sortRows]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg text-cream">{title}</h3>
+        <p className="mt-1 text-sm text-cream/45">{description}</p>
+      </div>
+      {rows.map(({ category, index }) => (
+        <CategoryEditorRow
+          key={category.id}
+          category={category}
+          index={index}
+          expectsVideo={expectsVideo}
+          pendingVideoFiles={pendingVideoFiles}
+          pendingPosterFiles={pendingPosterFiles}
+          posterPreviews={posterPreviews}
+          busy={busy}
+          onUpdateCategory={onUpdateCategory}
+          onPublishCategory={onPublishCategory}
+          onUnpublishCategory={onUnpublishCategory}
+          onDeleteCategory={onDeleteCategory}
+          setPendingVideoFiles={setPendingVideoFiles}
+          setPendingPosterFiles={setPendingPosterFiles}
+          setPosterPreviews={setPosterPreviews}
+        />
+      ))}
+    </section>
+  );
+}
+
+function CategoryEditorRow({
+  category,
+  index,
+  expectsVideo,
+  pendingVideoFiles,
+  pendingPosterFiles,
+  posterPreviews,
+  busy,
+  onUpdateCategory,
+  onPublishCategory,
+  onUnpublishCategory,
+  onDeleteCategory,
+  setPendingVideoFiles,
+  setPendingPosterFiles,
+  setPosterPreviews,
+}: {
+  category: NomineeCategory;
+  index: number;
+  expectsVideo: boolean;
+  pendingVideoFiles: Record<string, File>;
+  pendingPosterFiles: Record<string, File>;
+  posterPreviews: Record<string, string>;
+  busy: boolean;
+  onUpdateCategory: (index: number, patch: Partial<NomineeCategory>) => void;
+  onPublishCategory: (index: number) => void;
+  onUnpublishCategory: (index: number) => void;
+  onDeleteCategory: (index: number) => void;
+  setPendingVideoFiles: Dispatch<SetStateAction<Record<string, File>>>;
+  setPendingPosterFiles: Dispatch<SetStateAction<Record<string, File>>>;
+  setPosterPreviews: Dispatch<SetStateAction<Record<string, string>>>;
+}) {
+  return (
+    <div
+      className={`grid items-center gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 ${
+        expectsVideo
+          ? "min-h-[8rem] lg:grid-cols-[1fr_1fr_1fr_auto]"
+          : "lg:grid-cols-[1fr_1fr_auto]"
+      }`}
+    >
+      <input
+        value={category.title}
+        onChange={(event) => onUpdateCategory(index, { title: event.target.value })}
+        placeholder="Category name"
+        className={hqInputClass}
+      />
+      <input
+        value={category.description}
+        onChange={(event) => onUpdateCategory(index, { description: event.target.value })}
+        placeholder="Description (optional)"
+        className={hqInputClass}
+      />
+      {expectsVideo ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <CategoryVideoPreview
+              category={category}
+              pendingFile={pendingVideoFiles[category.id]}
+              posterOverride={posterPreviews[category.id] || category.videoPosterUrl}
+            />
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="cursor-pointer rounded-lg border border-gold/20 bg-black/40 px-3 py-1.5 text-center text-xs text-cream/75 transition hover:border-gold/40 hover:text-gold">
+                {categoryHasVideo(category, pendingVideoFiles[category.id])
+                  ? "Replace video"
+                  : "Upload video (.mp4)"}
+                <input
+                  type="file"
+                  accept="video/mp4,video/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.currentTarget.value = "";
+                    if (!file) return;
+                    setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
+                    onUpdateCategory(index, { videoUrl: URL.createObjectURL(file) });
+                    const poster = await generateVideoPoster(file);
+                    if (poster) {
+                      setPendingPosterFiles((current) => ({ ...current, [category.id]: poster }));
+                      setPosterPreviews((current) => ({
+                        ...current,
+                        [category.id]: URL.createObjectURL(poster),
+                      }));
+                    }
+                  }}
+                />
+              </label>
+              {categoryHasVideo(category, pendingVideoFiles[category.id]) ? (
+                <label className="cursor-pointer text-center text-[11px] font-medium text-gold/80 transition hover:text-gold">
+                  Replace thumbnail
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.currentTarget.value = "";
+                      if (!file) return;
+                      setPendingPosterFiles((current) => ({ ...current, [category.id]: file }));
+                      setPosterPreviews((current) => ({
+                        ...current,
+                        [category.id]: URL.createObjectURL(file),
+                      }));
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+          </div>
+          <p className="min-h-[1rem] truncate text-[11px] text-cream/45" title={category.videoUrl}>
+            {pendingVideoFiles[category.id]
+              ? `${pendingVideoFiles[category.id].name} — save to upload`
+              : savedVideoLabel(category.videoUrl)
+                ? `Saved: ${savedVideoLabel(category.videoUrl)}`
+                : ""}
+          </p>
+        </div>
+      ) : null}
+      <CategoryActionsMenu
+        category={category}
+        busy={busy}
+        requiresVideo={expectsVideo}
+        onPublish={() => onPublishCategory(index)}
+        onUnpublish={() => onUnpublishCategory(index)}
+        onDelete={() => onDeleteCategory(index)}
+      />
+    </div>
+  );
+}
+
+function CategoryActionsMenu({
+  category,
+  busy,
+  requiresVideo = true,
+  onPublish,
+  onUnpublish,
+  onDelete,
+}: {
+  category: NomineeCategory;
+  busy: boolean;
+  requiresVideo?: boolean;
+  onPublish: () => void;
+  onUnpublish: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isPublished = category.status === "Published";
+  const hasVideo = Boolean(category.videoUrl.trim());
+  const canPublish = !requiresVideo || hasVideo;
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocumentClick(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocumentClick);
+    return () => document.removeEventListener("mousedown", onDocumentClick);
+  }, [open]);
+
+  function runAction(action: () => void) {
+    setOpen(false);
+    action();
+  }
+
+  return (
+    <div className="relative flex justify-end" ref={menuRef}>
+      <button
+        type="button"
+        aria-label={`Actions for ${category.title || "category"}`}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        disabled={busy}
+        onClick={() => setOpen((current) => !current)}
+        className="rounded-lg border border-gold/20 px-2.5 py-1 text-base leading-none text-cream/70 transition hover:border-gold/40 hover:text-gold disabled:opacity-50"
+      >
+        ⋮
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[11rem] overflow-hidden rounded-lg border border-gold/20 bg-ink-deep py-1 shadow-xl"
+        >
+          <p className="border-b border-gold/10 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-cream/45">
+            {isPublished ? "Live on site" : "Draft"}
+          </p>
+          {!isPublished ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy || !canPublish}
+              onClick={() => runAction(onPublish)}
+              className="block w-full px-3 py-2 text-left text-sm text-cream/85 transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Publish to site
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={() => runAction(onUnpublish)}
+              className="block w-full px-3 py-2 text-left text-sm text-cream/85 transition hover:bg-gold/10 disabled:opacity-50"
+            >
+              Unpublish
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => runAction(onDelete)}
+            className="block w-full border-t border-gold/10 px-3 py-2 text-left text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+          >
+            Delete category
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

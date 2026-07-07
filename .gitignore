@@ -43,6 +43,8 @@ yarn-error.log*
 
 # local Facebook content downloads (dev-only, do not commit)
 /facebook-downloads/
+/facebook-downloads-remapped/
+/nominee-frame-extracts/
 /scripts/facebook-video-list.txt
 
 # typescript
