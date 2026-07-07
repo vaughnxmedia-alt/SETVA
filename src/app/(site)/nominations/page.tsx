@@ -20,11 +20,11 @@ export const metadata: Metadata = {
   description: "Explore SETVA 2026 nominations by category — artists, albums, bands, and more.",
 };
 
-// Cache the (heavy) published-nominees query and regenerate at most once per
-// minute, serving stale instantly while revalidating in the background. This
-// keeps Headquarters edits appearing within ~60s without re-running ~14MB of
-// Supabase queries on every visitor (which overwhelms the database).
-export const revalidate = 60;
+// Render on demand (never prerender at build time — the ~14MB nominees query is
+// too heavy for the build and shouldn't gate deploys). Runtime DB load is kept
+// in check by the unstable_cache above, which dedupes the query to at most once
+// per minute across visitors.
+export const dynamic = "force-dynamic";
 
 export default async function NominationsPage() {
   const categories = await getPublishedCategories();

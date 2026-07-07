@@ -248,7 +248,7 @@ export function NomineeCategoriesView({
     setBusy(true);
     setError(null);
     try {
-      const normalized = savedCategories.map((item, itemIndex) => {
+      const normalized = savedCategories.map((item, itemIndex): NomineeCategory => {
         const isLive = item.status === "Published";
         const expectsVideo = categoryExpectsVideo(item);
         return {
