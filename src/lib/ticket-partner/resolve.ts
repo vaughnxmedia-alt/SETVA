@@ -21,13 +21,22 @@ export type NomineeVoteTarget = {
   categoryTitle: string;
 };
 
+function normalizeNomineeName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * Returns every published category a nominee is nominated in, so a supporter can
- * vote for them in each. Matches by nominee name (case-insensitive) so a person
- * with multiple nominee records across categories surfaces all of them.
+ * vote for them in each. Matches by normalized nominee name so spacing,
+ * punctuation, and casing differences do not split one person's categories.
  */
 export async function listNomineeVoteTargets(sourceName: string): Promise<NomineeVoteTarget[]> {
-  const normalizedName = sourceName.trim().toLowerCase();
+  const normalizedName = normalizeNomineeName(sourceName);
   if (!normalizedName) return [];
 
   const [nominees, categories, entries] = await Promise.all([
@@ -38,7 +47,7 @@ export async function listNomineeVoteTargets(sourceName: string): Promise<Nomine
 
   const matchingNomineeIds = new Set(
     nominees
-      .filter((nominee) => nominee.name.trim().toLowerCase() === normalizedName)
+      .filter((nominee) => normalizeNomineeName(nominee.name) === normalizedName)
       .map((nominee) => nominee.id),
   );
   if (matchingNomineeIds.size === 0) return [];
