@@ -12,6 +12,7 @@ import type { NomineeCategory } from "@/lib/nominees";
 import { categoryExpectsVideo, categoryIsSpecialAward } from "@/lib/nominee-category-groups";
 import { NominationMediaImport } from "@/components/headquarters/NominationMediaImport";
 import { generateVideoPoster } from "@/lib/video-thumbnail";
+import { normalizeCategoryVideoForUpload } from "@/lib/normalize-category-video.client";
 
 export function NomineeCategoriesView({
   initialCategories,
@@ -584,6 +585,8 @@ function CategoryEditorRow({
   setPendingPosterFiles: Dispatch<SetStateAction<Record<string, File>>>;
   setPosterPreviews: Dispatch<SetStateAction<Record<string, string>>>;
 }) {
+  const [convertStatus, setConvertStatus] = useState<string | null>(null);
+
   return (
     <div
       className={`grid items-center gap-3 rounded-lg border border-gold/15 bg-black/20 p-4 ${
@@ -625,15 +628,28 @@ function CategoryEditorRow({
                     const file = event.target.files?.[0];
                     event.currentTarget.value = "";
                     if (!file) return;
-                    setPendingVideoFiles((current) => ({ ...current, [category.id]: file }));
-                    onUpdateCategory(index, { videoUrl: URL.createObjectURL(file) });
-                    const poster = await generateVideoPoster(file);
-                    if (poster) {
-                      setPendingPosterFiles((current) => ({ ...current, [category.id]: poster }));
-                      setPosterPreviews((current) => ({
+                    setConvertStatus("Checking video…");
+                    let failed = false;
+                    try {
+                      const normalized = await normalizeCategoryVideoForUpload(file, setConvertStatus);
+                      setPendingVideoFiles((current) => ({
                         ...current,
-                        [category.id]: URL.createObjectURL(poster),
+                        [category.id]: normalized,
                       }));
+                      onUpdateCategory(index, { videoUrl: URL.createObjectURL(normalized) });
+                      const poster = await generateVideoPoster(normalized);
+                      if (poster) {
+                        setPendingPosterFiles((current) => ({ ...current, [category.id]: poster }));
+                        setPosterPreviews((current) => ({
+                          ...current,
+                          [category.id]: URL.createObjectURL(poster),
+                        }));
+                      }
+                    } catch {
+                      failed = true;
+                      setConvertStatus("Video conversion failed — try an H.264 MP4.");
+                    } finally {
+                      if (!failed) setConvertStatus(null);
                     }
                   }}
                 />
@@ -661,7 +677,9 @@ function CategoryEditorRow({
             </div>
           </div>
           <p className="min-h-[1rem] truncate text-[11px] text-cream/45" title={category.videoUrl}>
-            {pendingVideoFiles[category.id]
+            {convertStatus
+              ? convertStatus
+              : pendingVideoFiles[category.id]
               ? `${pendingVideoFiles[category.id].name} — save to upload`
               : savedVideoLabel(category.videoUrl)
                 ? `Saved: ${savedVideoLabel(category.videoUrl)}`

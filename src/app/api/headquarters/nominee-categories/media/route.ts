@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleApiFailure, publicErrorResponse, safeApiHandler } from "@/lib/errors";
 import { getHQSessionUserFromRequest } from "@/lib/headquarters/auth-server";
 import { writeCategoryPosterFile, writeCategoryVideoFile } from "@/lib/nomination-assets";
+import { normalizeCategoryVideoBuffer } from "@/lib/normalize-category-video.server";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   const user = await getHQSessionUserFromRequest(req);
@@ -30,9 +31,11 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
     const result: { url?: string; posterUrl?: string } = {};
 
     if (hasVideo) {
+      const rawBuffer = Buffer.from(await file.arrayBuffer());
+      const buffer = normalizeCategoryVideoBuffer(rawBuffer);
       result.url = await writeCategoryVideoFile({
         categoryId,
-        buffer: Buffer.from(await file.arrayBuffer()),
+        buffer,
         fileName: file.name,
         existingUrl,
       });
