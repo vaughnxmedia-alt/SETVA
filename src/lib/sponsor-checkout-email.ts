@@ -47,15 +47,14 @@ function intakeSummaryHtml(intake: SponsorIntakeRecord, pkgName: string, pkgPric
     ${intake.website ? `<p style="margin:0 0 8px;"><strong>Website:</strong> ${escapeHtml(intake.website)}</p>` : ""}
     <p style="margin:0 0 8px;"><strong>Industry:</strong> ${escapeHtml(intake.industry)}</p>
     <p style="margin:0 0 8px;"><strong>Payment preference:</strong> ${escapeHtml(intake.preferredPayment)}</p>
+    ${intake.categorySponsorshipCategoryTitle ? `<p style="margin:0 0 8px;"><strong>Sponsored category:</strong> ${escapeHtml(intake.categorySponsorshipCategoryTitle)}</p>` : ""}
     ${intake.meetingNotes ? `<p style="margin:0 0 8px;"><strong>Meeting notes:</strong> ${escapeHtml(intake.meetingNotes)}</p>` : ""}
     <p style="margin:0 0 8px;"><strong>Description:</strong> ${escapeHtml(intake.companyDescription)}</p>
     ${intake.socialMedia ? `<p style="margin:0 0 8px;"><strong>Social:</strong> ${escapeHtml(intake.socialMedia)}</p>` : ""}
-    <p style="margin:16px 0 8px;"><strong>Primary goals</strong></p>
-    <ul style="margin:0 0 12px;padding-left:20px;">${listHtml(intake.primaryGoals)}</ul>
-    <p style="margin:0 0 8px;"><strong>Activation interests</strong></p>
-    <ul style="margin:0 0 12px;padding-left:20px;">${listHtml(intake.activationInterests)}</ul>
     <p style="margin:0 0 8px;"><strong>Available assets</strong></p>
     <ul style="margin:0;padding-left:20px;">${listHtml(intake.availableAssets)}</ul>
+    ${intake.logoAssetUrl ? `<p style="margin:16px 0 8px;"><strong>Uploaded logo:</strong> <a href="${escapeHtml(intake.logoAssetUrl)}">${escapeHtml(intake.logoAssetName || "View logo")}</a></p>` : ""}
+    ${intake.videoAdAssetUrl ? `<p style="margin:0 0 8px;"><strong>Uploaded video ad:</strong> <a href="${escapeHtml(intake.videoAdAssetUrl)}">${escapeHtml(intake.videoAdAssetName || "View video ad")}</a></p>` : ""}
   `;
 }
 

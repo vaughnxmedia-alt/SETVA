@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PillMultiSelect } from "@/components/sponsor-checkout/PillMultiSelect";
 import { MontCityNetworkBadge } from "@/components/MontCityNetworkBadge";
 import { PublicErrorAlert } from "@/components/PublicErrorAlert";
 import { SponsorPackageVisual } from "@/components/SponsorPackageVisual";
 import {
-  activationInterests,
   availableAssets,
   availableSponsorPackages,
   getSponsorPackage,
@@ -16,8 +15,6 @@ import {
   PAY_BY_CHECK_OR_MONEY_ORDER_MEETING,
   paymentUsesSquare,
   preferredPaymentOptions,
-  sponsorIndustries,
-  sponsorshipGoals,
   type SponsorIntakeData,
 } from "@/lib/sponsor-intake";
 import { isPackageSoldOut } from "@/lib/sponsor-inventory";
@@ -26,7 +23,7 @@ import { montCityNetwork, site } from "@/lib/site";
 const STEPS = [
   "Package",
   "Company",
-  "Goals",
+  "Assets",
   "Agreements",
   "Review",
 ] as const;
@@ -38,6 +35,12 @@ const selectClass =
   "mt-1 w-full appearance-none rounded-xl border border-gold/20 bg-black/40 px-4 py-3 text-cream outline-none transition focus:border-gold/50";
 
 const INTAKE_STORAGE_KEY = "setva-sponsor-intake-token";
+
+type SponsorCategoryOption = {
+  id: string;
+  title: string;
+  description: string;
+};
 
 type FormState = Omit<
   SponsorIntakeData,
@@ -56,6 +59,8 @@ const defaultPackageId =
 function emptyForm(packageId: string): FormState {
   return {
     packageId,
+    categorySponsorshipCategoryId: "",
+    categorySponsorshipCategoryTitle: "",
     companyName: "",
     contactName: "",
     jobTitle: "",
@@ -70,6 +75,10 @@ function emptyForm(packageId: string): FormState {
     primaryGoals: [],
     activationInterests: [],
     availableAssets: [],
+    logoAssetUrl: "",
+    logoAssetName: "",
+    videoAdAssetUrl: "",
+    videoAdAssetName: "",
     authorized: false,
     exclusivityAcknowledged: false,
     availabilityAcknowledged: false,
@@ -92,6 +101,9 @@ export function SponsorCheckoutFlow() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [apiError, setApiError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<SponsorCategoryOption[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [videoAdFile, setVideoAdFile] = useState<File | null>(null);
 
   const selectedPackage = useMemo(
     () => getSponsorPackage(form.packageId),
@@ -102,6 +114,25 @@ export function SponsorCheckoutFlow() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  useEffect(() => {
+    let ignore = false;
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/sponsor-categories");
+        const data = (await res.json()) as {
+          categories?: SponsorCategoryOption[];
+        };
+        if (!ignore) setCategories(data.categories ?? []);
+      } catch {
+        if (!ignore) setCategories([]);
+      }
+    }
+    void loadCategories();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   function validateStep(currentStep: number): string | null {
     if (currentStep === 0) {
       if (!selectedPackage || selectedPackage.contactOnly) {
@@ -109,6 +140,12 @@ export function SponsorCheckoutFlow() {
       }
       if (isPackageSoldOut(selectedPackage)) {
         return `${selectedPackage.name} is sold out. Choose another package or contact us to join the waitlist.`;
+      }
+      if (
+        form.packageId === "category-sponsor" &&
+        !form.categorySponsorshipCategoryId
+      ) {
+        return "Select the category you want to support and honor";
       }
     }
 
@@ -124,7 +161,7 @@ export function SponsorCheckoutFlow() {
     }
 
     if (currentStep === 2) {
-      if (!form.industry) return "Select an industry";
+      if (!form.industry.trim()) return "Industry is required";
       if (!form.preferredPayment) return "Select a payment preference";
       if (
         form.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING &&
@@ -132,14 +169,17 @@ export function SponsorCheckoutFlow() {
       ) {
         return "Share your preferred meeting days and times for check or money order pickup";
       }
-      if (form.primaryGoals.length === 0) {
-        return "Select at least one primary sponsorship goal";
-      }
-      if (form.activationInterests.length === 0) {
-        return "Select at least one activation interest";
-      }
       if (form.availableAssets.length === 0) {
         return "Select at least one available asset";
+      }
+      if (!logoFile) {
+        return "Upload sponsor logo";
+      }
+      if (logoFile && logoFile.size > 10 * 1024 * 1024) {
+        return "Logo upload must be 10MB or smaller";
+      }
+      if (videoAdFile && videoAdFile.size > 200 * 1024 * 1024) {
+        return "Video ad upload must be 200MB or smaller";
       }
     }
 
@@ -173,9 +213,11 @@ export function SponsorCheckoutFlow() {
   function submitLabel(): string {
     if (!selectedPackage) return "Submit";
     const amount = `$${selectedPackage.price.toLocaleString()}`;
+    if (paymentUsesSquare(form.preferredPayment)) {
+      return `Proceed to payment — ${amount}`;
+    }
+
     switch (form.preferredPayment) {
-      case "Pay electronically (Square)":
-        return `Proceed to payment — ${amount}`;
       case PAY_BY_CHECK_OR_MONEY_ORDER:
         return `Submit & get payment instructions — ${amount}`;
       case PAY_BY_CHECK_OR_MONEY_ORDER_MEETING:
@@ -201,8 +243,13 @@ export function SponsorCheckoutFlow() {
     try {
       const res = await fetch("/api/sponsor-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: (() => {
+          const formData = new FormData();
+          formData.set("payload", JSON.stringify(form));
+          if (logoFile) formData.set("logo", logoFile);
+          if (videoAdFile) formData.set("videoAd", videoAdFile);
+          return formData;
+        })(),
       });
       const data = await res.json();
       if (!res.ok || data.success === false) {
@@ -293,7 +340,13 @@ export function SponsorCheckoutFlow() {
               </span>
               <select
                 value={form.packageId}
-                onChange={(e) => update("packageId", e.target.value)}
+                onChange={(e) => {
+                  update("packageId", e.target.value);
+                  if (e.target.value !== "category-sponsor") {
+                    update("categorySponsorshipCategoryId", "");
+                    update("categorySponsorshipCategoryTitle", "");
+                  }
+                }}
                 className={selectClass}
               >
                 {availableSponsorPackages().map((pkg) => (
@@ -303,6 +356,37 @@ export function SponsorCheckoutFlow() {
                 ))}
               </select>
             </label>
+
+            {form.packageId === "category-sponsor" && (
+              <label className="block">
+                <span className="text-sm font-medium text-cream/80">
+                  Category to support and honor
+                </span>
+                <p className="mt-1 text-xs text-cream/55">
+                  Choose the award category your sponsorship should be attached to.
+                </p>
+                <select
+                  value={form.categorySponsorshipCategoryId}
+                  onChange={(e) => {
+                    const category = categories.find(
+                      (item) => item.id === e.target.value,
+                    );
+                    update("categorySponsorshipCategoryId", e.target.value);
+                    update("categorySponsorshipCategoryTitle", category?.title ?? "");
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">
+                    {categories.length ? "Select category" : "No categories available"}
+                  </option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             {selectedPackage && (
               <div className="space-y-4">
@@ -406,18 +490,13 @@ export function SponsorCheckoutFlow() {
 
             <label className="block">
               <span className="text-sm font-medium text-cream/80">Industry</span>
-              <select
+              <input
+                type="text"
                 value={form.industry}
                 onChange={(e) => update("industry", e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Select industry</option>
-                {sponsorIndustries.map((industry) => (
-                  <option key={industry} value={industry}>
-                    {industry}
-                  </option>
-                ))}
-              </select>
+                placeholder="Type your industry"
+                className={fieldClass}
+              />
             </label>
 
             <label className="block">
@@ -479,38 +558,62 @@ export function SponsorCheckoutFlow() {
               </label>
             )}
 
-            {form.preferredPayment === "Pay electronically (Square)" && (
+            {paymentUsesSquare(form.preferredPayment) && (
               <div className="rounded-2xl border border-gold/20 bg-black/35 p-5 text-sm text-cream/70">
                 <p>
-                  You&apos;ll complete payment securely through Square after
-                  reviewing your sponsorship details. Card and other electronic
-                  payment methods accepted — no cash.
+                  You&apos;ll complete payment securely after reviewing your
+                  sponsorship details. Card and other electronic payment methods
+                  accepted — no cash.
                 </p>
               </div>
             )}
 
             <PillMultiSelect
-              label="Primary sponsorship goal"
-              description="Select all that apply"
-              options={sponsorshipGoals}
-              value={form.primaryGoals}
-              onChange={(value) => update("primaryGoals", value)}
-            />
-
-            <PillMultiSelect
-              label="Activation interests"
-              options={activationInterests}
-              value={form.activationInterests}
-              onChange={(value) => update("activationInterests", value)}
-            />
-
-            <PillMultiSelect
               label="Available assets"
-              description="What you can provide after payment through the sponsor portal"
+              description="What you can provide now or after payment through the sponsor portal"
               options={availableAssets}
               value={form.availableAssets}
               onChange={(value) => update("availableAssets", value)}
             />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block rounded-2xl border border-gold/15 bg-black/25 p-4">
+                <span className="text-sm font-medium text-cream/80">
+                  Upload sponsor logo <span className="text-ruby">*</span>
+                </span>
+                <p className="mt-1 text-xs text-cream/55">
+                  Required. PNG, JPG, WebP, or SVG up to 10MB.
+                </p>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  required
+                  onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                  className="mt-3 block w-full text-sm text-cream/70 file:mr-4 file:rounded-full file:border-0 file:bg-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink"
+                />
+                {logoFile && (
+                  <p className="mt-2 text-xs text-cream/50">{logoFile.name}</p>
+                )}
+              </label>
+
+              <label className="block rounded-2xl border border-gold/15 bg-black/25 p-4">
+                <span className="text-sm font-medium text-cream/80">
+                  Upload video ad placement
+                </span>
+                <p className="mt-1 text-xs text-cream/55">
+                  Optional now. MP4, MOV, or WebM up to 200MB.
+                </p>
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={(e) => setVideoAdFile(e.target.files?.[0] ?? null)}
+                  className="mt-3 block w-full text-sm text-cream/70 file:mr-4 file:rounded-full file:border-0 file:bg-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink"
+                />
+                {videoAdFile && (
+                  <p className="mt-2 text-xs text-cream/50">{videoAdFile.name}</p>
+                )}
+              </label>
+            </div>
           </section>
         )}
 
@@ -579,6 +682,11 @@ export function SponsorCheckoutFlow() {
                 <p className="mt-1 text-cream">
                   {selectedPackage.name} — ${selectedPackage.price.toLocaleString()}
                 </p>
+                {form.categorySponsorshipCategoryTitle && (
+                  <p className="mt-1 text-cream/65">
+                    Category: {form.categorySponsorshipCategoryTitle}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gold">
@@ -591,10 +699,16 @@ export function SponsorCheckoutFlow() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gold">
-                  Goals & interests
+                  Assets
                 </p>
-                <p className="mt-1">{form.primaryGoals.join(", ")}</p>
-                <p className="mt-2">{form.activationInterests.join(", ")}</p>
+                <p className="mt-1 text-cream/65">
+                  Assets: {form.availableAssets.join(", ")}
+                </p>
+                {(logoFile || videoAdFile) && (
+                  <p className="mt-2 text-cream/65">
+                    Uploads: {[logoFile?.name, videoAdFile?.name].filter(Boolean).join(", ")}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gold">

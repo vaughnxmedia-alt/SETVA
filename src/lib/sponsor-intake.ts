@@ -9,56 +9,19 @@ import {
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DEV_FALLBACK_SECRET = "setva-dev-intake-secret-do-not-use-in-production";
 
-export const sponsorshipGoals = [
-  "Brand awareness",
-  "Community engagement",
-  "Lead generation",
-  "Recruitment",
-  "Product promotion",
-  "Other",
-] as const;
-
-export const activationInterests = [
-  "Commercial placement",
-  "Red carpet interviews",
-  "Livestream exposure",
-  "Website placement",
-  "Stage recognition",
-  "Product placement",
-  "VIP experience",
-  "Custom activation",
-] as const;
-
 export const availableAssets = [
   "High-resolution logo",
-  "Brand guidelines",
   "Commercial or promotional video",
-  "Photos",
-  "Website link",
-] as const;
-
-export const sponsorIndustries = [
-  "Financial services",
-  "Healthcare",
-  "Real estate",
-  "Retail & fashion",
-  "Food & beverage",
-  "Media & entertainment",
-  "Technology",
-  "Education",
-  "Nonprofit & civic",
-  "Professional services",
-  "Energy & industrial",
-  "Other",
 ] as const;
 
 export const PAY_BY_CHECK_OR_MONEY_ORDER =
   "Pay by check or money order" as const;
 export const PAY_BY_CHECK_OR_MONEY_ORDER_MEETING =
   "Pay by check or money order — schedule pickup meeting" as const;
+export const PAY_ELECTRONICALLY = "Pay electronically" as const;
 
 export const preferredPaymentOptions = [
-  "Pay electronically (Square)",
+  PAY_ELECTRONICALLY,
   PAY_BY_CHECK_OR_MONEY_ORDER,
   PAY_BY_CHECK_OR_MONEY_ORDER_MEETING,
 ] as const;
@@ -66,7 +29,7 @@ export const preferredPaymentOptions = [
 export type OfflinePaymentMethod = "check" | "meeting";
 
 export function paymentUsesSquare(payment: string): boolean {
-  return payment === "Pay electronically (Square)";
+  return payment === PAY_ELECTRONICALLY || payment === "Pay electronically (Square)";
 }
 
 export function getOfflinePaymentMethod(
@@ -79,6 +42,8 @@ export function getOfflinePaymentMethod(
 
 export type SponsorIntakeData = {
   packageId: string;
+  categorySponsorshipCategoryId: string;
+  categorySponsorshipCategoryTitle: string;
   companyName: string;
   contactName: string;
   jobTitle: string;
@@ -93,6 +58,10 @@ export type SponsorIntakeData = {
   primaryGoals: string[];
   activationInterests: string[];
   availableAssets: string[];
+  logoAssetUrl: string;
+  logoAssetName: string;
+  videoAdAssetUrl: string;
+  videoAdAssetName: string;
   authorized: boolean;
   exclusivityAcknowledged: boolean;
   availabilityAcknowledged: boolean;
@@ -205,6 +174,18 @@ export function parseSponsorIntakeBody(
   const industry = normalizeText(body.industry, 80);
   const preferredPayment = normalizeText(body.preferredPayment, 80);
   const meetingNotes = normalizeText(body.meetingNotes, 600);
+  const categorySponsorshipCategoryId = normalizeText(
+    body.categorySponsorshipCategoryId,
+    120,
+  );
+  const categorySponsorshipCategoryTitle = normalizeText(
+    body.categorySponsorshipCategoryTitle,
+    160,
+  );
+  const logoAssetUrl = normalizeText(body.logoAssetUrl, 500);
+  const logoAssetName = normalizeText(body.logoAssetName, 200);
+  const videoAdAssetUrl = normalizeText(body.videoAdAssetUrl, 500);
+  const videoAdAssetName = normalizeText(body.videoAdAssetName, 200);
 
   if (!companyName) return { error: "Company name is required" };
   if (!contactName) return { error: "Contact name is required" };
@@ -216,9 +197,7 @@ export function parseSponsorIntakeBody(
   if (!companyDescription) {
     return { error: "Brief company description is required" };
   }
-  if (!sponsorIndustries.includes(industry as (typeof sponsorIndustries)[number])) {
-    return { error: "Select a valid industry" };
-  }
+  if (!industry) return { error: "Industry is required" };
   if (
     !preferredPaymentOptions.includes(
       preferredPayment as (typeof preferredPaymentOptions)[number],
@@ -236,20 +215,14 @@ export function parseSponsorIntakeBody(
         "Share your preferred meeting times when scheduling a check or money order pickup",
     };
   }
+  if (packageId === "category-sponsor" && !categorySponsorshipCategoryId) {
+    return { error: "Select the category you want to sponsor" };
+  }
 
-  const primaryGoals = normalizeList(body.primaryGoals, sponsorshipGoals);
-  const activationSelections = normalizeList(
-    body.activationInterests,
-    activationInterests,
-  );
+  const primaryGoals: string[] = [];
+  const activationSelections: string[] = [];
   const assetSelections = normalizeList(body.availableAssets, availableAssets);
 
-  if (primaryGoals.length === 0) {
-    return { error: "Select at least one primary sponsorship goal" };
-  }
-  if (activationSelections.length === 0) {
-    return { error: "Select at least one activation interest" };
-  }
   if (assetSelections.length === 0) {
     return { error: "Select at least one available asset" };
   }
@@ -265,6 +238,10 @@ export function parseSponsorIntakeBody(
   return {
     data: {
       packageId,
+      categorySponsorshipCategoryId:
+        packageId === "category-sponsor" ? categorySponsorshipCategoryId : "",
+      categorySponsorshipCategoryTitle:
+        packageId === "category-sponsor" ? categorySponsorshipCategoryTitle : "",
       companyName,
       contactName,
       jobTitle,
@@ -279,6 +256,10 @@ export function parseSponsorIntakeBody(
       primaryGoals,
       activationInterests: activationSelections,
       availableAssets: assetSelections,
+      logoAssetUrl,
+      logoAssetName,
+      videoAdAssetUrl,
+      videoAdAssetName,
       authorized,
       exclusivityAcknowledged,
       availabilityAcknowledged,

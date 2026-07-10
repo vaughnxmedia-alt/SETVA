@@ -15,7 +15,9 @@ import {
   sendSponsorOfflineConfirmationEmail,
 } from "@/lib/sponsor-checkout-email";
 import { FORM_TYPES } from "@/lib/form-submissions";
+import { listNomineeCategories } from "@/lib/nominee-categories-store";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
+import { writeSponsorAsset } from "@/lib/sponsor-assets";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/square";
 import { getPublicSiteUrl } from "@/lib/site-url";
 
@@ -23,10 +25,42 @@ function siteUrl(): string {
   return getPublicSiteUrl();
 }
 
+async function parseSponsorCheckoutRequest(req: NextRequest): Promise<{
+  body: Record<string, unknown>;
+  logoFile: File | null;
+  videoAdFile: File | null;
+}> {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return {
+      body: (await req.json()) as Record<string, unknown>,
+      logoFile: null,
+      videoAdFile: null,
+    };
+  }
+
+  const formData = await req.formData();
+  const payload = String(formData.get("payload") ?? "");
+  const body = payload ? (JSON.parse(payload) as Record<string, unknown>) : {};
+  const logo = formData.get("logo");
+  const videoAd = formData.get("videoAd");
+
+  return {
+    body,
+    logoFile: logo instanceof File && logo.size > 0 ? logo : null,
+    videoAdFile: videoAd instanceof File && videoAd.size > 0 ? videoAd : null,
+  };
+}
+
 export const POST = safeApiHandler(async (req: NextRequest) => {
   let body: Record<string, unknown>;
+  let logoFile: File | null = null;
+  let videoAdFile: File | null = null;
   try {
-    body = await req.json();
+    const parsedRequest = await parseSponsorCheckoutRequest(req);
+    body = parsedRequest.body;
+    logoFile = parsedRequest.logoFile;
+    videoAdFile = parsedRequest.videoAdFile;
   } catch (error) {
     return handleApiFailure(error, {
       workflow: "Sponsor Checkout",
@@ -53,6 +87,70 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       workflow: "Sponsor Checkout",
       route: req.nextUrl.pathname,
       provider: "Sponsor Intake",
+      metadata: { packageId: intake.packageId },
+    }, { status: 400, notifyTeam: false });
+  }
+
+  if (intake.packageId === "category-sponsor") {
+    const categories = await listNomineeCategories();
+    const category = categories.find(
+      (item) => item.active && item.id === intake.categorySponsorshipCategoryId,
+    );
+    if (!category) {
+      return handleApiFailure(new Error("Invalid category sponsorship selection"), {
+        workflow: "Sponsor Checkout",
+        route: req.nextUrl.pathname,
+        provider: "Sponsor Intake",
+        contactEmail: intake.email,
+        companyName: intake.companyName,
+        metadata: { categoryId: intake.categorySponsorshipCategoryId },
+      }, { status: 400, notifyTeam: false });
+    }
+    intake.categorySponsorshipCategoryTitle = category.title;
+  }
+
+  if (!logoFile) {
+    return handleApiFailure(new Error("Sponsor logo is required"), {
+      workflow: "Sponsor Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Sponsor Asset Upload",
+      contactEmail: intake.email,
+      companyName: intake.companyName,
+      metadata: { packageId: intake.packageId },
+    }, { status: 400, notifyTeam: false });
+  }
+
+  try {
+    if (logoFile) {
+      const stored = await writeSponsorAsset({
+        kind: "logo",
+        companyName: intake.companyName,
+        packageId: intake.packageId,
+        originalName: logoFile.name,
+        buffer: Buffer.from(await logoFile.arrayBuffer()),
+      });
+      intake.logoAssetUrl = stored.url;
+      intake.logoAssetName = stored.originalName;
+    }
+
+    if (videoAdFile) {
+      const stored = await writeSponsorAsset({
+        kind: "video-ad",
+        companyName: intake.companyName,
+        packageId: intake.packageId,
+        originalName: videoAdFile.name,
+        buffer: Buffer.from(await videoAdFile.arrayBuffer()),
+      });
+      intake.videoAdAssetUrl = stored.url;
+      intake.videoAdAssetName = stored.originalName;
+    }
+  } catch (error) {
+    return handleApiFailure(error, {
+      workflow: "Sponsor Checkout",
+      route: req.nextUrl.pathname,
+      provider: "Sponsor Asset Upload",
+      contactEmail: intake.email,
+      companyName: intake.companyName,
       metadata: { packageId: intake.packageId },
     }, { status: 400, notifyTeam: false });
   }
