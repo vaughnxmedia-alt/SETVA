@@ -328,34 +328,42 @@ export function SponsorCheckoutFlow() {
         {step === 0 && (
           <section className="space-y-6">
             <div>
-              <h2 className="font-display text-2xl text-cream">Select your package</h2>
+              <h2 className="font-display text-2xl text-cream">
+                {selectedPackage ? selectedPackage.name : "Sponsorship checkout"}
+              </h2>
               <p className="mt-2 text-sm text-cream/65">
-                Choose the sponsorship level that fits your organization.
+                Review the package you selected, then continue with your sponsor details.
               </p>
             </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-cream/80">
-                Sponsorship level
-              </span>
-              <select
-                value={form.packageId}
-                onChange={(e) => {
-                  update("packageId", e.target.value);
-                  if (e.target.value !== "category-sponsor") {
-                    update("categorySponsorshipCategoryId", "");
-                    update("categorySponsorshipCategoryTitle", "");
-                  }
-                }}
-                className={selectClass}
-              >
-                {availableSponsorPackages().map((pkg) => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name} — ${pkg.price.toLocaleString()}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {selectedPackage && (
+              <div className="space-y-4">
+                <SponsorPackageVisual pkg={selectedPackage} />
+                <div className="rounded-2xl border border-gold/20 bg-black/35 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-wider text-gold">
+                    Package summary
+                  </p>
+                  <h3 className="mt-2 font-display text-xl text-cream">
+                    {selectedPackage.name}
+                  </h3>
+                  <p className="mt-1 text-2xl font-semibold text-gold">
+                    ${selectedPackage.price.toLocaleString()}
+                  </p>
+                  <p className="mt-3 text-sm text-cream/70">
+                    {selectedPackage.description}
+                  </p>
+                  {selectedPackage.montCityMedia && (
+                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3">
+                      <p className="text-xs text-cream/55">
+                        Includes {montCityNetwork.name} broadcast & production
+                        benefits
+                      </p>
+                      <MontCityNetworkBadge compact />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {form.packageId === "category-sponsor" && (
               <label className="block">
@@ -387,35 +395,6 @@ export function SponsorCheckoutFlow() {
                 </select>
               </label>
             )}
-
-            {selectedPackage && (
-              <div className="space-y-4">
-                <SponsorPackageVisual pkg={selectedPackage} />
-                <div className="rounded-2xl border border-gold/20 bg-black/35 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-wider text-gold">
-                    Package summary
-                  </p>
-                  <h3 className="mt-2 font-display text-xl text-cream">
-                    {selectedPackage.name}
-                  </h3>
-                  <p className="mt-1 text-2xl font-semibold text-gold">
-                    ${selectedPackage.price.toLocaleString()}
-                  </p>
-                  <p className="mt-3 text-sm text-cream/70">
-                    {selectedPackage.description}
-                  </p>
-                  {selectedPackage.montCityMedia && (
-                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3">
-                      <p className="text-xs text-cream/55">
-                        Includes {montCityNetwork.name} broadcast & production
-                        benefits
-                      </p>
-                      <MontCityNetworkBadge compact />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </section>
         )}
 
@@ -428,8 +407,32 @@ export function SponsorCheckoutFlow() {
               </p>
             </div>
 
+            <label className="block">
+              <span className="text-sm font-medium text-cream/80">Company name</span>
+              <input
+                type="text"
+                value={form.companyName}
+                onChange={(e) => update("companyName", e.target.value)}
+                placeholder="Organization or business name"
+                className={fieldClass}
+                required
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-cream/80">
+                Social media handles
+              </span>
+              <input
+                type="text"
+                value={form.socialMedia}
+                onChange={(e) => update("socialMedia", e.target.value)}
+                placeholder="@brand · Instagram / Facebook / LinkedIn"
+                className={fieldClass}
+              />
+            </label>
+
             {[
-              ["companyName", "Company name", "Organization or business name"],
               ["contactName", "Contact name", "Primary point of contact"],
               ["jobTitle", "Job title", "Your role"],
               ["email", "Email address", "you@company.com", "email"],
@@ -464,18 +467,6 @@ export function SponsorCheckoutFlow() {
               />
             </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-cream/80">
-                Social media handles
-              </span>
-              <input
-                type="text"
-                value={form.socialMedia}
-                onChange={(e) => update("socialMedia", e.target.value)}
-                placeholder="@brand · Instagram / Facebook / LinkedIn"
-                className={fieldClass}
-              />
-            </label>
           </section>
         )}
 
