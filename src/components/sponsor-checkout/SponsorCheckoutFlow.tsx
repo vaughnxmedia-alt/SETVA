@@ -178,8 +178,8 @@ export function SponsorCheckoutFlow() {
       if (logoFile && logoFile.size > 10 * 1024 * 1024) {
         return "Logo upload must be 10MB or smaller";
       }
-      if (videoAdFile && videoAdFile.size > 200 * 1024 * 1024) {
-        return "Video ad upload must be 200MB or smaller";
+      if (videoAdFile && videoAdFile.size > 50 * 1024 * 1024) {
+        return "Video ad upload must be 50MB or smaller";
       }
     }
 
@@ -592,7 +592,7 @@ export function SponsorCheckoutFlow() {
                   Upload video ad placement
                 </span>
                 <p className="mt-1 text-xs text-cream/55">
-                  Optional now. MP4, MOV, or WebM up to 200MB.
+                  Optional now. MP4, MOV, or WebM up to 50MB.
                 </p>
                 <input
                   type="file"

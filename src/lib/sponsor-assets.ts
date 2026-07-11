@@ -3,7 +3,7 @@ import path from "path";
 import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase/server";
 
 const SPONSOR_ASSETS_BUCKET = "sponsor-assets";
-const SPONSOR_ASSETS_FILE_SIZE_LIMIT = "250MB";
+const SPONSOR_ASSETS_FILE_SIZE_LIMIT = "50MB";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".webm"]);
@@ -53,12 +53,12 @@ function assertAllowedFile(kind: SponsorAssetKind, filename: string, size: numbe
     throw new Error("Sponsor video ad must be an MP4, MOV, or WebM file.");
   }
 
-  const maxBytes = kind === "logo" ? 10 * 1024 * 1024 : 200 * 1024 * 1024;
+  const maxBytes = kind === "logo" ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
   if (size > maxBytes) {
     throw new Error(
       kind === "logo"
         ? "Sponsor logo must be 10MB or smaller."
-        : "Sponsor video ad must be 200MB or smaller.",
+        : "Sponsor video ad must be 50MB or smaller.",
     );
   }
 }
