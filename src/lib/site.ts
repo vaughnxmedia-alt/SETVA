@@ -47,7 +47,7 @@ export const site = {
   org: "African Vue Corporation",
   sponsorPayment: {
     policyNote:
-      "Sponsorships are paid electronically through Square, or by check or money order. Cash is not accepted.",
+      "Sponsorships are paid electronically through secure checkout. Cash, checks, and money orders are not accepted online.",
     checkPayableTo: "African Vue Corporation",
     checkMemoHint: "SETVA 2026 Sponsorship — include your company name",
     checkMailingNote:
@@ -629,12 +629,12 @@ export const sponsorPackages: SponsorPackage[] = [
     description:
       "Multi-year agreements, in-kind partnerships, or a tailored mix of benefits.",
     bestFit:
-      "Organizations needing a bespoke package, check or money order billing, or combined sponsorship levels.",
+      "Organizations needing a bespoke package, electronic billing, or combined sponsorship levels.",
     benefits: [
       "Tailored benefits across main and signature tiers",
       "Multi-year partnership options",
       "In-kind media and vendor partnerships welcome",
-      "Pay electronically through Square, or by check or money order",
+      "Pay electronically through secure checkout",
     ],
     contactOnly: true,
   },
@@ -816,7 +816,7 @@ export const faqItems = [
   },
   {
     q: "Can I sponsor without paying online?",
-    a: "Yes. Pay electronically through Square at checkout, or choose pay by check or money order to mail payment or schedule an in-person drop-off. Cash is not accepted. For Title, Legacy, or custom packages, email contactus@setvawards.com or use the Custom Partnership option.",
+    a: "Yes. Pay electronically through secure checkout. Cash, checks, and money orders are not accepted online. For Title, Legacy, or custom packages, email contactus@setvawards.com or use the Custom Partnership option.",
   },
   {
     q: "Are donations tax-deductible?",

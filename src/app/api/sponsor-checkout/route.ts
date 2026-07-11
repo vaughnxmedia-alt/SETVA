@@ -5,17 +5,14 @@ import {
 } from "@/lib/errors";
 import {
   createIntakeToken,
-  getOfflinePaymentMethod,
   getSponsorPackage,
   parseSponsorIntakeBody,
   paymentUsesSquare,
 } from "@/lib/sponsor-intake";
-import {
-  sendSponsorIntakePendingEmail,
-  sendSponsorOfflineConfirmationEmail,
-} from "@/lib/sponsor-checkout-email";
+import { sendSponsorIntakePendingEmail } from "@/lib/sponsor-checkout-email";
 import { FORM_TYPES } from "@/lib/form-submissions";
-import { listNomineeCategories } from "@/lib/nominee-categories-store";
+import { categoryIsSpecialAward } from "@/lib/nominee-category-groups";
+import { listPublishedNomineePageCategories } from "@/lib/nominee-workflows-store";
 import { persistFormSubmission } from "@/lib/persist-form-submission";
 import { writeSponsorAsset } from "@/lib/sponsor-assets";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/square";
@@ -92,9 +89,11 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   if (intake.packageId === "category-sponsor") {
-    const categories = await listNomineeCategories();
+    const categories = await listPublishedNomineePageCategories();
     const category = categories.find(
-      (item) => item.active && item.id === intake.categorySponsorshipCategoryId,
+      (item) =>
+        item.id === intake.categorySponsorshipCategoryId &&
+        !categoryIsSpecialAward(item),
     );
     if (!category) {
       return handleApiFailure(new Error("Invalid category sponsorship selection"), {
@@ -169,12 +168,11 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
   }
 
   const base = siteUrl();
-  const offlineMethod = getOfflinePaymentMethod(intake.preferredPayment);
 
   try {
     await persistFormSubmission({
       formType: FORM_TYPES.sponsorIntake,
-      status: offlineMethod ? "offline_pending" : "checkout_pending",
+      status: "checkout_pending",
       contactEmail: intake.email,
       contactName: intake.contactName,
       payload: {
@@ -208,33 +206,6 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       contactEmail: intake.email,
       companyName: intake.companyName,
       metadata: { step: "intake_pending_email" },
-    });
-  }
-
-  if (offlineMethod) {
-    try {
-      await sendSponsorOfflineConfirmationEmail({
-        ...intake,
-        submittedAt: Date.now(),
-        exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      });
-    } catch (error) {
-      return handleApiFailure(error, {
-        workflow: "Sponsor Checkout",
-        route: req.nextUrl.pathname,
-        provider: "Resend",
-        contactEmail: intake.email,
-        companyName: intake.companyName,
-        metadata: { step: "offline_confirmation_email", method: offlineMethod },
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      url: `${base}/sponsors/checkout/complete?method=${offlineMethod}`,
-      intakeToken,
-      offline: true,
-      method: offlineMethod,
     });
   }
 

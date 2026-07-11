@@ -209,8 +209,8 @@ export default function SponsorsPage() {
             <strong className="text-gold">{site.event.sponsorshipDeadline}</strong>{" "}
             to secure placement in print, digital, and on-site materials. Choose
             your tier above and click <strong className="text-gold">Buy</strong> for
-            secure Square checkout, or pay by check or money order. Cash is not
-            accepted for sponsorships. Email us for custom partnerships.
+            secure electronic checkout. Cash, checks, and money orders are not
+            accepted online. Email us for custom partnerships.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a

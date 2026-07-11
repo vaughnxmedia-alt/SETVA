@@ -1,9 +1,13 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase/server";
 
 const SPONSOR_ASSETS_BUCKET = "sponsor-assets";
 const SPONSOR_ASSETS_FILE_SIZE_LIMIT = "50MB";
+const SUPABASE_SPONSOR_ASSETS_MAX_BYTES = 50 * 1024 * 1024;
+const SPONSOR_LOGO_MAX_BYTES = 10 * 1024 * 1024;
+const SPONSOR_VIDEO_AD_MAX_BYTES = 200 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".webm"]);
@@ -15,6 +19,8 @@ export type StoredSponsorAsset = {
   fileName: string;
   originalName: string;
 };
+
+let s3Client: S3Client | null = null;
 
 function extensionFromName(filename: string): string {
   return path.extname(filename).toLowerCase();
@@ -53,14 +59,52 @@ function assertAllowedFile(kind: SponsorAssetKind, filename: string, size: numbe
     throw new Error("Sponsor video ad must be an MP4, MOV, or WebM file.");
   }
 
-  const maxBytes = kind === "logo" ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+  const maxBytes =
+    kind === "logo" ? SPONSOR_LOGO_MAX_BYTES : SPONSOR_VIDEO_AD_MAX_BYTES;
   if (size > maxBytes) {
     throw new Error(
       kind === "logo"
         ? "Sponsor logo must be 10MB or smaller."
-        : "Sponsor video ad must be 50MB or smaller.",
+        : "Sponsor video ad must be 200MB or smaller.",
     );
   }
+}
+
+function sponsorS3Config():
+  | {
+      bucket: string;
+      region: string;
+      publicBaseUrl: string;
+    }
+  | null {
+  const bucket = process.env.AWS_S3_SPONSOR_ASSETS_BUCKET?.trim();
+  const region =
+    process.env.AWS_REGION?.trim() || process.env.AWS_DEFAULT_REGION?.trim();
+  if (!bucket || !region) return null;
+
+  const configuredBase = process.env.AWS_S3_SPONSOR_ASSETS_PUBLIC_BASE_URL
+    ?.trim()
+    .replace(/\/$/, "");
+  const publicBaseUrl =
+    configuredBase || `https://${bucket}.s3.${region}.amazonaws.com`;
+
+  return { bucket, region, publicBaseUrl };
+}
+
+function getS3Client(region: string): S3Client {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region,
+      credentials:
+        process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+          ? {
+              accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            }
+          : undefined,
+    });
+  }
+  return s3Client;
 }
 
 async function ensureSponsorAssetsBucket() {
@@ -85,6 +129,33 @@ async function ensureSponsorAssetsBucket() {
   return client;
 }
 
+async function writeS3SponsorAsset(input: {
+  objectPath: string;
+  buffer: Buffer;
+  contentType: string;
+}): Promise<string> {
+  const config = sponsorS3Config();
+  if (!config) {
+    throw new Error(
+      "Large sponsor video storage is not configured. Add AWS S3 sponsor asset env vars.",
+    );
+  }
+
+  await getS3Client(config.region).send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: input.objectPath,
+      Body: input.buffer,
+      ContentType: input.contentType,
+    }),
+  );
+
+  return `${config.publicBaseUrl}/${input.objectPath
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+}
+
 export async function writeSponsorAsset(input: {
   kind: SponsorAssetKind;
   companyName: string;
@@ -99,6 +170,23 @@ export async function writeSponsorAsset(input: {
   const sponsorDir = `${safeSlug(input.companyName)}-${safeSlug(input.packageId)}`;
   const objectPath = `${sponsorDir}/${filename}`;
   const contentType = contentTypeForExtension(ext);
+
+  if (
+    input.kind === "video-ad" &&
+    input.buffer.byteLength > SUPABASE_SPONSOR_ASSETS_MAX_BYTES
+  ) {
+    const url = await writeS3SponsorAsset({
+      objectPath,
+      buffer: input.buffer,
+      contentType,
+    });
+
+    return {
+      url,
+      fileName: filename,
+      originalName: input.originalName,
+    };
+  }
 
   if (isSupabaseConfigured()) {
     const client = await ensureSponsorAssetsBucket();

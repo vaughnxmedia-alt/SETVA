@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { listNomineeCategories } from "@/lib/nominee-categories-store";
 import { safeApiHandler } from "@/lib/errors";
+import { categoryIsSpecialAward } from "@/lib/nominee-category-groups";
+import { listPublishedNomineePageCategories } from "@/lib/nominee-workflows-store";
 
 export const GET = safeApiHandler(async () => {
-  const categories = await listNomineeCategories();
+  const categories = await listPublishedNomineePageCategories();
   return NextResponse.json({
     success: true,
     categories: categories
-      .filter((category) => category.active)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .filter((category) => !categoryIsSpecialAward(category))
       .map((category) => ({
         id: category.id,
         title: category.title,
-        description: category.description,
+        description: "",
       })),
   });
 }, { workflow: "Sponsor Categories" });

@@ -1,10 +1,6 @@
 import { FORM_TYPES, listFormSubmissions, type FormSubmissionRecord } from "@/lib/form-submissions";
 import { isMockFormSubmission } from "@/lib/mock-data";
-import {
-  PAY_BY_CHECK_OR_MONEY_ORDER,
-  PAY_BY_CHECK_OR_MONEY_ORDER_MEETING,
-  type SponsorIntakeData,
-} from "@/lib/sponsor-intake";
+import { type SponsorIntakeData } from "@/lib/sponsor-intake";
 
 export type SponsorBuyerRecord = {
   id: string;
@@ -39,16 +35,6 @@ function paymentStatusForRecord(record: FormSubmissionRecord): string {
   const intake = intakeFromRecord(record);
   if (!intake) return record.status;
 
-  if (record.status === "offline_pending") {
-    if (intake.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING) {
-      return "Check pending — meeting scheduled";
-    }
-    if (intake.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER) {
-      return "Check pending";
-    }
-    return "Offline payment pending";
-  }
-
   if (record.status === "checkout_pending") {
     return "Payment outstanding";
   }
@@ -58,7 +44,6 @@ function paymentStatusForRecord(record: FormSubmissionRecord): string {
 
 function fulfillmentStatusForPayment(paymentStatus: string): string {
   if (paymentStatus === "Paid in full") return "Awaiting assets";
-  if (paymentStatus.includes("Check pending")) return "Awaiting payment";
   if (paymentStatus === "Payment outstanding") return "Checkout in progress";
   return "In pipeline";
 }

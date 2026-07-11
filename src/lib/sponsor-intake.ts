@@ -14,17 +14,9 @@ export const availableAssets = [
   "Commercial or promotional video",
 ] as const;
 
-export const PAY_BY_CHECK_OR_MONEY_ORDER =
-  "Pay by check or money order" as const;
-export const PAY_BY_CHECK_OR_MONEY_ORDER_MEETING =
-  "Pay by check or money order — schedule pickup meeting" as const;
 export const PAY_ELECTRONICALLY = "Pay electronically" as const;
 
-export const preferredPaymentOptions = [
-  PAY_ELECTRONICALLY,
-  PAY_BY_CHECK_OR_MONEY_ORDER,
-  PAY_BY_CHECK_OR_MONEY_ORDER_MEETING,
-] as const;
+export const preferredPaymentOptions = [PAY_ELECTRONICALLY] as const;
 
 export type OfflinePaymentMethod = "check" | "meeting";
 
@@ -35,8 +27,6 @@ export function paymentUsesSquare(payment: string): boolean {
 export function getOfflinePaymentMethod(
   payment: string,
 ): OfflinePaymentMethod | null {
-  if (payment === PAY_BY_CHECK_OR_MONEY_ORDER) return "check";
-  if (payment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING) return "meeting";
   return null;
 }
 
@@ -206,15 +196,6 @@ export function parseSponsorIntakeBody(
     return { error: "Select a preferred payment option" };
   }
 
-  if (
-    preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING &&
-    !meetingNotes
-  ) {
-    return {
-      error:
-        "Share your preferred meeting times when scheduling a check or money order pickup",
-    };
-  }
   if (packageId === "category-sponsor" && !categorySponsorshipCategoryId) {
     return { error: "Select the category you want to sponsor" };
   }

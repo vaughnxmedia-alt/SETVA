@@ -11,10 +11,8 @@ import {
   availableAssets,
   availableSponsorPackages,
   getSponsorPackage,
-  PAY_BY_CHECK_OR_MONEY_ORDER,
-  PAY_BY_CHECK_OR_MONEY_ORDER_MEETING,
+  PAY_ELECTRONICALLY,
   paymentUsesSquare,
-  preferredPaymentOptions,
   type SponsorIntakeData,
 } from "@/lib/sponsor-intake";
 import { isPackageSoldOut } from "@/lib/sponsor-inventory";
@@ -70,7 +68,7 @@ function emptyForm(packageId: string): FormState {
     companyDescription: "",
     socialMedia: "",
     industry: "",
-    preferredPayment: "",
+    preferredPayment: PAY_ELECTRONICALLY,
     meetingNotes: "",
     primaryGoals: [],
     activationInterests: [],
@@ -162,13 +160,6 @@ export function SponsorCheckoutFlow() {
 
     if (currentStep === 2) {
       if (!form.industry.trim()) return "Industry is required";
-      if (!form.preferredPayment) return "Select a payment preference";
-      if (
-        form.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING &&
-        !form.meetingNotes.trim()
-      ) {
-        return "Share your preferred meeting days and times for check or money order pickup";
-      }
       if (form.availableAssets.length === 0) {
         return "Select at least one available asset";
       }
@@ -178,8 +169,8 @@ export function SponsorCheckoutFlow() {
       if (logoFile && logoFile.size > 10 * 1024 * 1024) {
         return "Logo upload must be 10MB or smaller";
       }
-      if (videoAdFile && videoAdFile.size > 50 * 1024 * 1024) {
-        return "Video ad upload must be 50MB or smaller";
+      if (videoAdFile && videoAdFile.size > 200 * 1024 * 1024) {
+        return "Video ad upload must be 200MB or smaller";
       }
     }
 
@@ -217,14 +208,7 @@ export function SponsorCheckoutFlow() {
       return `Proceed to payment — ${amount}`;
     }
 
-    switch (form.preferredPayment) {
-      case PAY_BY_CHECK_OR_MONEY_ORDER:
-        return `Submit & get payment instructions — ${amount}`;
-      case PAY_BY_CHECK_OR_MONEY_ORDER_MEETING:
-        return `Submit & schedule payment pickup — ${amount}`;
-      default:
-        return "Submit sponsorship request";
-    }
+    return "Submit sponsorship request";
   }
 
   async function proceedToPayment() {
@@ -473,9 +457,9 @@ export function SponsorCheckoutFlow() {
         {step === 2 && (
           <section className="space-y-6">
             <div>
-              <h2 className="font-display text-2xl text-cream">Partnership goals</h2>
+              <h2 className="font-display text-2xl text-cream">Sponsor assets</h2>
               <p className="mt-2 text-sm text-cream/65">
-                Help us understand how you want to show up at SETVA 2026.
+                Upload the brand assets our team needs for your sponsorship placement.
               </p>
             </div>
 
@@ -490,64 +474,9 @@ export function SponsorCheckoutFlow() {
               />
             </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-cream/80">
-                Payment method
-              </span>
-              <select
-                value={form.preferredPayment}
-                onChange={(e) => update("preferredPayment", e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Select payment method</option>
-                {preferredPaymentOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <p className="rounded-xl border border-gold/15 bg-black/30 px-4 py-3 text-xs text-cream/60">
               {site.sponsorPayment.policyNote}
             </p>
-
-            {form.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER && (
-              <div className="rounded-2xl border border-gold/20 bg-gold/5 p-5 text-sm text-cream/75">
-                <p className="font-semibold text-gold">
-                  Paying by check or money order
-                </p>
-                <p className="mt-2">
-                  After you submit, we&apos;ll email payment instructions. Mail
-                  your check or money order, or schedule an in-person drop-off
-                  with our team.
-                </p>
-                <p className="mt-2 text-cream/55">
-                  Make checks and money orders payable to{" "}
-                  <strong className="text-cream/80">{site.org}</strong>. Cash is
-                  not accepted.
-                </p>
-              </div>
-            )}
-
-            {form.preferredPayment === PAY_BY_CHECK_OR_MONEY_ORDER_MEETING && (
-              <label className="block">
-                <span className="text-sm font-medium text-cream/80">
-                  Preferred meeting times for check or money order pickup
-                </span>
-                <p className="mt-1 text-xs text-cream/55">
-                  Share days and times to hand-deliver your sponsorship check or
-                  money order. Cash is not accepted.
-                </p>
-                <textarea
-                  value={form.meetingNotes}
-                  onChange={(e) => update("meetingNotes", e.target.value)}
-                  rows={4}
-                  placeholder="e.g. Tuesdays or Thursdays after 2 PM · Beaumont area · bringing sponsorship check or money order"
-                  className={fieldClass}
-                />
-              </label>
-            )}
 
             {paymentUsesSquare(form.preferredPayment) && (
               <div className="rounded-2xl border border-gold/20 bg-black/35 p-5 text-sm text-cream/70">
@@ -592,7 +521,7 @@ export function SponsorCheckoutFlow() {
                   Upload video ad placement
                 </span>
                 <p className="mt-1 text-xs text-cream/55">
-                  Optional now. MP4, MOV, or WebM up to 50MB.
+                  Optional now. MP4, MOV, or WebM up to 200MB.
                 </p>
                 <input
                   type="file"
@@ -659,9 +588,7 @@ export function SponsorCheckoutFlow() {
                   : "Review & submit"}
               </h2>
               <p className="mt-2 text-sm text-cream/65">
-                {paymentUsesSquare(form.preferredPayment)
-                  ? "Confirm your details, then continue to Square secure checkout."
-                  : "Confirm your details and submit your sponsorship request."}
+                Confirm your details, then continue to secure checkout.
               </p>
             </div>
 
@@ -706,18 +633,11 @@ export function SponsorCheckoutFlow() {
                   Payment method
                 </p>
                 <p className="mt-1">{form.preferredPayment}</p>
-                {form.meetingNotes && (
-                  <p className="mt-2 text-cream/65">
-                    Meeting preference: {form.meetingNotes}
-                  </p>
-                )}
               </div>
             </div>
 
             <p className="text-xs text-cream/50">
-              {paymentUsesSquare(form.preferredPayment)
-                ? "You will be redirected to Square for electronic payment. Cash is not accepted."
-                : "Our team will email check or money order payment instructions. Sponsorships are paid through Square, check, or money order — no cash."}
+              You will be redirected for electronic payment. Cash, check, and money order payments are not accepted online.
             </p>
           </section>
         )}
