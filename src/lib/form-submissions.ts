@@ -63,8 +63,41 @@ export type UpdateFormSubmissionInput = {
   lastStatusEmailAt?: string | null;
 };
 
+const FORM_SUBMISSIONS_PAGE_SIZE = 1000;
+
 export function formStorageMode(): "supabase" | "local" {
   return isSupabaseConfigured() ? "supabase" : "local";
+}
+
+async function listFormSubmissionPages(formType?: FormType): Promise<FormSubmissionRecord[]> {
+  const client = supabaseAdmin();
+  if (!client) return [];
+
+  const records: FormSubmissionRecord[] = [];
+  let from = 0;
+
+  while (true) {
+    let query = client
+      .from("form_submissions")
+      .select("*")
+      .order("submitted_at", { ascending: false })
+      .range(from, from + FORM_SUBMISSIONS_PAGE_SIZE - 1);
+
+    if (formType) {
+      query = query.eq("form_type", formType);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const page = (data ?? []) as FormSubmissionRecord[];
+    records.push(...page);
+
+    if (page.length < FORM_SUBMISSIONS_PAGE_SIZE) break;
+    from += FORM_SUBMISSIONS_PAGE_SIZE;
+  }
+
+  return records;
 }
 
 export async function createFormSubmission(
@@ -96,17 +129,7 @@ export async function createFormSubmission(
 export async function listFormSubmissions(
   formType: FormType,
 ): Promise<FormSubmissionRecord[]> {
-  const client = supabaseAdmin();
-  if (!client) return [];
-
-  const { data, error } = await client
-    .from("form_submissions")
-    .select("*")
-    .eq("form_type", formType)
-    .order("submitted_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as FormSubmissionRecord[];
+  return listFormSubmissionPages(formType);
 }
 
 export async function getFormSubmissionByExternalId(
@@ -192,16 +215,7 @@ export async function deleteFormSubmissionById(id: string): Promise<boolean> {
 }
 
 export async function listAllFormSubmissions(): Promise<FormSubmissionRecord[]> {
-  const client = supabaseAdmin();
-  if (!client) return [];
-
-  const { data, error } = await client
-    .from("form_submissions")
-    .select("*")
-    .order("submitted_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as FormSubmissionRecord[];
+  return listFormSubmissionPages();
 }
 
 export async function upsertFormSubmissionByExternalId(

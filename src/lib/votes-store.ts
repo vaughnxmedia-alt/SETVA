@@ -3,7 +3,6 @@ import {
   createFormSubmission,
   FORM_TYPES,
   formStorageMode,
-  getFormSubmissionByExternalId,
   listFormSubmissions,
   type FormSubmissionRecord,
 } from "@/lib/form-submissions";
