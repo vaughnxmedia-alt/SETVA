@@ -1,4 +1,9 @@
-import { isPublicVotingOpen, VOTING_STARTS_MESSAGE } from "@/lib/voting";
+import {
+  getVotingLiveMessage,
+  isPublicVotingOpen,
+  isVotingBlastActive,
+  VOTING_STARTS_MESSAGE,
+} from "@/lib/voting";
 
 type VotingStartsNoticeProps = {
   className?: string;
@@ -7,14 +12,18 @@ type VotingStartsNoticeProps = {
 };
 
 export function VotingStartsNotice({ className = "", forceShow = false }: VotingStartsNoticeProps) {
-  if (!forceShow && isPublicVotingOpen()) return null;
+  const blastActive = isVotingBlastActive();
+
+  if (!forceShow && isPublicVotingOpen() && !blastActive) return null;
+
+  const message = blastActive ? getVotingLiveMessage() : VOTING_STARTS_MESSAGE;
 
   return (
     <p
       role="status"
       className={`rounded-2xl border border-gold/30 bg-gold/10 px-5 py-4 text-center text-sm font-medium text-gold sm:text-base ${className}`}
     >
-      {VOTING_STARTS_MESSAGE}
+      {message}
     </p>
   );
 }

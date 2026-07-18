@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleApiFailure, safeApiHandler } from "@/lib/errors";
 import { createVoterKey, recordNomineeVote } from "@/lib/votes-store";
-import { canRecordVote, VOTER_COOKIE, VOTER_COOKIE_MAX_AGE, VOTING_STARTS_MESSAGE, isPublicVotingOpen } from "@/lib/voting";
+import {
+  canRecordVote,
+  VOTER_COOKIE,
+  VOTER_COOKIE_MAX_AGE,
+  VOTING_STARTS_MESSAGE,
+  isPublicVotingOpen,
+} from "@/lib/voting";
 
 export const POST = safeApiHandler(async (req: NextRequest) => {
   try {
@@ -56,6 +62,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
           success: false,
           limitReached: true,
           votesRemaining: 0,
+          unrestricted: false,
           error: "You've used all 3 of your votes for today. Come back tomorrow to vote again.",
         },
         { status: 429 },
@@ -67,6 +74,7 @@ export const POST = safeApiHandler(async (req: NextRequest) => {
       alreadyVoted: result.alreadyVoted,
       recorded: result.recorded,
       votesRemaining: result.votesRemaining,
+      unrestricted: result.unrestricted,
     });
 
     if (setCookie) {

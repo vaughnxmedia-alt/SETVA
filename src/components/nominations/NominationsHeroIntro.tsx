@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { VotingCountdownClock } from "@/components/nominations/VotingCountdownClock";
 import { site } from "@/lib/site";
-import { VOTING_LIVE_MESSAGE } from "@/lib/voting";
+import { getVotingLiveMessage } from "@/lib/voting";
 
 type NominationsHeroIntroProps = {
   votingOpen: boolean;
@@ -32,7 +32,7 @@ export function NominationsHeroIntro({ votingOpen, onVotingOpen }: NominationsHe
           role="status"
           className="mt-6 rounded-2xl border border-emerald/30 bg-emerald/10 px-5 py-4 text-center text-sm font-medium text-emerald-light sm:text-base"
         >
-          {VOTING_LIVE_MESSAGE}
+          {getVotingLiveMessage()}
         </p>
       ) : (
         <VotingCountdownClock className="mt-6" onVotingOpen={onVotingOpen} />

@@ -6,7 +6,7 @@ import {
   listFormSubmissions,
   type FormSubmissionRecord,
 } from "@/lib/form-submissions";
-import { DAILY_VOTE_LIMIT, voteDayKey, isVoteCountable } from "@/lib/voting";
+import { DAILY_VOTE_LIMIT, voteDayKey, isVoteCountable, isVotingBlastActive } from "@/lib/voting";
 
 export type NomineeVote = {
   id: string;
@@ -35,6 +35,11 @@ function voteExternalId(categoryId: string, voterKey: string, dayKey: string): s
   return `vote_${dayKey}_${categoryId}_${voterHash(voterKey)}`;
 }
 
+/** Unique id per cast so blast-mode repeat votes are not blocked by external_id uniqueness. */
+function blastVoteExternalId(categoryId: string, voterKey: string): string {
+  return `vote_blast_${Date.now()}_${categoryId}_${voterHash(voterKey)}_${randomBytes(4).toString("hex")}`;
+}
+
 function voteFromRecord(record: FormSubmissionRecord): NomineeVote {
   const payload = record.payload as NomineeVotePayload;
   return {
@@ -55,6 +60,7 @@ export type RecordVoteResult = {
   /** Voter has hit the per-day vote cap across categories. */
   limitReached: boolean;
   votesRemaining: number;
+  unrestricted: boolean;
 };
 
 export async function recordNomineeVote(input: {
@@ -63,28 +69,50 @@ export async function recordNomineeVote(input: {
   categoryId: string;
   voterKey: string;
 }): Promise<RecordVoteResult> {
+  const unrestricted = isVotingBlastActive();
+
   if (formStorageMode() !== "supabase") {
-    return { recorded: false, alreadyVoted: false, limitReached: false, votesRemaining: DAILY_VOTE_LIMIT };
-  }
-
-  const dayKey = voteDayKey();
-  const externalId = voteExternalId(input.categoryId, input.voterKey, dayKey);
-
-  const votes = await listNomineeVotes();
-  const todaysVotes = votes.filter((vote) => vote.voterKey === input.voterKey && vote.dayKey === dayKey);
-  const votedInCategory = todaysVotes.some((vote) => vote.categoryId === input.categoryId);
-
-  if (votedInCategory) {
     return {
       recorded: false,
-      alreadyVoted: true,
+      alreadyVoted: false,
       limitReached: false,
-      votesRemaining: Math.max(0, DAILY_VOTE_LIMIT - todaysVotes.length),
+      votesRemaining: unrestricted ? Number.MAX_SAFE_INTEGER : DAILY_VOTE_LIMIT,
+      unrestricted,
     };
   }
 
-  if (todaysVotes.length >= DAILY_VOTE_LIMIT) {
-    return { recorded: false, alreadyVoted: false, limitReached: true, votesRemaining: 0 };
+  const dayKey = voteDayKey();
+  const externalId = unrestricted
+    ? blastVoteExternalId(input.categoryId, input.voterKey)
+    : voteExternalId(input.categoryId, input.voterKey, dayKey);
+
+  let todaysVoteCount = 0;
+
+  if (!unrestricted) {
+    const votes = await listNomineeVotes();
+    const todaysVotes = votes.filter((vote) => vote.voterKey === input.voterKey && vote.dayKey === dayKey);
+    todaysVoteCount = todaysVotes.length;
+    const votedInCategory = todaysVotes.some((vote) => vote.categoryId === input.categoryId);
+
+    if (votedInCategory) {
+      return {
+        recorded: false,
+        alreadyVoted: true,
+        limitReached: false,
+        votesRemaining: Math.max(0, DAILY_VOTE_LIMIT - todaysVoteCount),
+        unrestricted: false,
+      };
+    }
+
+    if (todaysVoteCount >= DAILY_VOTE_LIMIT) {
+      return {
+        recorded: false,
+        alreadyVoted: false,
+        limitReached: true,
+        votesRemaining: 0,
+        unrestricted: false,
+      };
+    }
   }
 
   const payload: NomineeVotePayload = {
@@ -103,11 +131,15 @@ export async function recordNomineeVote(input: {
   });
 
   const recorded = Boolean(record);
+
   return {
     recorded,
     alreadyVoted: false,
     limitReached: false,
-    votesRemaining: Math.max(0, DAILY_VOTE_LIMIT - todaysVotes.length - (recorded ? 1 : 0)),
+    votesRemaining: unrestricted
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(0, DAILY_VOTE_LIMIT - todaysVoteCount - (recorded ? 1 : 0)),
+    unrestricted,
   };
 }
 
@@ -115,12 +147,29 @@ export type VoterDailyStatus = {
   votesToday: number;
   votesRemaining: number;
   votedCategoryIds: string[];
+  unrestricted: boolean;
 };
 
 /** Current-day voting status for a voter: how many votes used and which categories. */
 export async function getVoterDailyStatus(voterKey: string): Promise<VoterDailyStatus> {
+  const unrestricted = isVotingBlastActive();
+
   if (!voterKey || formStorageMode() !== "supabase") {
-    return { votesToday: 0, votesRemaining: DAILY_VOTE_LIMIT, votedCategoryIds: [] };
+    return {
+      votesToday: 0,
+      votesRemaining: unrestricted ? Number.MAX_SAFE_INTEGER : DAILY_VOTE_LIMIT,
+      votedCategoryIds: [],
+      unrestricted,
+    };
+  }
+
+  if (unrestricted) {
+    return {
+      votesToday: 0,
+      votesRemaining: Number.MAX_SAFE_INTEGER,
+      votedCategoryIds: [],
+      unrestricted: true,
+    };
   }
 
   const dayKey = voteDayKey();
@@ -131,6 +180,7 @@ export async function getVoterDailyStatus(voterKey: string): Promise<VoterDailyS
     votesToday: todaysVotes.length,
     votesRemaining: Math.max(0, DAILY_VOTE_LIMIT - todaysVotes.length),
     votedCategoryIds: [...new Set(todaysVotes.map((vote) => vote.categoryId))],
+    unrestricted: false,
   };
 }
 

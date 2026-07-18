@@ -5,7 +5,7 @@ export const VOTER_COOKIE = "setva_voter";
 
 export const VOTER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-/** Each voter may cast up to 3 votes per day, and at most 1 per category per day. */
+/** Each voter may cast up to 3 votes per day, and at most 1 per category per day (when blast is off). */
 export const DAILY_VOTE_LIMIT = 3;
 
 /** Vote-day buckets follow the calendar day in Central time and reset at midnight. */
@@ -14,11 +14,25 @@ const VOTE_TIMEZONE = "America/Chicago";
 /** SETVA 2026 public voting opens July 6, 2026 at 9:00 PM Central (CDT). */
 export const PUBLIC_VOTING_OPENS_AT = "2026-07-06T21:00:00-05:00";
 
+/**
+ * 48hr voting blast — unrestricted voting window.
+ * Opens Sat Jul 18, 2026 10:00 AM CT; closes Mon Jul 20, 2026 10:00 AM CT.
+ */
+export const VOTING_BLAST_OPENS_AT = "2026-07-18T10:00:00-05:00";
+export const VOTING_BLAST_CLOSES_AT = "2026-07-20T10:00:00-05:00";
+
 /** Shown across the public site while voting is locked. */
 export const VOTING_STARTS_MESSAGE = "Voting starts today at 9pm Central Time.";
 
-/** Shown once the public voting launch time has passed. */
-export const VOTING_LIVE_MESSAGE = "Voting is live — cast your vote below.";
+/** Default live copy when the blast window is not active. */
+export const VOTING_LIVE_MESSAGE_DEFAULT = "Voting is live — cast your vote below.";
+
+/** Shown during the unrestricted 48hr voting blast. */
+export const VOTING_BLAST_MESSAGE =
+  "48hr voting blast — vote as many times as you want.";
+
+/** Live voting message (blast-aware at module load; prefer getVotingLiveMessage() when possible). */
+export const VOTING_LIVE_MESSAGE = VOTING_BLAST_MESSAGE;
 
 const votingLabelFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: VOTE_TIMEZONE,
@@ -29,6 +43,23 @@ const votingLabelFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function publicVotingOpensAtMs(): number {
   return Date.parse(PUBLIC_VOTING_OPENS_AT);
+}
+
+export function votingBlastOpensAtMs(): number {
+  return Date.parse(VOTING_BLAST_OPENS_AT);
+}
+
+export function votingBlastClosesAtMs(): number {
+  return Date.parse(VOTING_BLAST_CLOSES_AT);
+}
+
+/** True during the unrestricted 48hr voting blast window. */
+export function isVotingBlastActive(now = Date.now()): boolean {
+  return now >= votingBlastOpensAtMs() && now < votingBlastClosesAtMs();
+}
+
+export function getVotingLiveMessage(now = Date.now()): string {
+  return isVotingBlastActive(now) ? VOTING_BLAST_MESSAGE : VOTING_LIVE_MESSAGE_DEFAULT;
 }
 
 /** True once the public voting launch time has passed. */
@@ -115,7 +146,7 @@ export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
   }
 
   if (await isVotingOpen(now)) {
-    return VOTING_LIVE_MESSAGE;
+    return getVotingLiveMessage(now);
   }
 
   const published = (await listNomineeVotingSetups()).filter(
@@ -123,7 +154,7 @@ export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
   );
 
   if (published.length === 0) {
-    return VOTING_LIVE_MESSAGE;
+    return getVotingLiveMessage(now);
   }
 
   const futureOpens = published
@@ -135,7 +166,7 @@ export async function getVotingOpensLabel(now = Date.now()): Promise<string> {
     return votingLabelFormatter.format(new Date(futureOpens[0]));
   }
 
-  return VOTING_LIVE_MESSAGE;
+  return getVotingLiveMessage(now);
 }
 
 /** Returns the current vote day as YYYY-MM-DD in Central time (the daily-limit bucket). */

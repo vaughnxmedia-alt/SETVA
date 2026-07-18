@@ -10,6 +10,7 @@ import { getVoterDailyStatus } from "@/lib/votes-store";
 import {
   DAILY_VOTE_LIMIT,
   isPublicVotingOpen,
+  isVotingBlastActive,
   VOTER_COOKIE,
 } from "@/lib/voting";
 
@@ -53,10 +54,16 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
   const openCategoryIds = votingOpen ? voteTargets.map((target) => target.categoryId) : [];
 
   const voterKey = (await cookies()).get(VOTER_COOKIE)?.value?.trim() ?? "";
+  const unrestricted = isVotingBlastActive();
   const dailyStatus =
     votingOpen && voterKey
       ? await getVoterDailyStatus(voterKey)
-      : { votesToday: 0, votesRemaining: DAILY_VOTE_LIMIT, votedCategoryIds: [] };
+      : {
+          votesToday: 0,
+          votesRemaining: unrestricted ? Number.MAX_SAFE_INTEGER : DAILY_VOTE_LIMIT,
+          votedCategoryIds: [] as string[],
+          unrestricted,
+        };
 
   const showVoteSection = isNominee && voteTargets.length > 0;
 
@@ -72,6 +79,7 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
             openCategoryIds={openCategoryIds}
             votesRemaining={dailyStatus.votesRemaining}
             votedCategoryIds={dailyStatus.votedCategoryIds}
+            unrestricted={dailyStatus.unrestricted}
           />
         ) : null}
         <TicketPartnerGateForm partner={partner} />
@@ -83,6 +91,7 @@ export default async function TicketPartnerGatePage({ params }: TicketPartnerGat
             openCategoryIds={openCategoryIds}
             votesRemaining={dailyStatus.votesRemaining}
             votedCategoryIds={dailyStatus.votedCategoryIds}
+            unrestricted={dailyStatus.unrestricted}
           />
         ) : null}
       </div>

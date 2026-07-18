@@ -14,7 +14,7 @@ import {
   hqInputClass,
 } from "@/components/headquarters/ui";
 import type { HQVotingCategorySection } from "@/lib/votes-store";
-import { VOTING_LIVE_MESSAGE, VOTING_STARTS_MESSAGE } from "@/lib/voting";
+import { getVotingLiveMessage, VOTING_STARTS_MESSAGE } from "@/lib/voting";
 
 type VotingResponse = {
   votingOpen: boolean;
@@ -83,14 +83,14 @@ export function VotingView() {
             }`}
           >
             {data.votingOpen
-              ? VOTING_LIVE_MESSAGE
+              ? getVotingLiveMessage()
               : data.opensLabel === VOTING_STARTS_MESSAGE
                 ? data.opensLabel
                 : `${data.opensLabel} Totals include votes cast after the public voting launch.`}
           </div>
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2">
-            <HQStatCard label="Total votes" value={data.grandTotal} hint="Live totals after the 9pm CT launch" />
+            <HQStatCard label="Total votes" value={data.grandTotal} hint="Live totals from the public voting launch" />
             <HQStatCard
               label="Nominees receiving votes"
               value={data.nomineesWithVotes}
