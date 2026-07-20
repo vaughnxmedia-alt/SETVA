@@ -16,10 +16,10 @@ export const PUBLIC_VOTING_OPENS_AT = "2026-07-06T21:00:00-05:00";
 
 /**
  * 48hr voting blast — unrestricted voting window.
- * Opens Sat Jul 18, 2026 10:00 AM CT; closes Mon Jul 20, 2026 10:00 AM CT.
+ * Opens Sat Jul 18, 2026 10:00 AM CT; closes Mon Jul 20, 2026 11:59 PM CT.
  */
 export const VOTING_BLAST_OPENS_AT = "2026-07-18T10:00:00-05:00";
-export const VOTING_BLAST_CLOSES_AT = "2026-07-20T10:00:00-05:00";
+export const VOTING_BLAST_CLOSES_AT = "2026-07-21T00:00:00-05:00";
 
 /** Shown across the public site while voting is locked. */
 export const VOTING_STARTS_MESSAGE = "Voting starts today at 9pm Central Time.";
