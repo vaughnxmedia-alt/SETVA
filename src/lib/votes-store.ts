@@ -6,7 +6,8 @@ import {
   listFormSubmissions,
   type FormSubmissionRecord,
 } from "@/lib/form-submissions";
-import { DAILY_VOTE_LIMIT, voteDayKey, isVoteCountable, isVotingBlastActive } from "@/lib/voting";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { DAILY_VOTE_LIMIT, voteDayKey, isVotingBlastActive } from "@/lib/voting";
 
 export type NomineeVote = {
   id: string;
@@ -131,6 +132,9 @@ export async function recordNomineeVote(input: {
   });
 
   const recorded = Boolean(record);
+  if (recorded) {
+    await incrementNomineeVoteTally(input.nomineeId);
+  }
 
   return {
     recorded,
@@ -192,16 +196,56 @@ export async function listNomineeVotes(): Promise<NomineeVote[]> {
     .sort((a, b) => new Date(b.votedAt).getTime() - new Date(a.votedAt).getTime());
 }
 
+/**
+ * Per-nominee vote counts for HQ Voting.
+ * Reads the small tally cache (~one row per nominee), never the millions of vote rows.
+ * Category totals are derived by summing nominees in each category in the HQ route.
+ */
 export async function getNomineeVoteTallies(): Promise<Record<string, number>> {
-  const votes = await listNomineeVotes();
+  if (formStorageMode() !== "supabase") return {};
+
+  const client = supabaseAdmin();
+  if (!client) return {};
+
+  const { data, error } = await client
+    .from("nominee_vote_tally_cache")
+    .select("nominee_id, votes");
+
+  if (error) throw error;
+
   const tallies: Record<string, number> = {};
-
-  for (const vote of votes) {
-    if (!isVoteCountable(vote)) continue;
-    tallies[vote.nomineeId] = (tallies[vote.nomineeId] ?? 0) + 1;
+  for (const row of data ?? []) {
+    const nomineeId = typeof row.nominee_id === "string" ? row.nominee_id : "";
+    const votes = typeof row.votes === "number" ? row.votes : Number(row.votes);
+    if (!nomineeId || !Number.isFinite(votes)) continue;
+    tallies[nomineeId] = votes;
   }
-
   return tallies;
+}
+
+async function incrementNomineeVoteTally(nomineeId: string, delta = 1): Promise<void> {
+  const client = supabaseAdmin();
+  if (!client || !nomineeId) return;
+
+  const { error } = await client.rpc("increment_nominee_vote_tally", {
+    p_nominee_id: nomineeId,
+    p_delta: delta,
+  });
+  if (error) {
+    console.error("[votes] failed to increment nominee_vote_tally_cache", error.message);
+  }
+}
+
+/** Rebuild the tally cache from countable vote rows (admin/ops use). */
+export async function refreshNomineeVoteTallyCache(sinceIso: string): Promise<number> {
+  const client = supabaseAdmin();
+  if (!client) throw new Error("Supabase is not configured");
+
+  const { data, error } = await client.rpc("refresh_nominee_vote_tally_cache", {
+    since: sinceIso,
+  });
+  if (error) throw error;
+  return typeof data === "number" ? data : Number(data) || 0;
 }
 
 export function createVoterKey(): string {
