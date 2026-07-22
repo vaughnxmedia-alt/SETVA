@@ -91,13 +91,24 @@ export function AmbassadorsView({
         success?: boolean;
         error?: string;
         ambassador?: AmbassadorRecord;
+        emailed?: boolean;
+        emailError?: string | null;
       };
       if (!res.ok || !data.success || !data.ambassador) {
         setError(data.error ?? "Could not update ambassador.");
         return;
       }
       setAmbassadors((prev) => prev.map((item) => (item.id === id ? data.ambassador! : item)));
-      setMessage(`${data.ambassador.name} marked ${data.ambassador.status}.`);
+      if (data.emailError) {
+        setError(data.emailError);
+        setMessage(`${data.ambassador.name} marked ${data.ambassador.status}.`);
+      } else if (data.emailed) {
+        setMessage(
+          `${data.ambassador.name} approved — tracking link emailed to ${data.ambassador.email}.`,
+        );
+      } else {
+        setMessage(`${data.ambassador.name} marked ${data.ambassador.status}.`);
+      }
     } catch {
       setError("Could not update ambassador.");
     } finally {
@@ -108,7 +119,8 @@ export function AmbassadorsView({
   return (
     <HQShell title="Ambassadors" user={currentUser}>
       <p className="mb-6 text-sm text-cream/50">
-        Nominee ticket partner links are created automatically. Any logged-in Headquarters team member can approve ambassador applications below.
+        Nominee ticket partner links are created automatically. Approving an ambassador emails them
+        their tracking link immediately. Any logged-in Headquarters team member can review applications below.
       </p>
 
       {message ? (
@@ -270,7 +282,7 @@ export function AmbassadorsView({
           <div>
             <h2 className="font-display text-lg text-gold">Ambassador applications</h2>
             <p className="mt-1 text-sm text-cream/50">
-              Public form submissions. Approve to activate immediately and issue a tracked ticket link.
+              Public form submissions. Approve to activate, issue a tracked ticket link, and email it to the ambassador.
             </p>
           </div>
           {pendingCount > 0 ? <HQBadge tone="amber">{pendingCount} pending</HQBadge> : null}

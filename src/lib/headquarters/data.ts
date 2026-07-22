@@ -16,13 +16,14 @@ import { listSponsorBuyerRecords } from "@/lib/sponsor-package-sales";
 import {
   ambassadorTicketPartnerLink,
   buildTicketPartnerAnalytics,
-  listTicketLinkEvents,
+  getTicketLinkEventTallies,
   nomineeTicketPartnerLink,
 } from "@/lib/ticket-link-events-store";
 import { listTicketPartnerLeads } from "@/lib/ticket-partner/leads-store";
 import { listTicketPurchases } from "@/lib/ticket-partner/purchases-store";
 import { reconcilePurchases } from "@/lib/ticket-partner/reconcile";
 import type { TicketPartnerLead } from "@/lib/ticket-partner/types";
+import { getAmbassadorRegistration } from "@/lib/ambassadors-store";
 import type {
   ActivityCategory,
   ActivityItem,
@@ -295,11 +296,11 @@ export async function getHQVolunteers(): Promise<VolunteerRecord[]> {
 }
 
 export async function getTicketPartnerAnalyticsData() {
-  const [nominees, ambassadors, categories, events] = await Promise.all([
+  const [nominees, ambassadors, categories, tallies] = await Promise.all([
     listNomineesWithTicketPartnerSlugs(),
     listAmbassadorRegistrations(),
     listNomineeCategories(),
-    listTicketLinkEvents(),
+    getTicketLinkEventTallies(),
   ]);
 
   const nomineeLinks = nominees.map((nominee) =>
@@ -323,7 +324,7 @@ export async function getTicketPartnerAnalyticsData() {
       }),
     );
 
-  return buildTicketPartnerAnalytics([...nomineeLinks, ...ambassadorLinks], events);
+  return buildTicketPartnerAnalytics([...nomineeLinks, ...ambassadorLinks], tallies);
 }
 
 const LEAD_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -437,6 +438,16 @@ export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
   return registrations.map((reg) =>
     mapStatsToAmbassadorRecord(reg, statsById.get(reg.id), leadsBySource.get(reg.id) ?? []),
   );
+}
+
+/** Single ambassador for PATCH responses — avoids reloading every ticket-link event. */
+export async function getHQAmbassadorById(id: string): Promise<AmbassadorRecord | null> {
+  const reg = await getAmbassadorRegistration(id);
+  if (!reg) return null;
+
+  // Fresh approve/activate responses do not need a full analytics reload.
+  // Click/purchase counts refresh when the Ambassadors page is loaded/refreshed.
+  return mapStatsToAmbassadorRecord(reg, undefined, []);
 }
 
 /**

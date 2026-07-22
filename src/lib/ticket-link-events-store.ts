@@ -6,6 +6,7 @@ import {
   listFormSubmissions,
   type FormSubmissionRecord,
 } from "@/lib/form-submissions";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import type {
   TicketLinkEvent,
   TicketLinkEventType,
@@ -25,6 +26,14 @@ type TicketLinkEventPayload = {
   userAgent: string;
   buyerName: string;
   leadId: string;
+};
+
+export type TicketLinkEventTally = {
+  slug: string;
+  clicks: number;
+  purchases: number;
+  lastClickAt: string | null;
+  lastPurchaseAt: string | null;
 };
 
 function createEventId(): string {
@@ -85,6 +94,7 @@ export async function recordTicketLinkEvent(input: {
   return record ? eventFromRecord(record) : null;
 }
 
+/** @deprecated Prefer getTicketLinkEventTallies — loading every event row does not scale. */
 export async function listTicketLinkEvents(): Promise<TicketLinkEvent[]> {
   if (formStorageMode() !== "supabase") return [];
   const records = await listFormSubmissions(FORM_TYPES.ticketLinkEvents);
@@ -93,8 +103,63 @@ export async function listTicketLinkEvents(): Promise<TicketLinkEvent[]> {
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 }
 
+/** Per-slug click/purchase counts from Postgres — one row per tracking link. */
+export async function getTicketLinkEventTallies(): Promise<TicketLinkEventTally[]> {
+  if (formStorageMode() !== "supabase") return [];
+
+  const client = supabaseAdmin();
+  if (!client) return [];
+
+  const { data, error } = await client.rpc("ticket_link_event_tallies");
+  if (error) throw error;
+
+  return (data ?? [])
+    .map(
+      (row: {
+        slug?: string;
+        clicks?: number | string;
+        purchases?: number | string;
+        last_click_at?: string | null;
+        last_purchase_at?: string | null;
+      }) => ({
+        slug: typeof row.slug === "string" ? row.slug : "",
+        clicks: Number(row.clicks) || 0,
+        purchases: Number(row.purchases) || 0,
+        lastClickAt: row.last_click_at ?? null,
+        lastPurchaseAt: row.last_purchase_at ?? null,
+      }),
+    )
+    .filter((row: TicketLinkEventTally) => Boolean(row.slug));
+}
+
+export function aggregateTicketPartnerStatsFromTallies(
+  links: Omit<
+    TicketPartnerLinkStats,
+    "clickCount" | "purchaseCount" | "lastClickAt" | "lastPurchaseAt"
+  >[],
+  tallies: TicketLinkEventTally[],
+): TicketPartnerLinkStats[] {
+  const bySlug = new Map(tallies.map((tally) => [tally.slug, tally]));
+
+  return links
+    .map((link) => {
+      const tally = bySlug.get(link.slug);
+      return {
+        ...link,
+        clickCount: tally?.clicks ?? 0,
+        purchaseCount: tally?.purchases ?? 0,
+        lastClickAt: tally?.lastClickAt ?? null,
+        lastPurchaseAt: tally?.lastPurchaseAt ?? null,
+      };
+    })
+    .sort((a, b) => b.clickCount - a.clickCount || a.name.localeCompare(b.name));
+}
+
 export function aggregateTicketPartnerStats(
-  links: Omit<TicketPartnerLinkStats, "clickCount" | "purchaseCount" | "lastClickAt" | "lastPurchaseAt">[],
+  links: Omit<
+    TicketPartnerLinkStats,
+    "clickCount" | "purchaseCount" | "lastClickAt" | "lastPurchaseAt"
+  >[],
   events: TicketLinkEvent[],
 ): TicketPartnerLinkStats[] {
   const bySlug = new Map<string, TicketPartnerLinkStats>();
@@ -126,19 +191,24 @@ export function aggregateTicketPartnerStats(
     }
   }
 
-  return [...bySlug.values()].sort((a, b) => b.clickCount - a.clickCount || a.name.localeCompare(b.name));
+  return [...bySlug.values()].sort(
+    (a, b) => b.clickCount - a.clickCount || a.name.localeCompare(b.name),
+  );
 }
 
 export function buildTicketPartnerAnalytics(
-  links: Omit<TicketPartnerLinkStats, "clickCount" | "purchaseCount" | "lastClickAt" | "lastPurchaseAt">[],
-  events: TicketLinkEvent[],
+  links: Omit<
+    TicketPartnerLinkStats,
+    "clickCount" | "purchaseCount" | "lastClickAt" | "lastPurchaseAt"
+  >[],
+  tallies: TicketLinkEventTally[],
 ): TicketPartnerAnalytics {
-  const aggregated = aggregateTicketPartnerStats(links, events);
+  const aggregated = aggregateTicketPartnerStatsFromTallies(links, tallies);
   return {
     totalClicks: aggregated.reduce((sum, link) => sum + link.clickCount, 0),
     totalPurchases: aggregated.reduce((sum, link) => sum + link.purchaseCount, 0),
     links: aggregated,
-    recentEvents: events.slice(0, 50),
+    recentEvents: [],
   };
 }
 
