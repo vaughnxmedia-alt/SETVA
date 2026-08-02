@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { TicketmasterAnchor } from "@/components/tickets/TicketmasterAnchor";
 import { brandLogos, socialHub, site } from "@/lib/site";
 import {
   isExternalTicketPurchase,
@@ -9,9 +10,11 @@ import {
 function HubLink({
   link,
   prominent = false,
+  ticketmaster = false,
 }: {
   link: { label: string; description?: string; href: string; external?: boolean };
   prominent?: boolean;
+  ticketmaster?: boolean;
 }) {
   const className = prominent
     ? "block w-full rounded-2xl bg-ruby px-5 py-4 text-center shadow-lg shadow-ruby/20 transition hover:bg-ruby-light"
@@ -31,6 +34,14 @@ function HubLink({
       )}
     </>
   );
+
+  if (link.external && ticketmaster) {
+    return (
+      <TicketmasterAnchor href={link.href} className={className}>
+        {content}
+      </TicketmasterAnchor>
+    );
+  }
 
   if (link.external) {
     return (
@@ -83,7 +94,7 @@ export function SocialHub() {
         </header>
 
         <div className="mt-10">
-          <HubLink link={ticketLink} prominent />
+          <HubLink link={ticketLink} prominent ticketmaster={ticketLink.external} />
         </div>
 
         <nav aria-label="SETVA links" className="mt-4 flex flex-col gap-3">

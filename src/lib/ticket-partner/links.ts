@@ -27,22 +27,22 @@ export function ticketPartnerPurchaseThanksUrl(slug: string): string {
   return `${getSiteUrl()}${ticketPartnerPurchaseThanksPath(slug)}`;
 }
 
-/** Ticketmaster destination with partner attribution params. */
-export function ticketmasterPartnerDestination(slug: string, leadId?: string): string {
-  const base = getTicketmasterUrl();
+/**
+ * Ticketmaster destination for partner links.
+ *
+ * Tracking params are deliberately omitted: Ticketmaster never returns them to
+ * us (sales are attributed by matching the exported buyer list against captured
+ * leads), and unrecognized query strings make its bot check more likely to
+ * challenge the buyer instead of showing the event.
+ */
+export function ticketmasterDestination(): string {
+  const base = getTicketmasterUrl().trim();
   try {
     const url = new URL(base);
-    url.searchParams.set("utm_source", "setva");
-    url.searchParams.set("utm_medium", "ticket_partner");
-    url.searchParams.set("utm_campaign", slug);
-    url.searchParams.set("setva_ref", slug);
-    if (leadId?.trim()) {
-      url.searchParams.set("setva_lead", leadId.trim());
-    }
+    url.search = "";
+    url.hash = "";
     return url.toString();
   } catch {
-    const joiner = base.includes("?") ? "&" : "?";
-    const leadParam = leadId?.trim() ? `&setva_lead=${encodeURIComponent(leadId.trim())}` : "";
-    return `${base}${joiner}utm_source=setva&utm_medium=ticket_partner&utm_campaign=${encodeURIComponent(slug)}&setva_ref=${encodeURIComponent(slug)}${leadParam}`;
+    return base.split("?")[0].split("#")[0];
   }
 }

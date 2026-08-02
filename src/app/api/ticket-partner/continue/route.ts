@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordTicketLinkEvent } from "@/lib/ticket-link-events-store";
-import { ticketmasterPartnerDestination } from "@/lib/ticket-partner/links";
+import { ticketmasterDestination } from "@/lib/ticket-partner/links";
 import { saveTicketPartnerLead } from "@/lib/ticket-partner/leads-store";
 import { parseTicketPartnerLeadInput } from "@/lib/ticket-partner/parse-lead";
 import { resolveTicketPartnerBySlug } from "@/lib/ticket-partner/resolve";
@@ -29,9 +29,13 @@ export async function POST(req: NextRequest) {
 
   const { buyerName, buyerEmail, buyerPhone } = parsed.data;
 
-  const partner = await resolveTicketPartnerBySlug(slug);
+  // A buyer must always end up at Ticketmaster. Attribution is best-effort:
+  // an unknown slug or an unreachable database costs us the lead, not the sale.
+  const redirectUrl = ticketmasterDestination();
+
+  const partner = await resolveTicketPartnerBySlug(slug).catch(() => null);
   if (!partner) {
-    return NextResponse.json({ error: "This ticket partner link is not active." }, { status: 404 });
+    return NextResponse.json({ ok: true, redirectUrl, attributed: false });
   }
 
   const lead = await saveTicketPartnerLead({
@@ -43,21 +47,24 @@ export async function POST(req: NextRequest) {
     sourceId: partner.sourceId,
     sourceName: partner.sourceName,
     partnerCategory: partner.category,
+  }).catch(() => null);
+
+  const response = NextResponse.json({
+    ok: true,
+    redirectUrl,
+    attributed: Boolean(lead),
+    leadId: lead?.id,
   });
 
-  if (!lead) {
-    // Continue to Ticketmaster even when storage is unavailable locally.
-    const redirectUrl = ticketmasterPartnerDestination(partner.slug);
-    const response = NextResponse.json({ ok: true, redirectUrl });
-    response.cookies.set(REF_COOKIE, partner.slug, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: COOKIE_MAX_AGE,
-    });
-    return response;
-  }
+  response.cookies.set(REF_COOKIE, partner.slug, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: COOKIE_MAX_AGE,
+  });
+
+  if (!lead) return response;
 
   await recordTicketLinkEvent({
     slug: partner.slug,
@@ -69,17 +76,8 @@ export async function POST(req: NextRequest) {
     leadId: lead.id,
     referrer: req.headers.get("referer") ?? "",
     userAgent: req.headers.get("user-agent") ?? "",
-  });
+  }).catch(() => undefined);
 
-  const redirectUrl = ticketmasterPartnerDestination(partner.slug, lead.id);
-  const response = NextResponse.json({ ok: true, redirectUrl, leadId: lead.id });
-  response.cookies.set(REF_COOKIE, partner.slug, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: COOKIE_MAX_AGE,
-  });
   response.cookies.set(LEAD_COOKIE, lead.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

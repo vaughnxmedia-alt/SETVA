@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   slugifyTicketPartner,
   ticketPartnerTrackingPath,
-  ticketmasterPartnerDestination,
+  ticketmasterDestination,
 } from "@/lib/ticket-partner/links";
 
 describe("ticket partner links", () => {
@@ -14,15 +14,14 @@ describe("ticket partner links", () => {
     expect(ticketPartnerTrackingPath("justice-vaughn-abcd12")).toBe("/go/tickets/justice-vaughn-abcd12");
   });
 
-  it("adds partner attribution params to Ticketmaster URLs", () => {
-    const url = ticketmasterPartnerDestination("justice-vaughn-abcd12");
-    expect(url).toContain("utm_source=setva");
-    expect(url).toContain("utm_medium=ticket_partner");
-    expect(url).toContain("setva_ref=justice-vaughn-abcd12");
+  it("sends buyers to Ticketmaster", () => {
+    expect(ticketmasterDestination()).toContain("ticketmaster.com");
   });
 
-  it("includes lead id when provided", () => {
-    const url = ticketmasterPartnerDestination("justice-vaughn-abcd12", "tpl_123");
-    expect(url).toContain("setva_lead=tpl_123");
+  it("keeps the destination free of tracking params that trip bot checks", () => {
+    const url = ticketmasterDestination();
+    expect(url).not.toContain("?");
+    expect(url).not.toContain("utm_");
+    expect(url).not.toContain("setva_ref");
   });
 });

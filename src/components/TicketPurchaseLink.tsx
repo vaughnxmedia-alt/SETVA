@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TicketmasterAnchor } from "@/components/tickets/TicketmasterAnchor";
 import {
   isExternalTicketPurchase,
   ticketOpensLabel,
@@ -40,15 +41,9 @@ export function TicketPurchaseLink({
 
   if (external) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={externalClassName}
-        onClick={onClick}
-      >
+      <TicketmasterAnchor href={href} className={externalClassName} onClick={onClick}>
         {label}
-      </a>
+      </TicketmasterAnchor>
     );
   }
 

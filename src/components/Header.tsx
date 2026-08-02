@@ -33,6 +33,10 @@ export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // On a partner link the buyer must go through the form so the purchase can be
+  // credited, so the nav CTA points at it rather than out to Ticketmaster.
+  const onPartnerGate = pathname?.startsWith("/go/tickets/") ?? false;
+
   return (
     <header className="sticky top-0 z-50 border-b border-ruby/20 bg-white/95 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
@@ -82,12 +86,21 @@ export function Header() {
               </Link>
             );
           })}
-          <TicketPurchaseLink
-            label="Get Tickets"
-            mode="nav"
-            className="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
-            externalClassName="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
-          />
+          {onPartnerGate ? (
+            <a
+              href="#ticket-form"
+              className="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+            >
+              Get Tickets
+            </a>
+          ) : (
+            <TicketPurchaseLink
+              label="Get Tickets"
+              mode="nav"
+              className="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+              externalClassName="ml-2 rounded-full bg-ruby px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+            />
+          )}
         </nav>
 
         <button
@@ -126,13 +139,23 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <TicketPurchaseLink
-              label="Get Tickets"
-              mode="nav"
-              onClick={() => setOpen(false)}
-              className="mt-2 w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
-              externalClassName="mt-2 block w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
-            />
+            {onPartnerGate ? (
+              <a
+                href="#ticket-form"
+                onClick={() => setOpen(false)}
+                className="mt-2 block w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
+              >
+                Get Tickets
+              </a>
+            ) : (
+              <TicketPurchaseLink
+                label="Get Tickets"
+                mode="nav"
+                onClick={() => setOpen(false)}
+                className="mt-2 w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
+                externalClassName="mt-2 block w-full rounded-full bg-ruby px-4 py-3 text-center font-semibold text-white"
+              />
+            )}
           </div>
         </nav>
       )}
