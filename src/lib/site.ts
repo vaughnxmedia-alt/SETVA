@@ -901,6 +901,12 @@ export const socialHub = {
       videoId: "p2hZNBB8Mfw",
     },
     {
+      label: "Recap 3",
+      description: "SouthEast Texas Visionary Award Recap 3",
+      href: "https://www.youtube.com/watch?v=Oay5yURo4wQ",
+      videoId: "Oay5yURo4wQ",
+    },
+    {
       label: "Red Carpet Recap",
       description: "South East Texas Visionary Award Red Carpet Recap",
       href: "https://www.youtube.com/watch?v=Ip_vfX4Jbb4",
