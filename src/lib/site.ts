@@ -881,12 +881,32 @@ export const socialHub = {
       href: "/donate",
     },
   ] satisfies SocialHubLink[],
-  recapVideo: {
-    label: "SETVA Awards",
-    description: "Watch the SETVA awards on YouTube",
-    href: "https://www.youtube.com/watch?v=KktIIA3ccUM&t=418",
-    videoId: "KktIIA3ccUM",
-  },
+  recapVideos: [
+    {
+      label: "Full Performance",
+      description: "SouthEast Texas Visionary Awards Full Performance",
+      href: "https://www.youtube.com/watch?v=XHP77QRYnqY",
+      videoId: "XHP77QRYnqY",
+    },
+    {
+      label: "Recap 2026",
+      description: "South East Texas Visionary Awards Recap 2026",
+      href: "https://www.youtube.com/watch?v=vczFfwuzYIo",
+      videoId: "vczFfwuzYIo",
+    },
+    {
+      label: "Recap Pt 2",
+      description: "Southeast Texas Visionary Awards Recap Pt 2",
+      href: "https://www.youtube.com/watch?v=p2hZNBB8Mfw",
+      videoId: "p2hZNBB8Mfw",
+    },
+    {
+      label: "Red Carpet Recap",
+      description: "South East Texas Visionary Award Red Carpet Recap",
+      href: "https://www.youtube.com/watch?v=Ip_vfX4Jbb4",
+      videoId: "Ip_vfX4Jbb4",
+    },
+  ],
   socials: [
     { label: "Facebook", href: site.social.facebook },
     { label: "Instagram", href: site.social.instagram },

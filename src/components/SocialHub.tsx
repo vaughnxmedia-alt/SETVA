@@ -122,33 +122,37 @@ export function SocialHub() {
           </div>
         </div>
 
-        <div className="mt-6">
-          <a
-            href={socialHub.recapVideo.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block overflow-hidden rounded-2xl border border-gold/25 bg-white/5 transition hover:border-gold/50 hover:bg-gold/10"
-          >
-            <div className="relative aspect-video bg-black">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://img.youtube.com/vi/${socialHub.recapVideo.videoId}/hqdefault.jpg`}
-                alt={socialHub.recapVideo.label}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-                <span className="rounded-full bg-ruby px-5 py-2 text-sm font-semibold text-white shadow-lg">
-                  ▶ Watch on YouTube
-                </span>
+        <div className="mt-6 space-y-4">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-cream/40">
+            Recap videos
+          </p>
+          {socialHub.recapVideos.map((video) => (
+            <a
+              key={video.videoId}
+              href={video.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-2xl border border-gold/25 bg-white/5 transition hover:border-gold/50 hover:bg-gold/10"
+            >
+              <div className="relative aspect-video bg-black">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+                  alt={video.label}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                  <span className="rounded-full bg-ruby px-5 py-2 text-sm font-semibold text-white shadow-lg">
+                    ▶ Watch on YouTube
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="px-5 py-4 text-left">
-              <span className="block font-semibold text-cream">{socialHub.recapVideo.label}</span>
-              <span className="mt-1 block text-sm text-cream/60">
-                {socialHub.recapVideo.description}
-              </span>
-            </div>
-          </a>
+              <div className="px-5 py-4 text-left">
+                <span className="block font-semibold text-cream">{video.label}</span>
+                <span className="mt-1 block text-sm text-cream/60">{video.description}</span>
+              </div>
+            </a>
+          ))}
         </div>
 
         <footer className="mt-auto pt-10 text-center">

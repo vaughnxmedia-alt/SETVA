@@ -3,7 +3,7 @@ import Link from "next/link";
 import { HomeHeroCopy } from "@/components/HomeHeroCopy";
 import { HomeHeroVideo } from "@/components/HomeHeroVideo";
 import { SectionHeading } from "@/components/SectionHeading";
-import { site, ticketPartnerInfo } from "@/lib/site";
+import { site, socialHub, ticketPartnerInfo } from "@/lib/site";
 
 export default function HomePage() {
   return (
@@ -53,19 +53,31 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-12 max-w-4xl">
+          <div className="mx-auto mt-12 max-w-5xl">
             <p className="mb-4 text-center text-sm font-semibold uppercase tracking-[0.2em] text-ruby">
               Relive the SETVA awards
             </p>
-            <div className="relative aspect-video overflow-hidden rounded-2xl border border-ruby/15 bg-black shadow-xl">
-              <iframe
-                src="https://www.youtube.com/embed/KktIIA3ccUM?start=418"
-                title="SETVA — Southeast Texas Visionary Awards"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-                className="absolute inset-0 h-full w-full"
-              />
+            <div className="grid gap-6 sm:grid-cols-2">
+              {socialHub.recapVideos.map((video) => (
+                <div
+                  key={video.videoId}
+                  className="overflow-hidden rounded-2xl border border-ruby/15 bg-black shadow-xl"
+                >
+                  <div className="relative aspect-video">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.videoId}`}
+                      title={video.description}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                      className="absolute inset-0 h-full w-full"
+                    />
+                  </div>
+                  <p className="px-4 py-3 text-center text-sm font-semibold text-white">
+                    {video.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
