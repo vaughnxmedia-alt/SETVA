@@ -16,7 +16,11 @@ export default async function AnalyticsPage() {
       <h2 className="mb-3 font-display text-base text-gold">Ticket Partner Performance</h2>
       <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <HQStatCard label="Total link clicks" value={ticketPartners.totalClicks} />
-        <HQStatCard label="Recorded purchases" value={ticketPartners.totalPurchases} />
+        <HQStatCard
+          label="Tickets credited"
+          value={ticketPartners.totalPurchases}
+          hint="Matched Ticketmaster emails to ticket forms"
+        />
         <HQStatCard label="Nominee links" value={ticketPartners.nomineeLinks} />
         <HQStatCard label="Ambassador links" value={ticketPartners.ambassadorLinks} />
       </div>
@@ -24,7 +28,9 @@ export default async function AnalyticsPage() {
         <p className="text-[11px] uppercase tracking-wider text-cream/40">Top performing links</p>
         {ticketPartners.topLinks.length === 0 ? (
           <p className="mt-3 text-sm text-cream/40">
-            Clicks are logged when fans use nominee or ambassador tracking links. Purchases are recorded when buyers return to the purchase confirmation page after Ticketmaster checkout.
+            Clicks are logged when fans use nominee or ambassador tracking links. Ticket purchases are
+            credited when imported Ticketmaster emails match a partner&apos;s ticket form — same
+            numbers as Ambassadors and Ticket Sales.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -35,7 +41,7 @@ export default async function AnalyticsPage() {
                   <span className="ml-2 text-xs uppercase text-cream/40">{link.sourceType}</span>
                 </span>
                 <span className="shrink-0 text-gold">
-                  {link.clicks} clicks · {link.purchases} purchases
+                  {link.clicks} clicks · {link.purchases} ticket{link.purchases === 1 ? "" : "s"}
                 </span>
               </li>
             ))}

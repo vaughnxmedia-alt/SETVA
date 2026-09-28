@@ -6,7 +6,7 @@ import { listVolunteerRegistrations } from "@/lib/volunteers-store";
 import { listAmbassadorRegistrations } from "@/lib/ambassadors-store";
 import { categoryTitleById, listNomineeCategories } from "@/lib/nominee-categories-store";
 import { listNomineesWithTicketPartnerSlugs } from "@/lib/nominees-store";
-import { sponsorPackages, sortSponsorPackagesByPrice } from "@/lib/site";
+import { sponsorPackages, sortSponsorPackagesByPrice, ticketPartnerInfo } from "@/lib/site";
 import {
   buildSponsorFulfillmentEmail,
   getPackageAssetsNeeded,
@@ -37,6 +37,7 @@ import type {
   VolunteerRecord,
   AmbassadorRecord,
   NomineeTicketPartnerRecord,
+  PartnerMatchedPurchase,
   TicketFormLead,
   TicketSalesReconciliation,
   TicketSalesSourceRow,
@@ -366,9 +367,52 @@ function groupLeadsBySource(leads: TicketPartnerLead[]): Map<string, TicketFormL
   return bySource;
 }
 
+function commissionPayout(salesAmount: number): number {
+  return salesAmount * (ticketPartnerInfo.commissionPercent / 100);
+}
+
+type PartnerSalesFields = {
+  matchedBuyers: PartnerMatchedPurchase[];
+  uncreditedBuyers: PartnerMatchedPurchase[];
+  ticketsSold: number;
+  salesAmount: number;
+  payoutAmount: number;
+};
+
+function emptyPartnerSales(): PartnerSalesFields {
+  return {
+    matchedBuyers: [],
+    uncreditedBuyers: [],
+    ticketsSold: 0,
+    salesAmount: 0,
+    payoutAmount: 0,
+  };
+}
+
+function salesFieldsFromMatch(
+  match:
+    | {
+        matchedBuyers: PartnerMatchedPurchase[];
+        uncreditedBuyers: PartnerMatchedPurchase[];
+        ticketsSold: number;
+        salesAmount: number;
+      }
+    | undefined,
+): PartnerSalesFields {
+  if (!match) return emptyPartnerSales();
+  return {
+    matchedBuyers: match.matchedBuyers,
+    uncreditedBuyers: match.uncreditedBuyers,
+    ticketsSold: match.ticketsSold,
+    salesAmount: match.salesAmount,
+    payoutAmount: commissionPayout(match.salesAmount),
+  };
+}
+
 function mapStatsToNomineeRecord(
   stats: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number],
   leads: TicketFormLead[],
+  sales: PartnerSalesFields = emptyPartnerSales(),
 ): NomineeTicketPartnerRecord {
   return {
     id: stats.sourceId,
@@ -382,6 +426,7 @@ function mapStatsToNomineeRecord(
     lastClickAt: stats.lastClickAt,
     lastPurchaseAt: stats.lastPurchaseAt,
     leads,
+    ...sales,
   };
 }
 
@@ -389,6 +434,7 @@ function mapStatsToAmbassadorRecord(
   reg: Awaited<ReturnType<typeof listAmbassadorRegistrations>>[number],
   stats: Awaited<ReturnType<typeof getTicketPartnerAnalyticsData>>["links"][number] | undefined,
   leads: TicketFormLead[],
+  sales: PartnerSalesFields = emptyPartnerSales(),
 ): AmbassadorRecord {
   return {
     id: reg.id,
@@ -408,25 +454,37 @@ function mapStatsToAmbassadorRecord(
     lastClickAt: stats?.lastClickAt ?? null,
     lastPurchaseAt: stats?.lastPurchaseAt ?? null,
     leads,
+    ...sales,
   };
 }
 
 export async function getHQNomineeTicketPartners(): Promise<NomineeTicketPartnerRecord[]> {
-  const [analytics, leads] = await Promise.all([
+  const [analytics, leads, purchases] = await Promise.all([
     getTicketPartnerAnalyticsData(),
     listTicketPartnerLeads(),
+    listTicketPurchases(),
   ]);
+  const completeLeads = leads.filter(isCompleteLead);
   const leadsBySource = groupLeadsBySource(leads);
+  const reconciliation = reconcilePurchases(completeLeads, purchases);
+
   return analytics.links
     .filter((link) => link.sourceType === "nominee")
-    .map((link) => mapStatsToNomineeRecord(link, leadsBySource.get(link.sourceId) ?? []));
+    .map((link) =>
+      mapStatsToNomineeRecord(
+        link,
+        leadsBySource.get(link.sourceId) ?? [],
+        salesFieldsFromMatch(reconciliation.bySourceId.get(link.sourceId)),
+      ),
+    );
 }
 
 export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
-  const [registrations, analytics, leads] = await Promise.all([
+  const [registrations, analytics, leads, purchases] = await Promise.all([
     listAmbassadorRegistrations(),
     getTicketPartnerAnalyticsData(),
     listTicketPartnerLeads(),
+    listTicketPurchases(),
   ]);
   const statsById = new Map(
     analytics.links
@@ -434,9 +492,15 @@ export async function getHQAmbassadors(): Promise<AmbassadorRecord[]> {
       .map((link) => [link.sourceId, link]),
   );
   const leadsBySource = groupLeadsBySource(leads);
+  const reconciliation = reconcilePurchases(leads.filter(isCompleteLead), purchases);
 
   return registrations.map((reg) =>
-    mapStatsToAmbassadorRecord(reg, statsById.get(reg.id), leadsBySource.get(reg.id) ?? []),
+    mapStatsToAmbassadorRecord(
+      reg,
+      statsById.get(reg.id),
+      leadsBySource.get(reg.id) ?? [],
+      salesFieldsFromMatch(reconciliation.bySourceId.get(reg.id)),
+    ),
   );
 }
 
@@ -471,8 +535,11 @@ export async function getTicketSalesReconciliation(): Promise<TicketSalesReconci
       const sourceLeads = leadsBySource.get(link.sourceId) ?? [];
       const match = reconciliation.bySourceId.get(link.sourceId);
       const matchedBuyers = match?.matchedBuyers ?? [];
+      const uncreditedBuyers = match?.uncreditedBuyers ?? [];
       // Only surface partners that have activity worth reconciling.
-      if (sourceLeads.length === 0 && matchedBuyers.length === 0) return null;
+      if (sourceLeads.length === 0 && matchedBuyers.length === 0 && uncreditedBuyers.length === 0) {
+        return null;
+      }
       return {
         sourceId: link.sourceId,
         sourceType: link.sourceType,
@@ -483,6 +550,7 @@ export async function getTicketSalesReconciliation(): Promise<TicketSalesReconci
         clickCount: link.clickCount,
         leads: sourceLeads,
         matchedBuyers,
+        uncreditedBuyers,
         ticketsSold: match?.ticketsSold ?? 0,
         salesAmount: match?.salesAmount ?? 0,
       } satisfies TicketSalesSourceRow;
@@ -625,18 +693,32 @@ export async function getHQActivityFeed(): Promise<ActivityItem[]> {
 }
 
 export async function getHQAnalytics(): Promise<HQAnalytics> {
-  const [sponsors, media, volunteers, ambassadors, ticketPartners] = await Promise.all([
-    listFormSubmissions(FORM_TYPES.sponsorIntake),
-    listFormSubmissions(FORM_TYPES.mediaCredentials),
-    listFormSubmissions(FORM_TYPES.volunteers),
-    listFormSubmissions(FORM_TYPES.ambassadors),
-    getTicketPartnerAnalyticsData(),
-  ]);
+  const [sponsors, media, volunteers, ambassadors, ticketPartners, allLeads, purchases] =
+    await Promise.all([
+      listFormSubmissions(FORM_TYPES.sponsorIntake),
+      listFormSubmissions(FORM_TYPES.mediaCredentials),
+      listFormSubmissions(FORM_TYPES.volunteers),
+      listFormSubmissions(FORM_TYPES.ambassadors),
+      getTicketPartnerAnalyticsData(),
+      listTicketPartnerLeads(),
+      listTicketPurchases(),
+    ]);
 
   const realSponsors = realSubmissions(sponsors);
   const realMedia = realSubmissions(media);
   const realVolunteers = realSubmissions(volunteers);
   const realAmbassadors = realSubmissions(ambassadors);
+
+  // Same Ticketmaster ↔ form email matching used by Ambassadors and Ticket Sales.
+  const reconciliation = reconcilePurchases(allLeads.filter(isCompleteLead), purchases);
+  const ticketsBySource = reconciliation.bySourceId;
+
+  const topLinks = ticketPartners.links.slice(0, 8).map((link) => ({
+    name: link.name,
+    sourceType: link.sourceType,
+    clicks: link.clickCount,
+    purchases: ticketsBySource.get(link.sourceId)?.ticketsSold ?? 0,
+  }));
 
   return {
     ...EMPTY_ANALYTICS,
@@ -649,15 +731,10 @@ export async function getHQAnalytics(): Promise<HQAnalytics> {
     },
     ticketPartners: {
       totalClicks: ticketPartners.totalClicks,
-      totalPurchases: ticketPartners.totalPurchases,
+      totalPurchases: reconciliation.totals.ticketsSold,
       nomineeLinks: ticketPartners.links.filter((link) => link.sourceType === "nominee").length,
       ambassadorLinks: ticketPartners.links.filter((link) => link.sourceType === "ambassador").length,
-      topLinks: ticketPartners.links.slice(0, 8).map((link) => ({
-        name: link.name,
-        sourceType: link.sourceType,
-        clicks: link.clickCount,
-        purchases: link.purchaseCount,
-      })),
+      topLinks,
     },
   };
 }

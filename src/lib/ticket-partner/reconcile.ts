@@ -1,6 +1,9 @@
 import type { TicketPartnerLead } from "@/lib/ticket-partner/types";
 import type { ImportableTicketPurchase, TicketPurchaseRecord } from "@/lib/ticket-partner/purchases-store";
 
+/** Preferred seating regular price — used when Ticketmaster export has no amount. */
+export const DEFAULT_TICKETMASTER_TICKET_AMOUNT = 30;
+
 /** Normalizes an email for comparison (trim + lowercase). */
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -61,7 +64,15 @@ const HEADER_ALIASES: Record<string, string[]> = {
   name: ["name", "buyer", "buyer name", "customer", "customer name", "full name", "attendee"],
   firstName: ["first name", "firstname", "first"],
   lastName: ["last name", "lastname", "last"],
-  email: ["email", "email address", "buyer email", "e-mail"],
+  email: [
+    "email",
+    "email address",
+    "buyer email",
+    "e-mail",
+    "primary_em",
+    "primary email",
+    "primaryemail",
+  ],
   phone: ["phone", "phone number", "mobile", "cell", "telephone"],
   quantity: ["quantity", "qty", "tickets", "# of tickets", "num tickets", "ticket count", "seats"],
   amount: ["amount", "total", "order total", "total paid", "price", "grand total", "revenue"],
@@ -92,6 +103,10 @@ export type ParseTicketmasterResult = {
 /**
  * Parses a pasted Ticketmaster export (CSV or TSV, with a header row) into
  * importable buyer rows. Column names are matched flexibly.
+ *
+ * Email-only exports (e.g. PRIMARY_EM) are valid: each row is 1 Preferred
+ * ticket at {@link DEFAULT_TICKETMASTER_TICKET_AMOUNT} when quantity/amount
+ * are missing.
  */
 export function parseTicketmasterExport(raw: string): ParseTicketmasterResult {
   const text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
@@ -118,6 +133,7 @@ export function parseTicketmasterExport(raw: string): ParseTicketmasterResult {
     };
   }
 
+  const hasAmountColumn = matchedColumns.includes("amount");
   const rows: ImportableTicketPurchase[] = [];
   let skipped = 0;
 
@@ -138,12 +154,19 @@ export function parseTicketmasterExport(raw: string): ParseTicketmasterResult {
       continue;
     }
 
+    const quantity = parseNumber(get("quantity")) || 1;
+    const parsedAmount = parseNumber(get("amount"));
+    const amount =
+      hasAmountColumn && parsedAmount > 0
+        ? parsedAmount
+        : DEFAULT_TICKETMASTER_TICKET_AMOUNT * quantity;
+
     rows.push({
       buyerName: name,
       buyerEmail: email,
       buyerPhone: get("phone"),
-      quantity: parseNumber(get("quantity")) || 1,
-      amount: parseNumber(get("amount")),
+      quantity,
+      amount,
       orderRef: get("orderRef"),
     });
   }
@@ -164,6 +187,7 @@ export type MatchedBuyer = {
   amount: number;
   orderRef: string;
   matchType: "email" | "name";
+  /** True when the email/name appeared on more than one partner form; credited to earliest only. */
   ambiguous: boolean;
 };
 
@@ -180,6 +204,8 @@ export type UnmatchedBuyer = {
 export type SourceReconciliation = {
   sourceId: string;
   matchedBuyers: MatchedBuyer[];
+  /** Form emails for this partner that matched a purchase but were credited elsewhere. */
+  uncreditedBuyers: MatchedBuyer[];
   ticketsSold: number;
   salesAmount: number;
 };
@@ -195,29 +221,81 @@ export type ReconciliationResult = {
   };
 };
 
+type LeadIndexEntry = {
+  sourceId: string;
+  sourceName: string;
+  submittedAt: string;
+};
+
+/**
+ * Among leads that share an email (or name), pick the earliest complete form's
+ * source. Duplicate IDs with the same normalized name collapse to one credit.
+ */
+function pickCreditedSource(
+  candidates: LeadIndexEntry[],
+): { sourceId: string; ambiguous: boolean } | null {
+  if (candidates.length === 0) return null;
+
+  const bySourceId = new Map<string, LeadIndexEntry>();
+  for (const entry of candidates) {
+    const existing = bySourceId.get(entry.sourceId);
+    if (!existing || new Date(entry.submittedAt).getTime() < new Date(existing.submittedAt).getTime()) {
+      bySourceId.set(entry.sourceId, entry);
+    }
+  }
+
+  const unique = [...bySourceId.values()];
+  if (unique.length === 1) {
+    return { sourceId: unique[0].sourceId, ambiguous: false };
+  }
+
+  // Same display name under different IDs → credit earliest, not ambiguous for payout.
+  const byName = new Map<string, LeadIndexEntry[]>();
+  for (const entry of unique) {
+    const key = normalizeName(entry.sourceName) || entry.sourceId;
+    const list = byName.get(key) ?? [];
+    list.push(entry);
+    byName.set(key, list);
+  }
+
+  const distinctNames = [...byName.keys()];
+  const ambiguous = distinctNames.length > 1;
+
+  const sorted = [...unique].sort(
+    (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime(),
+  );
+  return { sourceId: sorted[0].sourceId, ambiguous };
+}
+
 /**
  * Matches imported buyers to captured leads (by email first, then name) and
- * attributes each buyer to the nominee/ambassador whose lead they match. A
- * buyer that matches leads for more than one source is flagged ambiguous and
- * counted for each matched source.
+ * attributes each buyer to one partner. When an email appears on multiple
+ * partner forms, credit goes to the earliest complete form only.
  */
 export function reconcilePurchases(
   leads: TicketPartnerLead[],
   purchases: TicketPurchaseRecord[],
 ): ReconciliationResult {
-  const emailToSources = new Map<string, Set<string>>();
-  const nameToSources = new Map<string, Set<string>>();
+  const emailToLeads = new Map<string, LeadIndexEntry[]>();
+  const nameToLeads = new Map<string, LeadIndexEntry[]>();
 
   for (const lead of leads) {
+    const entry: LeadIndexEntry = {
+      sourceId: lead.sourceId,
+      sourceName: lead.sourceName,
+      submittedAt: lead.submittedAt,
+    };
     const email = normalizeEmail(lead.buyerEmail);
     const name = normalizeName(lead.buyerName);
     if (email) {
-      if (!emailToSources.has(email)) emailToSources.set(email, new Set());
-      emailToSources.get(email)!.add(lead.sourceId);
+      const list = emailToLeads.get(email) ?? [];
+      list.push(entry);
+      emailToLeads.set(email, list);
     }
     if (name) {
-      if (!nameToSources.has(name)) nameToSources.set(name, new Set());
-      nameToSources.get(name)!.add(lead.sourceId);
+      const list = nameToLeads.get(name) ?? [];
+      list.push(entry);
+      nameToLeads.set(name, list);
     }
   }
 
@@ -225,7 +303,13 @@ export function reconcilePurchases(
   const ensureSource = (sourceId: string): SourceReconciliation => {
     let entry = bySourceId.get(sourceId);
     if (!entry) {
-      entry = { sourceId, matchedBuyers: [], ticketsSold: 0, salesAmount: 0 };
+      entry = {
+        sourceId,
+        matchedBuyers: [],
+        uncreditedBuyers: [],
+        ticketsSold: 0,
+        salesAmount: 0,
+      };
       bySourceId.set(sourceId, entry);
     }
     return entry;
@@ -240,14 +324,14 @@ export function reconcilePurchases(
     const email = normalizeEmail(purchase.buyerEmail);
     const name = normalizeName(purchase.buyerName);
 
-    let sourceIds = email ? emailToSources.get(email) : undefined;
+    let candidates = email ? emailToLeads.get(email) : undefined;
     let matchType: "email" | "name" = "email";
-    if (!sourceIds || sourceIds.size === 0) {
-      sourceIds = name ? nameToSources.get(name) : undefined;
+    if (!candidates || candidates.length === 0) {
+      candidates = name ? nameToLeads.get(name) : undefined;
       matchType = "name";
     }
 
-    if (!sourceIds || sourceIds.size === 0) {
+    if (!candidates || candidates.length === 0) {
       unmatchedBuyers.push({
         purchaseId: purchase.id,
         buyerName: purchase.buyerName,
@@ -260,14 +344,9 @@ export function reconcilePurchases(
       continue;
     }
 
-    const ambiguous = sourceIds.size > 1;
-    matchedCount += 1;
-    ticketsSold += purchase.quantity;
-    salesAmount += purchase.amount;
-
-    for (const sourceId of sourceIds) {
-      const entry = ensureSource(sourceId);
-      entry.matchedBuyers.push({
+    const pick = pickCreditedSource(candidates);
+    if (!pick) {
+      unmatchedBuyers.push({
         purchaseId: purchase.id,
         buyerName: purchase.buyerName,
         buyerEmail: purchase.buyerEmail,
@@ -275,11 +354,37 @@ export function reconcilePurchases(
         quantity: purchase.quantity,
         amount: purchase.amount,
         orderRef: purchase.orderRef,
-        matchType,
-        ambiguous,
       });
-      entry.ticketsSold += purchase.quantity;
-      entry.salesAmount += purchase.amount;
+      continue;
+    }
+
+    matchedCount += 1;
+    ticketsSold += purchase.quantity;
+    salesAmount += purchase.amount;
+
+    const buyerBase = {
+      purchaseId: purchase.id,
+      buyerName: purchase.buyerName,
+      buyerEmail: purchase.buyerEmail,
+      buyerPhone: purchase.buyerPhone,
+      quantity: purchase.quantity,
+      amount: purchase.amount,
+      orderRef: purchase.orderRef,
+      matchType,
+      ambiguous: pick.ambiguous,
+    };
+
+    const credited = ensureSource(pick.sourceId);
+    credited.matchedBuyers.push(buyerBase);
+    credited.ticketsSold += purchase.quantity;
+    credited.salesAmount += purchase.amount;
+
+    // Other partners who also captured this email see it as uncredited.
+    const otherSourceIds = new Set(
+      candidates.map((c) => c.sourceId).filter((id) => id !== pick.sourceId),
+    );
+    for (const sourceId of otherSourceIds) {
+      ensureSource(sourceId).uncreditedBuyers.push(buyerBase);
     }
   }
 

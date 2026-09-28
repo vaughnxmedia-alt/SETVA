@@ -103,6 +103,19 @@ export type TicketFormLead = {
   submittedAt: string;
 };
 
+/** Credited Ticketmaster purchase matched to a partner's ticket form. */
+export type PartnerMatchedPurchase = {
+  purchaseId: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  quantity: number;
+  amount: number;
+  orderRef: string;
+  matchType: "email" | "name";
+  ambiguous: boolean;
+};
+
 export type AmbassadorRecord = {
   id: string;
   name: string;
@@ -121,6 +134,14 @@ export type AmbassadorRecord = {
   lastClickAt: string | null;
   lastPurchaseAt: string | null;
   leads: TicketFormLead[];
+  /** Ticketmaster purchases credited to this partner (email match). */
+  matchedBuyers: PartnerMatchedPurchase[];
+  /** Form emails that also matched a purchase credited to another partner. */
+  uncreditedBuyers: PartnerMatchedPurchase[];
+  ticketsSold: number;
+  salesAmount: number;
+  /** 10% commission on credited sales. */
+  payoutAmount: number;
 };
 
 export type NomineeTicketPartnerRecord = {
@@ -135,6 +156,11 @@ export type NomineeTicketPartnerRecord = {
   lastClickAt: string | null;
   lastPurchaseAt: string | null;
   leads: TicketFormLead[];
+  matchedBuyers: PartnerMatchedPurchase[];
+  uncreditedBuyers: PartnerMatchedPurchase[];
+  ticketsSold: number;
+  salesAmount: number;
+  payoutAmount: number;
 };
 
 export type TicketSalesMatchedBuyer = {
@@ -159,6 +185,7 @@ export type TicketSalesSourceRow = {
   clickCount: number;
   leads: TicketFormLead[];
   matchedBuyers: TicketSalesMatchedBuyer[];
+  uncreditedBuyers: TicketSalesMatchedBuyer[];
   ticketsSold: number;
   salesAmount: number;
 };

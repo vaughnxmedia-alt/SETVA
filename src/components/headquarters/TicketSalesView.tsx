@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { HQShell } from "@/components/headquarters/HQShell";
 import {
   HQBadge,
-  HQButton,
   HQCard,
   HQEmptyState,
   HQSearchInput,
@@ -50,10 +49,6 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [commissionRate, setCommissionRate] = useState(10);
-
-  const [csv, setCsv] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -78,54 +73,6 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
     });
   }
 
-  async function handleImport() {
-    if (!csv.trim() || importing) return;
-    setImporting(true);
-    setNotice(null);
-    setError(null);
-    try {
-      const res = await hqFetch("/api/headquarters/ticket-sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv }),
-      });
-      const json = (await res.json()) as TicketSalesResponse;
-      if (!res.ok || !json.success) {
-        setError(json.error ?? "Could not import the export.");
-        return;
-      }
-      setData(json.reconciliation ?? EMPTY);
-      setCsv("");
-      const cols = json.columns?.length ? ` Columns detected: ${json.columns.join(", ")}.` : "";
-      const skipped = json.skipped ? ` Skipped ${json.skipped} blank row(s).` : "";
-      setNotice(`Imported ${json.imported ?? 0} buyer(s).${skipped}${cols}`);
-    } catch {
-      setError("Could not import the export.");
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  async function handleClear() {
-    if (!window.confirm("Remove all imported Ticketmaster buyers? Captured form leads are kept.")) {
-      return;
-    }
-    setError(null);
-    setNotice(null);
-    try {
-      const res = await hqFetch("/api/headquarters/ticket-sales", { method: "DELETE" });
-      const json = (await res.json()) as TicketSalesResponse;
-      if (!res.ok || !json.success) {
-        setError(json.error ?? "Could not clear imported data.");
-        return;
-      }
-      setData(json.reconciliation ?? EMPTY);
-      setNotice(`Removed ${json.removed ?? 0} imported buyer(s).`);
-    } catch {
-      setError("Could not clear imported data.");
-    }
-  }
-
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return data.rows;
@@ -140,15 +87,10 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
   return (
     <HQShell title="Ticket Sales" user={currentUser}>
       <p className="mb-6 text-sm text-cream/50">
-        Every ticket-form submission is captured per nominee below. Import the buyer list Ticketmaster
-        sends you to match buyers by email and name, attribute sales, and track commission owed.
+        Ticket-form submissions matched to imported Ticketmaster buyers. Review attributed sales and
+        commission by nominee or ambassador.
       </p>
 
-      {notice ? (
-        <p className="mb-4 rounded-lg border border-emerald/30 bg-emerald/10 px-4 py-2 text-sm text-emerald-light">
-          {notice}
-        </p>
-      ) : null}
       {error ? (
         <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
           {error}
@@ -184,37 +126,6 @@ export function TicketSalesView({ currentUser }: TicketSalesViewProps) {
           />
         </HQCard>
       </div>
-
-      <HQCard className="mb-8 p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-display text-lg text-gold">Import Ticketmaster sales</h2>
-            <p className="mt-1 text-sm text-cream/50">
-              Paste the export (CSV or tab-separated) including a header row. Recognized columns: name
-              (or first/last name), email, phone, quantity, amount, order.
-            </p>
-          </div>
-          {data.totals.importedBuyers > 0 ? (
-            <HQButton variant="outline" onClick={() => void handleClear()} className="shrink-0">
-              Clear imported data
-            </HQButton>
-          ) : null}
-        </div>
-
-        <textarea
-          value={csv}
-          onChange={(e) => setCsv(e.target.value)}
-          rows={6}
-          placeholder={"name,email,phone,quantity,amount,order\nJane Doe,jane@example.com,4095551234,2,150.00,TM-10021"}
-          className={`${hqInputClass} mt-4 font-mono text-xs`}
-        />
-        <div className="mt-3 flex items-center gap-3">
-          <HQButton onClick={() => void handleImport()} disabled={importing || !csv.trim()}>
-            {importing ? "Importing…" : "Import & match"}
-          </HQButton>
-          <span className="text-xs text-cream/40">Imports add to existing data. Matching is by email, then name.</span>
-        </div>
-      </HQCard>
 
       <div className="mb-4 max-w-md">
         <HQSearchInput value={search} onChange={setSearch} placeholder="Search nominees or partners…" />
@@ -402,6 +313,36 @@ function SourceRow({
               </table>
             </div>
           )}
+
+          {row.uncreditedBuyers.length > 0 ? (
+            <>
+              <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-cream/40">
+                Form filled — credited elsewhere ({row.uncreditedBuyers.length})
+              </h3>
+              <div className={hqTableWrapClass}>
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="border-b border-gold/15 bg-gold/5 text-[11px] uppercase tracking-wider text-cream/40">
+                    <tr>
+                      <th className="px-4 py-2.5">Email</th>
+                      <th className="px-4 py-2.5">Qty</th>
+                      <th className="px-4 py-2.5">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gold/10">
+                    {row.uncreditedBuyers.map((buyer) => (
+                      <tr key={`uc-${buyer.purchaseId}`} className="hover:bg-gold/[0.03]">
+                        <td className="px-4 py-2.5 text-cream/70">{buyer.buyerEmail || "—"}</td>
+                        <td className="px-4 py-2.5 text-cream/70">{buyer.quantity}</td>
+                        <td className="px-4 py-2.5 text-cream/70">
+                          {buyer.amount ? formatMoney(buyer.amount) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
     </HQCard>
